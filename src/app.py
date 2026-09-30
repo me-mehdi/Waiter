@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template_string
+from flask import Flask, jsonify, request, render_template_string, Response
 import os
 import sys
 
@@ -16,7 +16,7 @@ from src.modules.finance import finance_service
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
 
-# Simple HTML dashboard template for demonstration & interactive testing
+# Rich Interactive UI Template
 INDEX_HTML = """
 <!DOCTYPE html>
 <html lang="en">
@@ -25,96 +25,307 @@ INDEX_HTML = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Waiter | UK Hospitality SaaS Platform</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; }
-        .hero { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 40px 0; }
-        .card-custom { border-radius: 12px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .status-badge { font-size: 0.85rem; padding: 6px 12px; border-radius: 20px; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f4f6f9; }
+        .hero { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); color: white; padding: 35px 0; border-bottom: 4px solid #00b4db; }
+        .card-custom { border-radius: 12px; border: 1px solid #e3e8ee; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s; }
+        .card-custom:hover { transform: translateY(-2px); }
+        .badge-status { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 5px 10px; border-radius: 12px; }
+        .upsell-box { background: #fff8e1; border: 1px dashed #ffa000; border-radius: 8px; padding: 12px; }
+        .kds-card { border-left: 4px solid #00b4db; }
+        .kds-preparing { border-left: 4px solid #ff9800; }
+        .kds-ready { border-left: 4px solid #4caf50; }
     </style>
 </head>
 <body>
     <div class="hero text-center">
         <div class="container">
-            <h1 class="display-4 fw-bold">The Waiter</h1>
-            <p class="lead">UK Market Strategy & Operational Blueprint Implementation</p>
-            <span class="badge bg-light text-dark me-2">UK Currency (£)</span>
-            <span class="badge bg-success me-2">Scan-to-Invoice Active</span>
-            <span class="badge bg-warning text-dark">BYOD Multi-Device</span>
-        </div>
-    </div>
-
-    <div class="container my-5">
-        <div class="row g-4">
-            <!-- 1. QR Ordering -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-custom h-100 p-4">
-                    <h4 class="fw-bold text-primary">📱 1. QR Ordering & Menu</h4>
-                    <p class="text-muted">Dynamic catalogue with multi-lang (EN, FR, AR) and AI upsell support.</p>
-                    <div class="d-grid gap-2">
-                        <a href="/api/menu?lang=en" target="_blank" class="btn btn-outline-primary btn-sm">View Menu (EN)</a>
-                        <a href="/api/menu?lang=fr" target="_blank" class="btn btn-outline-primary btn-sm">View Menu (FR)</a>
-                        <a href="/api/menu?lang=ar" target="_blank" class="btn btn-outline-primary btn-sm">View Menu (AR)</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 2. KDS Kitchen -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-custom h-100 p-4">
-                    <h4 class="fw-bold text-success">🍳 2. KDS Kitchen Screen</h4>
-                    <p class="text-muted">Live order line digitalization (New ➔ Preparing ➔ Ready).</p>
-                    <div class="d-grid gap-2">
-                        <a href="/api/kds/active" target="_blank" class="btn btn-outline-success btn-sm">Kitchen Queue API</a>
-                        <a href="/api/kds/tv" target="_blank" class="btn btn-outline-success btn-sm">Guest TV Screen API</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. Promos & Retention -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-custom h-100 p-4">
-                    <h4 class="fw-bold text-warning text-dark">🏷️ 3. Promo Codes</h4>
-                    <p class="text-muted">Targeted discounts (WELCOME10, OFFPEAK20) for off-peak demand.</p>
-                    <div class="d-grid gap-2">
-                        <a href="/api/promos" target="_blank" class="btn btn-outline-warning btn-sm text-dark">View Active Promos</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 4. Private Reviews -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-custom h-100 p-4">
-                    <h4 class="fw-bold text-danger">⭐ 4. Private Reviews</h4>
-                    <p class="text-muted">Internal "Avis clients" capturing module before public posting.</p>
-                    <div class="d-grid gap-2">
-                        <a href="/api/reviews" target="_blank" class="btn btn-outline-danger btn-sm">View Guest Reviews</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 5. Finance & RevPASH -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-custom h-100 p-4">
-                    <h4 class="fw-bold text-info text-dark">📊 5. RevPASH & Invoicing</h4>
-                    <p class="text-muted">PDF Invoicing with UK VAT 20% & RevPASH performance analytics.</p>
-                    <div class="d-grid gap-2">
-                        <a href="/api/analytics" target="_blank" class="btn btn-outline-info btn-sm text-dark">View RevPASH Analytics</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 6. Strategy & Docs -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-custom h-100 p-4">
-                    <h4 class="fw-bold text-dark">📄 6. Strategic Blueprint</h4>
-                    <p class="text-muted">Read executive market report and technical architecture documentation.</p>
-                    <div class="d-grid gap-2">
-                        <a href="/docs/strategy" class="btn btn-dark btn-sm">View UK Market Strategy</a>
-                    </div>
-                </div>
+            <h1 class="fw-bold"><i class="fa-solid fa-utensils me-2"></i>The Waiter</h1>
+            <p class="lead mb-2">UK Market Digital Hospitality Ecosystem & "Scan to Invoice" Platform</p>
+            <div class="d-flex justify-content-center gap-2 mt-3">
+                <span class="badge bg-light text-dark"><i class="fa-solid fa-sterling-sign me-1"></i>UK VAT 20%</span>
+                <span class="badge bg-info text-dark"><i class="fa-solid fa-mobile-screen me-1"></i>BYOD Enterprise</span>
+                <span class="badge bg-success"><i class="fa-solid fa-bolt me-1"></i>99.9% Uptime</span>
             </div>
         </div>
     </div>
+
+    <div class="container my-4">
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-pills mb-4 justify-content-center" id="mainTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active fw-bold" id="ordering-tab" data-bs-toggle="tab" data-bs-target="#ordering" type="button"><i class="fa-solid fa-qrcode me-1"></i> Scan & Order</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="kds-tab" data-bs-toggle="tab" data-bs-target="#kds" type="button" onclick="loadKDS()"><i class="fa-solid fa-fire-burner me-1"></i> Kitchen KDS</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" onclick="loadAnalytics()"><i class="fa-solid fa-chart-line me-1"></i> RevPASH Analytics</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="strategy-tab" data-bs-toggle="tab" data-bs-target="#strategy" type="button"><i class="fa-solid fa-file-contract me-1"></i> Strategy Report</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mainTabContent">
+            <!-- TAB 1: QR Ordering -->
+            <div class="tab-pane fade show active" id="ordering" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="fw-bold mb-0">Digital Menu</h4>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-dark active" onclick="loadMenu('en', this)">EN</button>
+                                <button class="btn btn-outline-dark" onclick="loadMenu('fr', this)">FR</button>
+                                <button class="btn btn-outline-dark" onclick="loadMenu('ar', this)">AR</button>
+                            </div>
+                        </div>
+                        <div id="menuContainer" class="row g-3">
+                            <!-- Dynamically loaded -->
+                        </div>
+                    </div>
+
+                    <!-- Cart Sidebar -->
+                    <div class="col-md-4">
+                        <div class="card card-custom p-3 bg-white">
+                            <h5 class="fw-bold"><i class="fa-solid fa-cart-shopping me-2"></i>Your Order (Table #4)</h5>
+                            <hr>
+                            <div id="cartItems" class="mb-3 text-muted small">Cart is empty. Select dishes from menu.</div>
+                            
+                            <!-- Smart Upsell Box -->
+                            <div id="upsellBox" class="upsell-box mb-3 d-none">
+                                <strong class="small text-dark"><i class="fa-solid fa-lightbulb text-warning me-1"></i>Recommended Add-on:</strong>
+                                <div id="upsellContent" class="mt-1"></div>
+                            </div>
+
+                            <div class="mb-3">
+                                <input type="text" id="promoInput" class="form-control form-control-sm" placeholder="Promo code (e.g. WELCOME10)">
+                            </div>
+
+                            <div class="d-flex justify-content-between fw-bold mb-3">
+                                <span>Total:</span>
+                                <span id="cartTotal">£0.00</span>
+                            </div>
+
+                            <button class="btn btn-primary w-100 fw-bold" onclick="placeOrder()"><i class="fa-solid fa-check-circle me-1"></i> Submit Order</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: KDS -->
+            <div class="tab-pane fade" id="kds" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-bold mb-0">Kitchen Display System (KDS)</h4>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="loadKDS()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
+                </div>
+                <div id="kdsContainer" class="row g-3">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- TAB 3: Analytics -->
+            <div class="tab-pane fade" id="analytics" role="tabpanel">
+                <h4 class="fw-bold mb-3">RevPASH & Performance Analytics</h4>
+                <div class="row g-3 mb-4" id="analyticsStats">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- TAB 4: Strategy Document -->
+            <div class="tab-pane fade" id="strategy" role="tabpanel">
+                <div class="card card-custom p-4 bg-white">
+                    <h3 class="fw-bold mb-3">UK Market Strategy & Operational Blueprint</h3>
+                    <iframe src="/docs/strategy" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 8px;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS & Interactivity Script -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentCart = [];
+        let currentLang = 'en';
+
+        async function loadMenu(lang, btn) {
+            currentLang = lang;
+            if(btn) {
+                document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+            const res = await fetch('/api/menu?lang=' + lang);
+            const data = await res.json();
+            
+            const container = document.getElementById('menuContainer');
+            container.innerHTML = data.map(item => `
+                <div class="col-md-6">
+                    <div class="card card-custom p-3 h-100 bg-white">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h6 class="fw-bold mb-1">${item.name_translated}</h6>
+                            <span class="badge bg-primary">£${item.price.toFixed(2)}</span>
+                        </div>
+                        <p class="text-muted small mb-2">${item.description_translated}</p>
+                        <button class="btn btn-sm btn-outline-primary mt-auto" onclick="addToCart('${item.id}', '${item.name_translated}', ${item.price})">
+                            <i class="fa-solid fa-plus me-1"></i> Add to Order
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addToCart(id, name, price) {
+            currentCart.push({ id, name, price });
+            renderCart();
+            checkUpsells();
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cartItems');
+            if(currentCart.length === 0) {
+                container.innerHTML = 'Cart is empty. Select dishes from menu.';
+                document.getElementById('cartTotal').innerText = '£0.00';
+                return;
+            }
+            let subtotal = 0;
+            container.innerHTML = currentCart.map((item, idx) => {
+                subtotal += item.price;
+                return `<div class="d-flex justify-content-between align-items-center mb-1">
+                    <span>${item.name}</span>
+                    <div>
+                        <span class="me-2">£${item.price.toFixed(2)}</span>
+                        <button class="btn btn-link btn-sm text-danger p-0" onclick="removeFromCart(${idx})">&times;</button>
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('cartTotal').innerText = '£' + subtotal.toFixed(2);
+        }
+
+        function removeFromCart(idx) {
+            currentCart.splice(idx, 1);
+            renderCart();
+            checkUpsells();
+        }
+
+        async function checkUpsells() {
+            const itemIds = currentCart.map(i => i.id);
+            if(itemIds.length === 0) {
+                document.getElementById('upsellBox').classList.add('d-none');
+                return;
+            }
+            const res = await fetch('/api/menu?lang=' + currentLang);
+            const menu = await res.json();
+            
+            // Recommend Tartare Sauce or Fresh Juice if in cart
+            const hasCod = itemIds.includes('item-1');
+            const hasSide = itemIds.includes('item-4');
+            const upsellContainer = document.getElementById('upsellContent');
+
+            if(hasCod && !hasSide) {
+                const side = menu.find(m => m.id === 'item-4');
+                if(side) {
+                    upsellContainer.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small fw-bold">${side.name_translated} (+£${side.price.toFixed(2)})</span>
+                            <button class="btn btn-xs btn-warning text-dark py-0 px-2 fw-bold" onclick="addToCart('item-4', '${side.name_translated}', ${side.price})">+ Add</button>
+                        </div>
+                    `;
+                    document.getElementById('upsellBox').classList.remove('d-none');
+                    return;
+                }
+            }
+            document.getElementById('upsellBox').classList.add('d-none');
+        }
+
+        async function placeOrder() {
+            if(currentCart.length === 0) return alert('Please add items to cart first.');
+            const promo = document.getElementById('promoInput').value.trim();
+            const res = await fetch('/api/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    table_number: 4,
+                    items: currentCart.map(i => i.id),
+                    promo_code: promo
+                })
+            });
+            const order = await res.json();
+            alert(`Order ${order.id} submitted! Total: £${order.total.toFixed(2)}`);
+            currentCart = [];
+            renderCart();
+            document.getElementById('upsellBox').classList.add('d-none');
+        }
+
+        async function loadKDS() {
+            const res = await fetch('/api/kds/active');
+            const orders = await res.json();
+            const container = document.getElementById('kdsContainer');
+
+            if(orders.length === 0) {
+                container.innerHTML = '<div class="col-12 text-muted">No active kitchen orders.</div>';
+                return;
+            }
+
+            container.innerHTML = orders.map(order => `
+                <div class="col-md-4">
+                    <div class="card card-custom p-3 bg-white kds-card kds-${order.status.toLowerCase()}">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold mb-0">${order.id} (Table #${order.table_number})</h6>
+                            <span class="badge bg-secondary badge-status">${order.status}</span>
+                        </div>
+                        <ul class="small text-muted mb-3 ps-3">
+                            ${order.items.map(i => `<li>${i.name}</li>`).join('')}
+                        </ul>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button class="btn btn-sm btn-success" onclick="advanceKDS('${order.id}')">Advance Status</button>
+                            <a href="/api/invoice/${order.id}/pdf" target="_blank" class="btn btn-sm btn-outline-dark"><i class="fa-solid fa-file-pdf text-danger"></i> Invoice PDF</a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function advanceKDS(id) {
+            await fetch('/api/kds/advance/' + id, { method: 'POST' });
+            loadKDS();
+        }
+
+        async function loadAnalytics() {
+            const res = await fetch('/api/analytics');
+            const data = await res.json();
+            const container = document.getElementById('analyticsStats');
+            container.innerHTML = `
+                <div class="col-md-3">
+                    <div class="card card-custom p-3 bg-white text-center">
+                        <small class="text-muted text-uppercase">Total Revenue</small>
+                        <h3 class="fw-bold text-success">£${data.total_revenue.toFixed(2)}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card card-custom p-3 bg-white text-center">
+                        <small class="text-muted text-uppercase">Total Orders</small>
+                        <h3 class="fw-bold text-primary">${data.total_orders}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card card-custom p-3 bg-white text-center">
+                        <small class="text-muted text-uppercase">Avg Order Value</small>
+                        <h3 class="fw-bold text-info">£${data.average_transaction_value.toFixed(2)}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card card-custom p-3 bg-white text-center">
+                        <small class="text-muted text-uppercase">RevPASH</small>
+                        <h3 class="fw-bold text-warning text-dark">£${data.rev_pash.toFixed(2)}</h3>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initial load
+        loadMenu('en');
+    </script>
 </body>
 </html>
 """
@@ -184,6 +395,17 @@ def get_invoice(order_id):
         return jsonify(invoice)
     return jsonify({"error": "Order not found"}), 404
 
+@app.route("/api/invoice/<order_id>/pdf", methods=["GET"])
+def get_invoice_pdf(order_id):
+    pdf_bytes = finance_service.generate_pdf_invoice(order_id)
+    if pdf_bytes:
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={"Content-Disposition": f"inline; filename=Invoice_{order_id}.pdf"}
+        )
+    return jsonify({"error": "Order not found"}), 404
+
 @app.route("/api/analytics", methods=["GET"])
 def get_analytics():
     return jsonify(finance_service.calculate_analytics())
@@ -196,4 +418,5 @@ def strategy_doc():
     return f"<pre style='white-space: pre-wrap; font-family: monospace; padding: 20px;'>{content}</pre>"
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5050))
+    app.run(host="0.0.0.0", port=port, debug=True)

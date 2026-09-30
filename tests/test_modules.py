@@ -71,6 +71,10 @@ class TestWaiterModules(unittest.TestCase):
         self.assertTrue(invoice["invoice_number"].startswith("INV-UK-"))
         self.assertEqual(invoice["currency"], "GBP")
 
+        pdf_bytes = finance_service.generate_pdf_invoice(order["id"])
+        self.assertIsNotNone(pdf_bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+
         analytics = finance_service.calculate_analytics(total_seats=50, operating_hours=12)
         self.assertIn("rev_pash", analytics)
         self.assertEqual(analytics["currency_symbol"], "£")
