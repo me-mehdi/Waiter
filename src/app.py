@@ -56,8 +56,9 @@ INDEX_HTML = """
                 <span class="badge bg-info text-dark"><i class="fa-solid fa-mobile-screen me-1"></i>BYOD Enterprise</span>
                 <span class="badge bg-success"><i class="fa-solid fa-boxes-stacked me-1"></i>Stock Auto-Deduction</span>
                 <span class="badge bg-primary"><i class="fa-solid fa-print me-1"></i>ESC/POS Thermal Print</span>
+                <a href="/tv" target="_blank" class="badge bg-warning text-dark text-decoration-none"><i class="fa-solid fa-tv me-1"></i>Guest TV Display</a>
                 <a href="/api/qr/cards/pdf" target="_blank" class="badge bg-danger text-decoration-none"><i class="fa-solid fa-file-pdf me-1"></i>Print Table QR Cards (PDF)</a>
-                <button class="badge bg-warning text-dark border-0" id="pinAuthBtn" data-bs-toggle="modal" data-bs-target="#pinModal"><i class="fa-solid fa-lock me-1"></i> Manager Mode (PIN: 1234)</button>
+                <button class="badge bg-dark text-white border-0" id="pinAuthBtn" data-bs-toggle="modal" data-bs-target="#pinModal"><i class="fa-solid fa-lock me-1"></i> Manager Mode (PIN: 1234)</button>
                 <a href="/terminal" target="_blank" class="badge bg-secondary text-white text-decoration-none"><i class="fa-solid fa-desktop me-1"></i>Netoff Terminal Pro</a>
             </div>
         </div>
@@ -699,6 +700,89 @@ INDEX_HTML = """
 </html>
 """
 
+TV_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest TV Order Pickup Display | The Waiter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #0b0c10; color: #fff; overflow: hidden; height: 100vh; }
+        .tv-header { background: #1f2833; border-bottom: 4px solid #66fcf1; padding: 20px 40px; }
+        .column-header-prep { background: #ff9800; color: #000; font-size: 1.8rem; font-weight: 800; text-transform: uppercase; padding: 15px; border-radius: 12px 12px 0 0; text-align: center; }
+        .column-header-ready { background: #4caf50; color: #fff; font-size: 1.8rem; font-weight: 800; text-transform: uppercase; padding: 15px; border-radius: 12px 12px 0 0; text-align: center; }
+        .tv-panel { background: #1f2833; border-radius: 0 0 12px 12px; padding: 25px; height: calc(100vh - 170px); overflow-y: auto; }
+        .ticket-badge { font-size: 2.5rem; font-weight: 900; padding: 15px 25px; border-radius: 16px; margin-bottom: 15px; text-align: center; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+        .badge-preparing { background: #332200; color: #ffb74d; border: 2px solid #ff9800; }
+        .badge-ready { background: #1b5e20; color: #81c784; border: 3px solid #4caf50; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+    <div class="tv-header d-flex justify-content-between align-items-center">
+        <h2 class="fw-bold mb-0 text-info"><i class="fa-solid fa-utensils me-3"></i>THE WAITER — LIVE ORDER PICKUP</h2>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge bg-success fs-5"><i class="fa-solid fa-bolt me-1"></i> Live TV Feed</span>
+            <a href="/" class="btn btn-outline-light"><i class="fa-solid fa-house me-1"></i> Back</a>
+        </div>
+    </div>
+
+    <div class="container-fluid p-4">
+        <div class="row g-4">
+            <!-- Preparing Column -->
+            <div class="col-6">
+                <div class="column-header-prep"><i class="fa-solid fa-fire-burner me-2"></i> PREPARING 🍳</div>
+                <div class="tv-panel" id="preparingContainer">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Ready Column -->
+            <div class="col-6">
+                <div class="column-header-ready"><i class="fa-solid fa-bell me-2"></i> READY FOR PICKUP 🎉</div>
+                <div class="tv-panel" id="readyContainer">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function updateTVDisplay() {
+            try {
+                const res = await fetch('/api/kds/tv');
+                const data = await res.json();
+                
+                const prepContainer = document.getElementById('preparingContainer');
+                if(data.preparing.length === 0) {
+                    prepContainer.innerHTML = '<div class="text-center text-muted fs-4 my-5">No orders preparing</div>';
+                } else {
+                    prepContainer.innerHTML = data.preparing.map(id => `
+                        <div class="ticket-badge badge-preparing">${id}</div>
+                    `).join('');
+                }
+
+                const readyContainer = document.getElementById('readyContainer');
+                if(data.ready.length === 0) {
+                    readyContainer.innerHTML = '<div class="text-center text-muted fs-4 my-5">No orders ready</div>';
+                } else {
+                    readyContainer.innerHTML = data.ready.map(id => `
+                        <div class="ticket-badge badge-ready">${id}</div>
+                    `).join('');
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        updateTVDisplay();
+        setInterval(updateTVDisplay, 3000); // 3-second live auto refresh
+    </script>
+</body>
+</html>
+"""
+
 TERMINAL_HTML = """
 <!DOCTYPE html>
 <html lang="en">
@@ -917,6 +1001,10 @@ TERMINAL_HTML = """
 @app.route("/")
 def home():
     return render_template_string(INDEX_HTML)
+
+@app.route("/tv")
+def tv_display():
+    return render_template_string(TV_HTML)
 
 @app.route("/terminal")
 def terminal():
