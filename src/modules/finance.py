@@ -25,7 +25,6 @@ class FinanceModule:
             return db.invoices[order_id]
 
         invoice_number = f"INV-UK-{db.invoice_counter}"
-        db.invoice_counter += 1
 
         subtotal = order["subtotal"]
         vat_rate = 0.20  # UK VAT 20%
