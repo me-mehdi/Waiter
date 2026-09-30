@@ -12,6 +12,7 @@ from src.modules.kds import kds_service
 from src.modules.promos import promo_service
 from src.modules.reviews import review_service
 from src.modules.finance import finance_service
+from src.modules.thermal_print import thermal_printer_service
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
@@ -37,6 +38,7 @@ INDEX_HTML = """
         .kds-ready { border-left: 4px solid #4caf50; }
         .star-rating { cursor: pointer; color: #ffc107; font-size: 1.5rem; }
         .star-rating .far { color: #ccc; }
+        .receipt-preview { font-family: 'Courier New', Courier, monospace; background: #fff; border: 1px solid #ddd; padding: 15px; font-size: 0.85rem; border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -48,7 +50,7 @@ INDEX_HTML = """
                 <span class="badge bg-light text-dark"><i class="fa-solid fa-sterling-sign me-1"></i>UK VAT 20%</span>
                 <span class="badge bg-info text-dark"><i class="fa-solid fa-mobile-screen me-1"></i>BYOD Enterprise</span>
                 <span class="badge bg-success"><i class="fa-solid fa-bolt me-1"></i>99.9% Uptime</span>
-                <span class="badge bg-warning text-dark"><i class="fa-solid fa-shield-heart me-1"></i>Private Reviews</span>
+                <span class="badge bg-primary"><i class="fa-solid fa-print me-1"></i>ESC/POS Thermal Print</span>
             </div>
         </div>
     </div>
@@ -123,7 +125,7 @@ INDEX_HTML = """
             <!-- TAB 2: KDS -->
             <div class="tab-pane fade" id="kds" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="fw-bold mb-0">Kitchen Display System (KDS)</h4>
+                    <h4 class="fw-bold mb-0">Kitchen Display System (KDS) & Thermal Printing</h4>
                     <button class="btn btn-sm btn-outline-secondary" onclick="loadKDS()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
                 </div>
                 <div id="kdsContainer" class="row g-3">
@@ -187,6 +189,24 @@ INDEX_HTML = """
                     <input type="hidden" id="selectedRating" value="5">
                     <textarea id="reviewComment" class="form-control mb-3" rows="3" placeholder="Tell us about the food quality, speed of service, or staff..."></textarea>
                     <button type="button" class="btn btn-primary w-100 fw-bold" onclick="submitGuestReview()">Submit Private Review</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Thermal Preview Modal -->
+    <div class="modal fade" id="receiptModal" tabindex="-1" aria-labelledby="receiptModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold small" id="receiptModalLabel"><i class="fa-solid fa-print me-1"></i> Thermal Receipt Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <pre id="receiptPreviewContent" class="receipt-preview mb-3"></pre>
+                    <div class="d-grid gap-2">
+                        <a id="escposDownloadBtn" href="#" target="_blank" class="btn btn-sm btn-dark"><i class="fa-solid fa-download me-1"></i> Download ESC/POS Bytes</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -304,7 +324,6 @@ INDEX_HTML = """
             renderCart();
             document.getElementById('upsellBox').classList.add('d-none');
             
-            // Automatically prompt for feedback
             const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
             reviewModal.show();
         }
@@ -348,7 +367,6 @@ INDEX_HTML = """
             
             document.getElementById('avgRatingScore').innerText = data.average_rating.toFixed(1);
             
-            // Render average rating stars
             const fullStars = Math.floor(data.average_rating);
             let starsHtml = '';
             for(let i=0; i<5; i++) {
@@ -404,13 +422,23 @@ INDEX_HTML = """
                         <ul class="small text-muted mb-3 ps-3">
                             ${order.items.map(i => `<li>${i.name}</li>`).join('')}
                         </ul>
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex flex-wrap gap-1 align-items-center">
                             <button class="btn btn-sm btn-success" onclick="advanceKDS('${order.id}')">Advance Status</button>
-                            <a href="/api/invoice/${order.id}/pdf" target="_blank" class="btn btn-sm btn-outline-dark"><i class="fa-solid fa-file-pdf text-danger"></i> Invoice PDF</a>
+                            <button class="btn btn-sm btn-outline-primary" onclick="previewThermalReceipt('${order.id}')"><i class="fa-solid fa-print"></i> Thermal</button>
+                            <a href="/api/invoice/${order.id}/pdf" target="_blank" class="btn btn-sm btn-outline-dark"><i class="fa-solid fa-file-pdf text-danger"></i> PDF</a>
                         </div>
                     </div>
                 </div>
             `).join('');
+        }
+
+        async function previewThermalReceipt(id) {
+            const res = await fetch('/api/receipt/' + id + '/txt');
+            const text = await res.text();
+            document.getElementById('receiptPreviewContent').innerText = text;
+            document.getElementById('escposDownloadBtn').href = '/api/receipt/' + id + '/escpos';
+            const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
+            modal.show();
         }
 
         async function advanceKDS(id) {
@@ -514,7 +542,7 @@ def submit_review():
     rev = review_service.submit_review(table_num, rating, comment)
     return jsonify(rev), 201
 
-# --- 5. Finance & Analytics Endpoints ---
+# --- 5. Finance, Invoicing & Thermal Receipt Endpoints ---
 @app.route("/api/invoice/<order_id>", methods=["GET"])
 def get_invoice(order_id):
     invoice = finance_service.generate_invoice(order_id)
@@ -530,6 +558,26 @@ def get_invoice_pdf(order_id):
             pdf_bytes,
             mimetype="application/pdf",
             headers={"Content-Disposition": f"inline; filename=Invoice_{order_id}.pdf"}
+        )
+    return jsonify({"error": "Order not found"}), 404
+
+@app.route("/api/receipt/<order_id>/txt", methods=["GET"])
+def get_thermal_receipt_txt(order_id):
+    width = int(request.args.get("width", 32))
+    receipt_txt = thermal_printer_service.format_receipt_text(order_id, width)
+    if receipt_txt:
+        return Response(receipt_txt, mimetype="text/plain; charset=utf-8")
+    return jsonify({"error": "Order not found"}), 404
+
+@app.route("/api/receipt/<order_id>/escpos", methods=["GET"])
+def get_thermal_receipt_escpos(order_id):
+    width = int(request.args.get("width", 32))
+    escpos_bytes = thermal_printer_service.generate_escpos_bytes(order_id, width)
+    if escpos_bytes:
+        return Response(
+            escpos_bytes,
+            mimetype="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename=Receipt_{order_id}.bin"}
         )
     return jsonify({"error": "Order not found"}), 404
 

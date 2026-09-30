@@ -79,5 +79,18 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIn("rev_pash", analytics)
         self.assertEqual(analytics["currency_symbol"], "£")
 
+    def test_thermal_receipt_printing(self):
+        from src.modules.thermal_print import thermal_printer_service
+        order = qr_ordering_service.submit_order(table_number=3, item_ids=["item-1", "item-3"])
+        
+        text_receipt = thermal_printer_service.format_receipt_text(order["id"], width=32)
+        self.assertIsNotNone(text_receipt)
+        self.assertIn("THE WAITER UK", text_receipt)
+        self.assertIn("Fish & Chips", text_receipt)
+
+        escpos_bytes = thermal_printer_service.generate_escpos_bytes(order["id"])
+        self.assertIsNotNone(escpos_bytes)
+        self.assertTrue(escpos_bytes.startswith(b"\x1b@"))
+
 if __name__ == "__main__":
     unittest.main()
