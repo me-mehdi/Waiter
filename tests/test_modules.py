@@ -160,5 +160,23 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIsNotNone(pdf_bytes)
         self.assertTrue(pdf_bytes.startswith(b"%PDF"))
 
+    def test_finance_z_report(self):
+        order1 = qr_ordering_service.submit_order(table_number=1, item_ids=["item-1", "item-3"])
+        order2 = qr_ordering_service.submit_order(table_number=2, item_ids=["item-2"])
+        order3 = qr_ordering_service.submit_order(table_number=3, item_ids=["item-4"])
+        db.cancel_order(order3["id"])
+
+        report = finance_service.generate_z_report(currency="GBP")
+        self.assertIsNotNone(report)
+        self.assertEqual(report["total_tickets"], 3)
+        self.assertEqual(report["completed_tickets"], 2)
+        self.assertEqual(report["cancelled_tickets"], 1)
+        self.assertGreater(report["total_revenue"], 0.0)
+
+        pdf_bytes = finance_service.generate_pdf_z_report(currency="GBP")
+        self.assertIsNotNone(pdf_bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+
 if __name__ == "__main__":
     unittest.main()
+

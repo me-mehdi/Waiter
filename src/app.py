@@ -58,6 +58,7 @@ INDEX_HTML = """
                 <span class="badge bg-primary"><i class="fa-solid fa-print me-1"></i>ESC/POS Thermal Print</span>
                 <a href="/tv" target="_blank" class="badge bg-warning text-dark text-decoration-none"><i class="fa-solid fa-tv me-1"></i>Guest TV Display</a>
                 <a href="/api/qr/cards/pdf" target="_blank" class="badge bg-danger text-decoration-none"><i class="fa-solid fa-file-pdf me-1"></i>Print Table QR Cards (PDF)</a>
+                <a href="/api/finance/z-report/pdf" target="_blank" class="badge bg-dark text-warning text-decoration-none"><i class="fa-solid fa-chart-line me-1"></i>Z-Report Daily PDF</a>
                 <button class="badge bg-dark text-white border-0" id="pinAuthBtn" data-bs-toggle="modal" data-bs-target="#pinModal"><i class="fa-solid fa-lock me-1"></i> Manager Mode (PIN: 1234)</button>
                 <a href="/terminal" target="_blank" class="badge bg-secondary text-white text-decoration-none"><i class="fa-solid fa-desktop me-1"></i>Netoff Terminal Pro</a>
             </div>
@@ -211,28 +212,36 @@ INDEX_HTML = """
                     <h4 class="fw-bold mb-3"><i class="fa-solid fa-file-csv text-success me-2"></i>Download CSV Business Reports</h4>
                     <p class="text-muted">Export operational data for accounting software (Xero, QuickBooks, Sage) and inventory audits.</p>
                     <div class="row g-3 mt-2">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card p-3 border text-center">
                                 <i class="fa-solid fa-receipt fs-1 text-primary mb-2"></i>
                                 <h6 class="fw-bold">Order Sales History</h6>
                                 <p class="text-muted small">Full log of transactions, table #s, items, and tax amounts.</p>
-                                <a href="/api/export/orders/csv" target="_blank" class="btn btn-primary btn-sm"><i class="fa-solid fa-download me-1"></i> Export Orders CSV</a>
+                                <a href="/api/export/orders/csv" target="_blank" class="btn btn-primary btn-sm"><i class="fa-solid fa-download me-1"></i> Orders CSV</a>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card p-3 border text-center">
                                 <i class="fa-solid fa-boxes-stacked fs-1 text-success mb-2"></i>
                                 <h6 class="fw-bold">Inventory Audit</h6>
                                 <p class="text-muted small">Current stock levels, dish prices, and stock status warnings.</p>
-                                <a href="/api/export/inventory/csv" target="_blank" class="btn btn-success btn-sm"><i class="fa-solid fa-download me-1"></i> Export Inventory CSV</a>
+                                <a href="/api/export/inventory/csv" target="_blank" class="btn btn-success btn-sm"><i class="fa-solid fa-download me-1"></i> Inventory CSV</a>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card p-3 border text-center">
                                 <i class="fa-solid fa-comments fs-1 text-warning mb-2"></i>
                                 <h6 class="fw-bold">Private Guest Feedback</h6>
                                 <p class="text-muted small">Complete customer rating scores and private review comments.</p>
-                                <a href="/api/export/reviews/csv" target="_blank" class="btn btn-warning text-dark btn-sm"><i class="fa-solid fa-download me-1"></i> Export Reviews CSV</a>
+                                <a href="/api/export/reviews/csv" target="_blank" class="btn btn-warning text-dark btn-sm"><i class="fa-solid fa-download me-1"></i> Reviews CSV</a>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card p-3 border text-center">
+                                <i class="fa-solid fa-file-pdf fs-1 text-danger mb-2"></i>
+                                <h6 class="fw-bold">Daily Z-Report PDF</h6>
+                                <p class="text-muted small">Formal End-of-Day closing report with VAT sub-totals and sign-off.</p>
+                                <a href="/api/finance/z-report/pdf" target="_blank" class="btn btn-danger btn-sm"><i class="fa-solid fa-file-pdf me-1"></i> Z-Report PDF</a>
                             </div>
                         </div>
                     </div>
@@ -1036,6 +1045,25 @@ def export_reviews_csv():
         csv_data,
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=Reviews_Export.csv"}
+    )
+
+# --- 1b. Z-Report Endpoints ---
+@app.route("/api/finance/z-report", methods=["GET"])
+def get_z_report():
+    date_param = request.args.get("date")
+    curr = request.args.get("currency", "GBP")
+    return jsonify(finance_service.generate_z_report(date_str=date_param, currency=curr))
+
+@app.route("/api/finance/z-report/pdf", methods=["GET"])
+def download_z_report_pdf():
+    date_param = request.args.get("date")
+    curr = request.args.get("currency", "GBP")
+    pdf_bytes = finance_service.generate_pdf_z_report(date_str=date_param, currency=curr)
+    file_date = date_param or "Today"
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=Z_Report_{file_date}.pdf"}
     )
 
 # --- 2. PIN Auth Endpoint ---
