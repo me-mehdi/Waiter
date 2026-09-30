@@ -124,8 +124,25 @@ class DatabaseStore:
                 )
             """)
 
+            # 7. Staff Shifts Table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS staff_shifts (
+                    id TEXT PRIMARY KEY,
+                    staff_name TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    pin TEXT NOT NULL,
+                    hourly_rate REAL NOT NULL,
+                    clock_in TEXT NOT NULL,
+                    clock_out TEXT,
+                    total_hours REAL DEFAULT 0.0,
+                    labor_cost REAL DEFAULT 0.0,
+                    status TEXT NOT NULL
+                )
+            """)
+
             conn.commit()
             self._seed_default_data(cursor, conn)
+
 
     def _seed_default_data(self, cursor, conn):
         cursor.execute("SELECT COUNT(*) FROM venues")
@@ -306,6 +323,26 @@ class DatabaseStore:
                     "status": row["status"]
                 }
             return invoices_dict
+
+    @property
+    def shifts(self) -> List[dict]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM staff_shifts ORDER BY clock_in DESC")
+            rows = cursor.fetchall()
+            return [{
+                "id": row["id"],
+                "staff_name": row["staff_name"],
+                "role": row["role"],
+                "pin": row["pin"],
+                "hourly_rate": row["hourly_rate"],
+                "clock_in": row["clock_in"],
+                "clock_out": row["clock_out"],
+                "total_hours": row["total_hours"],
+                "labor_cost": row["labor_cost"],
+                "status": row["status"]
+            } for row in rows]
+
 
     @property
     def invoice_counter(self) -> int:

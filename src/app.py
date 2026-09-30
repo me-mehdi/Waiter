@@ -21,8 +21,10 @@ from src.modules.qr_generator import qr_generator_service
 from src.modules.inventory import inventory_service
 from src.modules.exporter import exporter_service
 from src.modules.venue import venue_service
+from src.modules.staff import staff_service
 
 app = Flask(__name__)
+
 
 app.config['SECRET_KEY'] = Config.SECRET_KEY
 
@@ -110,8 +112,12 @@ INDEX_HTML = """
                 <button class="nav-link fw-bold" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button"><i class="fa-solid fa-file-csv me-1"></i> CSV Reports</button>
             </li>
             <li class="nav-item">
+                <button class="nav-link fw-bold" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" onclick="loadStaff()"><i class="fa-solid fa-user-clock me-1"></i> Staff Shift Clock</button>
+            </li>
+            <li class="nav-item">
                 <button class="nav-link fw-bold" id="strategy-tab" data-bs-toggle="tab" data-bs-target="#strategy" type="button"><i class="fa-solid fa-file-contract me-1"></i> Strategy Report</button>
             </li>
+
         </ul>
 
         <div class="tab-content" id="mainTabContent">
@@ -271,8 +277,50 @@ INDEX_HTML = """
                 </div>
             </div>
 
-            <!-- TAB 7: Strategy Document -->
+            <!-- TAB 7: Staff Time Clock & Shift Tracking -->
+            <div class="tab-pane fade" id="staff" role="tabpanel">
+                <div class="row g-4">
+                    <!-- Clock In/Out Terminal -->
+                    <div class="col-md-5">
+                        <div class="card card-custom p-4 bg-white shadow-sm">
+                            <h4 class="fw-bold mb-3"><i class="fa-solid fa-clock text-primary me-2"></i>Staff Shift Clock In/Out</h4>
+                            <p class="text-muted small">Enter staff PIN (Manager: <code>1234</code>, Chef: <code>5555</code>, Server: <code>7777</code> / <code>8888</code>)</p>
+                            <input type="password" id="staffPinInput" class="form-control pin-input mb-3" maxlength="4" placeholder="••••">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button class="btn btn-success w-100 fw-bold" onclick="staffClockIn()"><i class="fa-solid fa-right-to-bracket me-1"></i> Clock In</button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-danger w-100 fw-bold" onclick="staffClockOut()"><i class="fa-solid fa-right-from-bracket me-1"></i> Clock Out</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shift Log & Labor Cost Summary -->
+                    <div class="col-md-7">
+                        <div class="card card-custom p-4 bg-white shadow-sm mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold mb-0"><i class="fa-solid fa-user-check text-success me-2"></i>Active Staff & Labor Cost</h5>
+                                <span class="badge bg-primary fs-6" id="activeStaffBadge">0 Active</span>
+                            </div>
+                            <div id="laborSummaryContent" class="row text-center mb-3">
+                                <!-- Dynamically populated -->
+                            </div>
+                        </div>
+                        <div class="card card-custom p-3 bg-white shadow-sm">
+                            <h6 class="fw-bold mb-2">Shift History Log</h6>
+                            <div id="shiftHistoryContainer" style="max-height: 250px; overflow-y: auto;">
+                                <!-- Dynamically populated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 8: Strategy Document -->
             <div class="tab-pane fade" id="strategy" role="tabpanel">
+
                 <div class="card card-custom p-4 bg-white">
                     <h3 class="fw-bold mb-3">UK Market Strategy & Operational Blueprint</h3>
                     <iframe src="/docs/strategy" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 8px;"></iframe>
@@ -756,10 +804,99 @@ INDEX_HTML = """
             } catch(e) { console.error(e); }
         }
 
+        async function staffClockIn() {
+            const pin = document.getElementById('staffPinInput').value.trim();
+            if(!pin) return alert('Enter staff PIN');
+            const res = await fetch('/api/staff/clock-in', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: pin })
+            });
+            const data = await res.json();
+            if(data.success) {
+                alert(data.already_clocked_in ? `Already clocked in as ${data.shift.staff_name}` : `Clocked in successfully as ${data.shift.staff_name}`);
+                document.getElementById('staffPinInput').value = '';
+                loadStaff();
+            } else {
+                alert(data.error || 'Failed to clock in');
+            }
+        }
+
+        async function staffClockOut() {
+            const pin = document.getElementById('staffPinInput').value.trim();
+            if(!pin) return alert('Enter staff PIN');
+            const res = await fetch('/api/staff/clock-out', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: pin })
+            });
+            const data = await res.json();
+            if(data.success) {
+                alert(`Clocked out ${data.shift.staff_name}. Shift hours: ${data.shift.total_hours} hrs, Labor cost: £${data.shift.labor_cost.toFixed(2)}`);
+                document.getElementById('staffPinInput').value = '';
+                loadStaff();
+            } else {
+                alert(data.error || 'Failed to clock out');
+            }
+        }
+
+        async function loadStaff() {
+            try {
+                const resShifts = await fetch('/api/staff/shifts');
+                const dataShifts = await resShifts.json();
+                
+                document.getElementById('activeStaffBadge').innerText = `${dataShifts.active_shifts.length} Active Staff`;
+
+                const resLabor = await fetch('/api/staff/labor-summary?currency=' + currentCurr);
+                const dataLabor = await resLabor.json();
+
+                const sym = dataLabor.currency_symbol || '£';
+                document.getElementById('laborSummaryContent').innerHTML = `
+                    <div class="col-4">
+                        <div class="p-2 border rounded bg-light">
+                            <small class="text-muted d-block text-uppercase">Active Staff</small>
+                            <strong class="fs-5 text-primary">${dataLabor.active_staff_count}</strong>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 border rounded bg-light">
+                            <small class="text-muted d-block text-uppercase">Total Hours</small>
+                            <strong class="fs-5 text-success">${dataLabor.total_hours} hrs</strong>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 border rounded bg-light">
+                            <small class="text-muted d-block text-uppercase">Labor Cost</small>
+                            <strong class="fs-5 text-danger">${sym}${dataLabor.total_labor_cost.toFixed(2)} (${dataLabor.labor_cost_percentage}%)</strong>
+                        </div>
+                    </div>
+                `;
+
+                const logContainer = document.getElementById('shiftHistoryContainer');
+                if(dataShifts.shifts.length === 0) {
+                    logContainer.innerHTML = '<div class="text-muted small text-center my-3">No shifts recorded yet</div>';
+                } else {
+                    logContainer.innerHTML = dataShifts.shifts.map(s => `
+                        <div class="d-flex justify-content-between align-items-center p-2 mb-2 border-bottom">
+                            <div>
+                                <strong class="d-block">${s.staff_name} <span class="badge bg-secondary ms-1">${s.role}</span></strong>
+                                <small class="text-muted">In: ${s.clock_in.substring(11, 16)} | Out: ${s.clock_out ? s.clock_out.substring(11, 16) : 'ACTIVE'}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge ${s.status === 'ACTIVE' ? 'bg-success' : 'bg-dark'}">${s.status}</span>
+                                <small class="d-block text-muted">${s.total_hours}h (${sym}${s.labor_cost.toFixed(2)})</small>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) { console.error(e); }
+        }
+
         // Initial load
         loadVenues();
         updateTableDisplay();
         loadMenu();
+
 
         // Zero-Latency Server-Sent Events (SSE) Listener
         if ('EventSource' in window) {
@@ -1194,6 +1331,42 @@ def stream_kds_events():
             "Connection": "keep-alive"
         }
     )
+
+# --- 1e. Staff Time Clock & Shift Endpoints ---
+@app.route("/api/staff/roster", methods=["GET"])
+def get_staff_roster():
+    return jsonify(staff_service.get_staff_members())
+
+@app.route("/api/staff/shifts", methods=["GET"])
+def get_staff_shifts():
+    return jsonify({
+        "shifts": staff_service.get_shifts(),
+        "active_shifts": staff_service.get_active_shifts()
+    })
+
+@app.route("/api/staff/clock-in", methods=["POST"])
+def staff_clock_in():
+    data = request.json or {}
+    pin = data.get("pin", "")
+    res = staff_service.clock_in(pin)
+    if res.get("success"):
+        return jsonify(res)
+    return jsonify(res), 400
+
+@app.route("/api/staff/clock-out", methods=["POST"])
+def staff_clock_out():
+    data = request.json or {}
+    pin = data.get("pin", "")
+    res = staff_service.clock_out(pin)
+    if res.get("success"):
+        return jsonify(res)
+    return jsonify(res), 400
+
+@app.route("/api/staff/labor-summary", methods=["GET"])
+def get_labor_summary():
+    curr = request.args.get("currency", "GBP")
+    return jsonify(staff_service.get_labor_analytics(currency=curr))
+
 
 
 

@@ -214,8 +214,38 @@ class TestWaiterModules(unittest.TestCase):
         finally:
             kds_service.unsubscribe(q)
 
+    def test_staff_shift_clock_in_out(self):
+        from src.modules.staff import staff_service
+
+        roster = staff_service.get_staff_members()
+        self.assertGreaterEqual(len(roster), 4)
+
+        # Clock-in Charlie (7777)
+        res_in = staff_service.clock_in("7777")
+        self.assertTrue(res_in["success"])
+        self.assertFalse(res_in["already_clocked_in"])
+        self.assertEqual(res_in["shift"]["staff_name"], "Charlie Parker (Server)")
+
+        # Repeated clock in returns existing shift
+        res_repeat = staff_service.clock_in("7777")
+        self.assertTrue(res_repeat["already_clocked_in"])
+
+        active_shifts = staff_service.get_active_shifts()
+        self.assertEqual(len(active_shifts), 1)
+
+        # Clock-out Charlie
+        res_out = staff_service.clock_out("7777")
+        self.assertTrue(res_out["success"])
+        self.assertEqual(res_out["shift"]["status"], "COMPLETED")
+        self.assertGreater(res_out["shift"]["total_hours"], 0.0)
+
+        analytics = staff_service.get_labor_analytics(currency="GBP")
+        self.assertIn("labor_cost_percentage", analytics)
+        self.assertGreater(analytics["total_labor_cost"], 0.0)
+
 if __name__ == "__main__":
     unittest.main()
+
 
 
 
