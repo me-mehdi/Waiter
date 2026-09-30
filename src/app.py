@@ -16,6 +16,7 @@ from src.modules.finance import finance_service
 from src.modules.thermal_print import thermal_printer_service
 from src.modules.qr_generator import qr_generator_service
 from src.modules.inventory import inventory_service
+from src.modules.exporter import exporter_service
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
@@ -79,6 +80,9 @@ INDEX_HTML = """
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-bold" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" onclick="loadAnalytics()"><i class="fa-solid fa-chart-line me-1"></i> RevPASH Analytics</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button"><i class="fa-solid fa-file-csv me-1"></i> CSV Reports</button>
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-bold" id="strategy-tab" data-bs-toggle="tab" data-bs-target="#strategy" type="button"><i class="fa-solid fa-file-contract me-1"></i> Strategy Report</button>
@@ -200,7 +204,41 @@ INDEX_HTML = """
                 </div>
             </div>
 
-            <!-- TAB 6: Strategy Document -->
+            <!-- TAB 6: CSV Reports Exporter -->
+            <div class="tab-pane fade" id="reports" role="tabpanel">
+                <div class="card card-custom p-4 bg-white">
+                    <h4 class="fw-bold mb-3"><i class="fa-solid fa-file-csv text-success me-2"></i>Download CSV Business Reports</h4>
+                    <p class="text-muted">Export operational data for accounting software (Xero, QuickBooks, Sage) and inventory audits.</p>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-4">
+                            <div class="card p-3 border text-center">
+                                <i class="fa-solid fa-receipt fs-1 text-primary mb-2"></i>
+                                <h6 class="fw-bold">Order Sales History</h6>
+                                <p class="text-muted small">Full log of transactions, table #s, items, and tax amounts.</p>
+                                <a href="/api/export/orders/csv" target="_blank" class="btn btn-primary btn-sm"><i class="fa-solid fa-download me-1"></i> Export Orders CSV</a>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-3 border text-center">
+                                <i class="fa-solid fa-boxes-stacked fs-1 text-success mb-2"></i>
+                                <h6 class="fw-bold">Inventory Audit</h6>
+                                <p class="text-muted small">Current stock levels, dish prices, and stock status warnings.</p>
+                                <a href="/api/export/inventory/csv" target="_blank" class="btn btn-success btn-sm"><i class="fa-solid fa-download me-1"></i> Export Inventory CSV</a>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-3 border text-center">
+                                <i class="fa-solid fa-comments fs-1 text-warning mb-2"></i>
+                                <h6 class="fw-bold">Private Guest Feedback</h6>
+                                <p class="text-muted small">Complete customer rating scores and private review comments.</p>
+                                <a href="/api/export/reviews/csv" target="_blank" class="btn btn-warning text-dark btn-sm"><i class="fa-solid fa-download me-1"></i> Export Reviews CSV</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 7: Strategy Document -->
             <div class="tab-pane fade" id="strategy" role="tabpanel">
                 <div class="card card-custom p-4 bg-white">
                     <h3 class="fw-bold mb-3">UK Market Strategy & Operational Blueprint</h3>
@@ -884,7 +922,35 @@ def home():
 def terminal():
     return render_template_string(TERMINAL_HTML)
 
-# --- 1. PIN Auth Endpoint ---
+# --- 1. CSV Export Endpoints ---
+@app.route("/api/export/orders/csv", methods=["GET"])
+def export_orders_csv():
+    csv_data = exporter_service.export_orders_csv()
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=Orders_Export.csv"}
+    )
+
+@app.route("/api/export/inventory/csv", methods=["GET"])
+def export_inventory_csv():
+    csv_data = exporter_service.export_inventory_csv()
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=Inventory_Export.csv"}
+    )
+
+@app.route("/api/export/reviews/csv", methods=["GET"])
+def export_reviews_csv():
+    csv_data = exporter_service.export_reviews_csv()
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=Reviews_Export.csv"}
+    )
+
+# --- 2. PIN Auth Endpoint ---
 @app.route("/api/auth/pin", methods=["POST"])
 def verify_pin():
     data = request.json or {}
@@ -893,7 +959,7 @@ def verify_pin():
         return jsonify({"success": True, "role": "ADMIN"})
     return jsonify({"success": False, "error": "Invalid PIN"}), 401
 
-# --- 2. Inventory Endpoints ---
+# --- 3. Inventory Endpoints ---
 @app.route("/api/inventory", methods=["GET"])
 def get_inventory():
     return jsonify(inventory_service.get_inventory_status())
@@ -906,7 +972,7 @@ def restock_item(item_id):
         return jsonify(res)
     return jsonify({"error": "Item not found"}), 404
 
-# --- 3. QR Code & Table Tent Generation Endpoints ---
+# --- 4. QR Code & Table Tent Generation Endpoints ---
 @app.route("/api/qr/table/<int:table_num>", methods=["GET"])
 def get_table_qr_png(table_num):
     base_url = request.host_url.rstrip("/")
@@ -924,7 +990,7 @@ def get_table_tents_pdf():
         headers={"Content-Disposition": "inline; filename=Table_Tent_Cards_1_to_12.pdf"}
     )
 
-# --- 4. QR Ordering Endpoints ---
+# --- 5. QR Ordering Endpoints ---
 @app.route("/api/menu", methods=["GET"])
 def get_menu():
     lang = request.args.get("lang", "en")
@@ -947,7 +1013,7 @@ def cancel_order(order_id):
         return jsonify(cancelled)
     return jsonify({"error": "Order not found"}), 404
 
-# --- 5. KDS Endpoints ---
+# --- 6. KDS Endpoints ---
 @app.route("/api/kds/active", methods=["GET"])
 def kds_active():
     return jsonify(kds_service.get_active_kitchen_orders())
@@ -963,12 +1029,12 @@ def kds_advance(order_id):
         return jsonify(updated)
     return jsonify({"error": "Order not found"}), 404
 
-# --- 6. Promo Code Endpoints ---
+# --- 7. Promo Code Endpoints ---
 @app.route("/api/promos", methods=["GET"])
 def get_promos():
     return jsonify(db.promos)
 
-# --- 7. Review Endpoints ---
+# --- 8. Review Endpoints ---
 @app.route("/api/reviews", methods=["GET"])
 def get_reviews():
     return jsonify({
@@ -985,7 +1051,7 @@ def submit_review():
     rev = review_service.submit_review(table_num, rating, comment)
     return jsonify(rev), 201
 
-# --- 8. Finance, Invoicing & Thermal Receipt Endpoints ---
+# --- 9. Finance, Invoicing & Thermal Receipt Endpoints ---
 @app.route("/api/invoice/<order_id>", methods=["GET"])
 def get_invoice(order_id):
     curr = request.args.get("currency", "GBP")
