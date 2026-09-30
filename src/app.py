@@ -33,6 +33,7 @@ from src.modules.purchase_orders import purchase_order_service
 from src.modules.waste_tracker import waste_tracker_service
 from src.modules.feedback_analytics import feedback_analytics_service
 from src.modules.table_booking import table_booking_service
+from src.modules.store_transfers import store_transfers_service
 
 app = Flask(__name__)
 
@@ -1898,6 +1899,64 @@ def download_booking_pdf(booking_id):
             pdf_bytes,
             mimetype="application/pdf",
             headers={"Content-Disposition": f"inline; filename=Reservation_{booking_id}.pdf"}
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+# --- 15. Inter-Venue Stock Transfer Endpoints ---
+@app.route("/api/transfers", methods=["POST"])
+def create_store_transfer():
+    data = request.json or {}
+    src_v = data.get("source_venue_id", "venue-1")
+    tgt_v = data.get("target_venue_id", "venue-2")
+    items = data.get("items", [])
+    requested_by = data.get("requested_by", "Central Kitchen Manager")
+    notes = data.get("notes", "")
+
+    try:
+        transfer = store_transfers_service.request_transfer(
+            source_venue_id=src_v,
+            target_venue_id=tgt_v,
+            items=items,
+            requested_by=requested_by,
+            notes=notes
+        )
+        return jsonify(transfer), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/transfers", methods=["GET"])
+def get_store_transfers():
+    v_id = request.args.get("venue_id")
+    status = request.args.get("status")
+    transfers = store_transfers_service.get_transfers(venue_id=v_id, status=status)
+    return jsonify({"transfers": transfers})
+
+@app.route("/api/transfers/<transfer_id>", methods=["GET"])
+def get_store_transfer_details(transfer_id):
+    transfer = store_transfers_service.get_transfer_by_id(transfer_id)
+    if transfer:
+        return jsonify(transfer)
+    return jsonify({"error": "Transfer not found"}), 404
+
+@app.route("/api/transfers/<transfer_id>/status", methods=["POST"])
+def update_store_transfer_status(transfer_id):
+    data = request.json or {}
+    new_status = data.get("status", "APPROVED")
+    try:
+        updated = store_transfers_service.update_transfer_status(transfer_id, new_status)
+        return jsonify(updated)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/transfers/<transfer_id>/pdf", methods=["GET"])
+def download_transfer_manifest_pdf(transfer_id):
+    try:
+        pdf_bytes = store_transfers_service.generate_transfer_manifest_pdf(transfer_id)
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={"Content-Disposition": f"inline; filename=Waybill_Manifest_{transfer_id}.pdf"}
         )
     except ValueError as e:
         return jsonify({"error": str(e)}), 404

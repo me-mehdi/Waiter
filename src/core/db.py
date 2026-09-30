@@ -218,6 +218,21 @@ class DatabaseStore:
                 )
             """)
 
+            # 12. Store Transfers Table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS store_transfers (
+                    id TEXT PRIMARY KEY,
+                    source_venue_id TEXT NOT NULL,
+                    target_venue_id TEXT NOT NULL,
+                    items_json TEXT NOT NULL,
+                    requested_by TEXT NOT NULL,
+                    notes TEXT,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
             conn.commit()
             self._seed_default_data(cursor, conn)
 
@@ -288,6 +303,7 @@ class DatabaseStore:
             cursor.execute("DELETE FROM order_splits")
             cursor.execute("DELETE FROM food_waste")
             cursor.execute("DELETE FROM table_bookings")
+            cursor.execute("DELETE FROM store_transfers")
             conn.commit()
             self._seed_default_data(cursor, conn)
 

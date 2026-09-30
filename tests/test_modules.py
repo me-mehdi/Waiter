@@ -514,6 +514,36 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIsNotNone(pdf_bytes)
         self.assertTrue(pdf_bytes.startswith(b"%PDF"))
 
+    def test_inter_venue_stock_transfers_and_manifest_pdf(self):
+        from src.modules.store_transfers import store_transfers_service
+
+        transfer = store_transfers_service.request_transfer(
+            source_venue_id="venue-1",
+            target_venue_id="venue-2",
+            items=[{"item_id": "item-1", "quantity": 10}, {"item_id": "item-3", "quantity": 5}],
+            requested_by="Central Kitchen Manager Dave",
+            notes="Urgent weekend replenishment for Soho Lounge"
+        )
+
+        self.assertIn("TRF-UK-", transfer["id"])
+        self.assertEqual(transfer["status"], "REQUESTED")
+        self.assertEqual(len(transfer["items"]), 2)
+
+        # Update lifecycle to APPROVED -> DISPATCHED -> RECEIVED
+        app_trf = store_transfers_service.update_transfer_status(transfer["id"], "APPROVED")
+        self.assertEqual(app_trf["status"], "APPROVED")
+
+        disp_trf = store_transfers_service.update_transfer_status(transfer["id"], "DISPATCHED")
+        self.assertEqual(disp_trf["status"], "DISPATCHED")
+
+        rec_trf = store_transfers_service.update_transfer_status(transfer["id"], "RECEIVED")
+        self.assertEqual(rec_trf["status"], "RECEIVED")
+
+        # Generate ReportLab PDF Waybill Manifest
+        pdf_bytes = store_transfers_service.generate_transfer_manifest_pdf(transfer["id"])
+        self.assertIsNotNone(pdf_bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+
 if __name__ == "__main__":
     unittest.main()
 
