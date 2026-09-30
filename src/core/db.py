@@ -140,8 +140,22 @@ class DatabaseStore:
                 )
             """)
 
+            # 8. Loyalty Accounts Table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS loyalty_accounts (
+                    phone_or_email TEXT PRIMARY KEY,
+                    guest_name TEXT NOT NULL,
+                    points_balance INTEGER DEFAULT 0,
+                    tier TEXT DEFAULT 'BRONZE',
+                    total_spent REAL DEFAULT 0.0,
+                    vouchers_json TEXT DEFAULT '[]',
+                    created_at TEXT NOT NULL
+                )
+            """)
+
             conn.commit()
             self._seed_default_data(cursor, conn)
+
 
 
     def _seed_default_data(self, cursor, conn):
@@ -205,8 +219,10 @@ class DatabaseStore:
             cursor.execute("DELETE FROM menu_items")
             cursor.execute("DELETE FROM promos")
             cursor.execute("DELETE FROM staff_shifts")
+            cursor.execute("DELETE FROM loyalty_accounts")
             conn.commit()
             self._seed_default_data(cursor, conn)
+
 
 
     @property
@@ -344,6 +360,26 @@ class DatabaseStore:
                 "labor_cost": row["labor_cost"],
                 "status": row["status"]
             } for row in rows]
+
+    @property
+    def loyalty_accounts(self) -> Dict[str, dict]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM loyalty_accounts")
+            rows = cursor.fetchall()
+            accounts = {}
+            for row in rows:
+                accounts[row["phone_or_email"]] = {
+                    "phone_or_email": row["phone_or_email"],
+                    "guest_name": row["guest_name"],
+                    "points_balance": row["points_balance"],
+                    "tier": row["tier"],
+                    "total_spent": row["total_spent"],
+                    "vouchers": json.loads(row["vouchers_json"] or "[]"),
+                    "created_at": row["created_at"]
+                }
+            return accounts
+
 
 
     @property

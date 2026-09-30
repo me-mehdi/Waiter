@@ -23,8 +23,10 @@ from src.modules.exporter import exporter_service
 from src.modules.venue import venue_service
 from src.modules.staff import staff_service
 from src.modules.floor_plan import floor_plan_service
+from src.modules.loyalty import loyalty_service
 
 app = Flask(__name__)
+
 
 
 
@@ -1389,6 +1391,46 @@ def release_table():
     table_num = int(data.get("table_number", 0))
     res = floor_plan_service.release_table(table_num)
     return jsonify(res)
+
+# --- 1g. Customer Loyalty & Rewards Endpoints ---
+@app.route("/api/loyalty/account", methods=["GET"])
+def get_loyalty_account():
+    identifier = request.args.get("identifier", "")
+    acc = loyalty_service.get_account(identifier)
+    if acc:
+        return jsonify({"success": True, "account": acc})
+    return jsonify({"success": False, "error": "Account not found"}), 404
+
+@app.route("/api/loyalty/register", methods=["POST"])
+def register_loyalty_account():
+    data = request.json or {}
+    identifier = data.get("phone_or_email", "")
+    guest = data.get("guest_name", "")
+    res = loyalty_service.register_account(identifier, guest)
+    if res.get("success"):
+        return jsonify(res)
+    return jsonify(res), 400
+
+@app.route("/api/loyalty/earn", methods=["POST"])
+def earn_loyalty_points():
+    data = request.json or {}
+    identifier = data.get("phone_or_email", "")
+    order_id = data.get("order_id", "")
+    res = loyalty_service.earn_points(identifier, order_id)
+    if res.get("success"):
+        return jsonify(res)
+    return jsonify(res), 400
+
+@app.route("/api/loyalty/redeem", methods=["POST"])
+def redeem_loyalty_reward():
+    data = request.json or {}
+    identifier = data.get("phone_or_email", "")
+    reward_key = data.get("reward_key", "")
+    res = loyalty_service.redeem_reward(identifier, reward_key)
+    if res.get("success"):
+        return jsonify(res)
+    return jsonify(res), 400
+
 
 
 

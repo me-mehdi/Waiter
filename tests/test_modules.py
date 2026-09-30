@@ -269,8 +269,35 @@ class TestWaiterModules(unittest.TestCase):
         rel = floor_plan_service.release_table(5)
         self.assertTrue(rel["success"])
 
+    def test_customer_loyalty_and_rewards(self):
+        from src.modules.loyalty import loyalty_service
+
+        phone = "+447700900077"
+        reg = loyalty_service.register_account(phone, "James Bond")
+        self.assertTrue(reg["success"])
+        self.assertEqual(reg["account"]["points_balance"], 50)
+
+        order = qr_ordering_service.submit_order(table_number=1, item_ids=["item-1", "item-2"])
+        earn = loyalty_service.earn_points(phone, order["id"])
+        self.assertTrue(earn["success"])
+        self.assertGreater(earn["new_balance"], 50)
+
+        if earn["new_balance"] >= 100:
+            red = loyalty_service.redeem_reward(phone, "REWARD5")
+            self.assertTrue(red["success"])
+            voucher_code = red["voucher_code"]
+            self.assertTrue(voucher_code.startswith("LOYAL5-"))
+
+            discounted_order = qr_ordering_service.submit_order(
+                table_number=2,
+                item_ids=["item-1"],
+                promo_code=voucher_code
+            )
+            self.assertGreater(discounted_order["discount"], 0.0)
+
 if __name__ == "__main__":
     unittest.main()
+
 
 
 
