@@ -3,6 +3,8 @@ from src.core.db import db
 from src.core.translation import translator
 from src.core.config import Config
 
+from src.modules.venue import venue_service
+
 class QROrderingModule:
     """
     QR Code Ordering & Digital Menu Module
@@ -60,7 +62,10 @@ class QROrderingModule:
                 upsell_items.append(translated)
         return upsell_items
 
-    def submit_order(self, table_number: int, item_ids: List[str], promo_code: str = None) -> dict:
+    def submit_order(self, table_number: int, item_ids: List[str], promo_code: str = None, venue_id: str = None) -> dict:
+        if not venue_id:
+            venue_id = venue_service.get_active_venue()["id"]
+
         subtotal = 0.0
         order_items = []
         
@@ -88,9 +93,11 @@ class QROrderingModule:
             "items": order_items,
             "subtotal": round(subtotal, 2),
             "discount": round(discount, 2),
-            "total": round(total, 2)
+            "total": round(total, 2),
+            "venue_id": venue_id
         }
         
         return db.add_order(order_payload)
+
 
 qr_ordering_service = QROrderingModule()

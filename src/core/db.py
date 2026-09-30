@@ -60,11 +60,29 @@ class DatabaseStore:
                     discount REAL NOT NULL,
                     total REAL NOT NULL,
                     created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
+                    updated_at TEXT NOT NULL,
+                    venue_id TEXT DEFAULT 'venue-1'
                 )
             """)
 
-            # 3. Promos Table
+            cursor.execute("PRAGMA table_info(orders)")
+            order_cols = [col["name"] for col in cursor.fetchall()]
+            if "venue_id" not in order_cols:
+                cursor.execute("ALTER TABLE orders ADD COLUMN venue_id TEXT DEFAULT 'venue-1'")
+
+            # 3. Venues Table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS venues (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    address TEXT NOT NULL,
+                    currency TEXT NOT NULL,
+                    tables_count INTEGER NOT NULL,
+                    market TEXT NOT NULL
+                )
+            """)
+
+            # 4. Promos Table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS promos (
                     code TEXT PRIMARY KEY,
@@ -75,7 +93,7 @@ class DatabaseStore:
                 )
             """)
 
-            # 4. Reviews Table
+            # 5. Reviews Table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS reviews (
                     id TEXT PRIMARY KEY,
@@ -87,7 +105,7 @@ class DatabaseStore:
                 )
             """)
 
-            # 5. Invoices Table
+            # 6. Invoices Table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS invoices (
                     invoice_number TEXT PRIMARY KEY,
@@ -110,8 +128,22 @@ class DatabaseStore:
             self._seed_default_data(cursor, conn)
 
     def _seed_default_data(self, cursor, conn):
+        cursor.execute("SELECT COUNT(*) FROM venues")
+        if cursor.fetchone()[0] == 0:
+            default_venues = [
+                ("venue-1", "Covent Garden Flagship", "12 Floral St, London WC2E 9DH", "GBP", 12, "UK"),
+                ("venue-2", "Soho Lounge", "45 Dean St, London W1D 4P", "GBP", 8, "UK"),
+                ("venue-3", "Paris Opéra", "8 Boulevard des Capucines, 75009 Paris", "EUR", 15, "EU"),
+                ("venue-4", "Manhattan Midtown", "350 5th Ave, New York NY 10118", "USD", 20, "US"),
+            ]
+            cursor.executemany("""
+                INSERT INTO venues (id, name, address, currency, tables_count, market)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, default_venues)
+
         cursor.execute("SELECT COUNT(*) FROM menu_items")
         if cursor.fetchone()[0] == 0:
+
             default_items = [
                 ("item-1", "Fish & Chips", "Poisson & Frites", "سمك وبطاطس",
                  "Fresh Atlantic cod with crispy chips", "Cabillaud frais et frites croustillantes", "قد أطلسي طازج مع بطاطس مقرمشة",
@@ -178,6 +210,24 @@ class DatabaseStore:
             return items
 
     @property
+    def venues(self) -> Dict[str, dict]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM venues")
+            rows = cursor.fetchall()
+            venues_dict = {}
+            for row in rows:
+                venues_dict[row["id"]] = {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "address": row["address"],
+                    "currency": row["currency"],
+                    "tables_count": row["tables_count"],
+                    "market": row["market"]
+                }
+            return venues_dict
+
+    @property
     def orders(self) -> Dict[str, dict]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -194,9 +244,11 @@ class DatabaseStore:
                     "discount": row["discount"],
                     "total": row["total"],
                     "created_at": row["created_at"],
-                    "updated_at": row["updated_at"]
+                    "updated_at": row["updated_at"],
+                    "venue_id": row["venue_id"] if "venue_id" in row.keys() else "venue-1"
                 }
             return orders_dict
+
 
     @property
     def promos(self) -> Dict[str, dict]:
@@ -305,12 +357,13 @@ class DatabaseStore:
                 "discount": order_data.get("discount", 0.0),
                 "total": order_data.get("total", 0.0),
                 "created_at": now_iso,
-                "updated_at": now_iso
+                "updated_at": now_iso,
+                "venue_id": order_data.get("venue_id", "venue-1")
             }
 
             cursor.execute("""
-                INSERT INTO orders (id, table_number, items_json, status, subtotal, discount, total, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO orders (id, table_number, items_json, status, subtotal, discount, total, created_at, updated_at, venue_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order["id"],
                 order["table_number"],
@@ -320,8 +373,10 @@ class DatabaseStore:
                 order["discount"],
                 order["total"],
                 order["created_at"],
-                order["updated_at"]
+                order["updated_at"],
+                order["venue_id"]
             ))
+
             
             for item in order["items"]:
                 item_id = item.get("item_id")

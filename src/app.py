@@ -17,8 +17,10 @@ from src.modules.thermal_print import thermal_printer_service
 from src.modules.qr_generator import qr_generator_service
 from src.modules.inventory import inventory_service
 from src.modules.exporter import exporter_service
+from src.modules.venue import venue_service
 
 app = Flask(__name__)
+
 app.config['SECRET_KEY'] = Config.SECRET_KEY
 
 INDEX_HTML = """
@@ -66,8 +68,26 @@ INDEX_HTML = """
     </div>
 
     <div class="container my-4">
+        <!-- Store Location / Venue Switcher Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-white border rounded shadow-sm">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-store text-primary fs-4"></i>
+                <div>
+                    <span class="small text-muted d-block fw-bold text-uppercase">Active Store Location</span>
+                    <strong id="activeVenueName" class="fs-6 text-dark">Covent Garden Flagship (UK)</strong>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <label for="venueSelect" class="small fw-bold text-muted mb-0"><i class="fa-solid fa-location-dot me-1"></i>Switch Venue:</label>
+                <select id="venueSelect" class="form-select form-select-sm w-auto fw-bold text-dark border-primary" onchange="switchVenue(this.value)">
+                    <!-- Dynamically populated -->
+                </select>
+            </div>
+        </div>
+
         <!-- Navigation Tabs -->
         <ul class="nav nav-pills mb-4 justify-content-center" id="mainTabs" role="tablist">
+
             <li class="nav-item">
                 <button class="nav-link active fw-bold" id="ordering-tab" data-bs-toggle="tab" data-bs-target="#ordering" type="button"><i class="fa-solid fa-qrcode me-1"></i> Scan & Order</button>
             </li>
@@ -701,9 +721,43 @@ INDEX_HTML = """
             `;
         }
 
+        async function loadVenues() {
+            try {
+                const res = await fetch('/api/venues');
+                const data = await res.json();
+                const select = document.getElementById('venueSelect');
+                select.innerHTML = data.venues.map(v => `
+                    <option value="${v.id}" ${v.id === data.active_venue.id ? 'selected' : ''}>
+                        ${v.name} (${v.market} - ${v.currency})
+                    </option>
+                `).join('');
+                document.getElementById('activeVenueName').innerText = `${data.active_venue.name} (${data.active_venue.market})`;
+            } catch(e) { console.error(e); }
+        }
+
+        async function switchVenue(venueId) {
+            try {
+                const res = await fetch('/api/venues/switch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ venue_id: venueId })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    document.getElementById('activeVenueName').innerText = `${data.active_venue.name} (${data.active_venue.market})`;
+                    if(data.active_venue.currency) {
+                        changeCurrency(data.active_venue.currency);
+                    }
+                    alert(`Switched active store location to: ${data.active_venue.name}`);
+                }
+            } catch(e) { console.error(e); }
+        }
+
         // Initial load
+        loadVenues();
         updateTableDisplay();
         loadMenu();
+
     </script>
 </body>
 </html>
@@ -1065,6 +1119,23 @@ def download_z_report_pdf():
         mimetype="application/pdf",
         headers={"Content-Disposition": f"inline; filename=Z_Report_{file_date}.pdf"}
     )
+
+# --- 1c. Venue Endpoints ---
+@app.route("/api/venues", methods=["GET"])
+def get_venues():
+    return jsonify({
+        "venues": venue_service.get_venues(),
+        "active_venue": venue_service.get_active_venue()
+    })
+
+@app.route("/api/venues/switch", methods=["POST"])
+def switch_venue():
+    data = request.json or {}
+    venue_id = data.get("venue_id", "")
+    if venue_service.set_active_venue(venue_id):
+        return jsonify({"success": True, "active_venue": venue_service.get_active_venue()})
+    return jsonify({"success": False, "error": "Invalid venue_id"}), 400
+
 
 # --- 2. PIN Auth Endpoint ---
 @app.route("/api/auth/pin", methods=["POST"])

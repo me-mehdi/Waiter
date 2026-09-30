@@ -177,6 +177,27 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIsNotNone(pdf_bytes)
         self.assertTrue(pdf_bytes.startswith(b"%PDF"))
 
+    def test_multi_venue_management(self):
+        from src.modules.venue import venue_service
+
+        venues = venue_service.get_venues()
+        self.assertGreaterEqual(len(venues), 4)
+
+        active = venue_service.get_active_venue()
+        self.assertEqual(active["id"], "venue-1")
+
+        self.assertTrue(venue_service.set_active_venue("venue-3"))
+        active_fr = venue_service.get_active_venue()
+        self.assertEqual(active_fr["id"], "venue-3")
+        self.assertEqual(active_fr["currency"], "EUR")
+
+        order = qr_ordering_service.submit_order(table_number=2, item_ids=["item-1"])
+        self.assertEqual(order["venue_id"], "venue-3")
+
+        # Reset active venue back to default
+        venue_service.set_active_venue("venue-1")
+
 if __name__ == "__main__":
     unittest.main()
+
 
