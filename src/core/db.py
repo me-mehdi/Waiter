@@ -48,6 +48,18 @@ class DatabaseStore:
             cols = [col["name"] for col in cursor.fetchall()]
             if "stock_qty" not in cols:
                 cursor.execute("ALTER TABLE menu_items ADD COLUMN stock_qty INTEGER DEFAULT 30")
+            if "allergens_json" not in cols:
+                cursor.execute("ALTER TABLE menu_items ADD COLUMN allergens_json TEXT DEFAULT '[]'")
+            if "dietary_json" not in cols:
+                cursor.execute("ALTER TABLE menu_items ADD COLUMN dietary_json TEXT DEFAULT '[]'")
+
+            cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-1'", (json.dumps(["gluten", "fish"]), json.dumps(["halal"])))
+            cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-2'", (json.dumps(["gluten", "eggs", "pork"]), json.dumps([])))
+            cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-3'", (json.dumps(["gluten"]), json.dumps(["vegan", "vegetarian"])))
+            cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-4'", (json.dumps(["eggs"]), json.dumps(["vegetarian", "gluten-free"])))
+            cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-5'", (json.dumps([]), json.dumps(["vegan", "vegetarian", "halal", "gluten-free"])))
+
+
 
             # 2. Orders Table
             cursor.execute("""
@@ -240,9 +252,12 @@ class DatabaseStore:
                     "price": row["price"],
                     "category": row["category"],
                     "upsell_ids": json.loads(row["upsell_ids"] or "[]"),
-                    "stock_qty": row["stock_qty"] if "stock_qty" in row.keys() else 30
+                    "stock_qty": row["stock_qty"] if "stock_qty" in row.keys() else 30,
+                    "allergens": json.loads(row["allergens_json"]) if ("allergens_json" in row.keys() and row["allergens_json"]) else [],
+                    "dietary": json.loads(row["dietary_json"]) if ("dietary_json" in row.keys() and row["dietary_json"]) else []
                 }
             return items
+
 
     @property
     def venues(self) -> Dict[str, dict]:

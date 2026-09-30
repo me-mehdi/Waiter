@@ -24,8 +24,10 @@ from src.modules.venue import venue_service
 from src.modules.staff import staff_service
 from src.modules.floor_plan import floor_plan_service
 from src.modules.loyalty import loyalty_service
+from src.modules.allergens import allergen_service
 
 app = Flask(__name__)
+
 
 
 
@@ -144,7 +146,19 @@ INDEX_HTML = """
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Dietary & Allergen Filter Bar -->
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 bg-light rounded border">
+                            <span class="small fw-bold text-muted me-1"><i class="fa-solid fa-filter me-1"></i>Dietary & Allergens:</span>
+                            <button class="btn btn-xs btn-outline-success active rounded-pill px-2 py-0 fw-bold" onclick="filterMenuDiet('all', this)">All</button>
+                            <button class="btn btn-xs btn-outline-success rounded-pill px-2 py-0 fw-bold" onclick="filterMenuDiet('vegan', this)">🌱 Vegan</button>
+                            <button class="btn btn-xs btn-outline-success rounded-pill px-2 py-0 fw-bold" onclick="filterMenuDiet('vegetarian', this)">🥬 Vegetarian</button>
+                            <button class="btn btn-xs btn-outline-success rounded-pill px-2 py-0 fw-bold" onclick="filterMenuDiet('halal', this)">🕌 Halal</button>
+                            <button class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0 fw-bold ms-auto" onclick="toggleExclusion('gluten', this)">🌾 Exclude Gluten</button>
+                        </div>
+
                         <div id="menuContainer" class="row g-3">
+
                             <!-- Dynamically loaded -->
                         </div>
                     </div>
@@ -450,11 +464,50 @@ INDEX_HTML = """
             loadMenu();
         }
 
+        let currentDietary = 'all';
+        let excludedAllergens = [];
+
+        function filterMenuDiet(diet, btn) {
+            currentDietary = diet;
+            document.querySelectorAll('[onclick^="filterMenuDiet"]').forEach(b => {
+                b.classList.remove('active', 'btn-success');
+                b.classList.add('btn-outline-success');
+            });
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('active', 'btn-success');
+            loadMenu();
+        }
+
+        function toggleExclusion(allergen, btn) {
+            if(excludedAllergens.includes(allergen)) {
+                excludedAllergens = excludedAllergens.filter(a => a !== allergen);
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-outline-danger');
+            } else {
+                excludedAllergens.push(allergen);
+                btn.classList.remove('btn-outline-danger');
+                btn.classList.add('btn-danger');
+            }
+            loadMenu();
+        }
+
         async function loadMenu() {
-            const res = await fetch(`/api/menu?lang=${currentLang}&currency=${currentCurr}`);
+            let url = `/api/menu/filtered?lang=${currentLang}&currency=${currentCurr}`;
+            if(currentDietary && currentDietary !== 'all') {
+                url += `&dietary=${currentDietary}`;
+            }
+            if(excludedAllergens.length > 0) {
+                url += `&exclude=${excludedAllergens.join(',')}`;
+            }
+            const res = await fetch(url);
             const data = await res.json();
             
             const container = document.getElementById('menuContainer');
+            if(data.length === 0) {
+                container.innerHTML = '<div class="text-muted text-center my-4 fs-6"><i class="fa-solid fa-filter-circle-xmark me-2 text-warning"></i>No dishes match your selected allergen and dietary filters.</div>';
+                return;
+            }
+
             container.innerHTML = data.map(item => {
                 let stockBadge = '';
                 let btnDisabled = '';
@@ -1430,6 +1483,22 @@ def redeem_loyalty_reward():
     if res.get("success"):
         return jsonify(res)
     return jsonify(res), 400
+
+# --- 1h. Allergen & Dietary Filtered Menu Endpoint ---
+@app.route("/api/menu/filtered", methods=["GET"])
+def get_filtered_menu():
+    lang = request.args.get("lang", "en")
+    curr = request.args.get("currency", "GBP")
+    dietary = request.args.get("dietary")
+    exclude_param = request.args.get("exclude", "")
+    exclude_list = [a.strip() for a in exclude_param.split(",") if a.strip()]
+    return jsonify(allergen_service.get_filtered_menu(
+        language=lang,
+        currency=curr,
+        dietary_filter=dietary,
+        exclude_allergens=exclude_list
+    ))
+
 
 
 

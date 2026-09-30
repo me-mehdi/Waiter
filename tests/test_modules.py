@@ -295,8 +295,21 @@ class TestWaiterModules(unittest.TestCase):
             )
             self.assertGreater(discounted_order["discount"], 0.0)
 
+    def test_allergen_and_dietary_filtering(self):
+        from src.modules.allergens import allergen_service
+
+        all_menu = allergen_service.get_filtered_menu()
+        self.assertGreaterEqual(len(all_menu), 5)
+
+        vegan_menu = allergen_service.get_filtered_menu(dietary_filter="vegan")
+        self.assertTrue(all(any(d in ["vegan"] for d in item["dietary"]) for item in vegan_menu))
+
+        no_gluten_menu = allergen_service.get_filtered_menu(exclude_allergens=["gluten"])
+        self.assertTrue(all("gluten" not in item["allergens"] for item in no_gluten_menu))
+
 if __name__ == "__main__":
     unittest.main()
+
 
 
 
