@@ -204,8 +204,10 @@ class DatabaseStore:
             cursor.execute("DELETE FROM invoices")
             cursor.execute("DELETE FROM menu_items")
             cursor.execute("DELETE FROM promos")
+            cursor.execute("DELETE FROM staff_shifts")
             conn.commit()
             self._seed_default_data(cursor, conn)
+
 
     @property
     def menu_items(self) -> Dict[str, dict]:

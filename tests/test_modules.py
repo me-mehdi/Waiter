@@ -243,8 +243,35 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIn("labor_cost_percentage", analytics)
         self.assertGreater(analytics["total_labor_cost"], 0.0)
 
+    def test_floor_plan_and_reservations(self):
+        from src.modules.floor_plan import floor_plan_service
+
+        tables = floor_plan_service.get_floor_plan()
+        self.assertEqual(len(tables), 12)
+
+        # Place an order on Table #3
+        order = qr_ordering_service.submit_order(table_number=3, item_ids=["item-1"])
+
+        # Reserve Table #5
+        res = floor_plan_service.reserve_table(table_number=5, guest_name="Mr. Smith", time_slot="20:00")
+        self.assertTrue(res["success"])
+
+        updated_tables = floor_plan_service.get_floor_plan()
+        t3 = next(t for t in updated_tables if t["table_number"] == 3)
+        t5 = next(t for t in updated_tables if t["table_number"] == 5)
+        t1 = next(t for t in updated_tables if t["table_number"] == 1)
+
+        self.assertEqual(t3["status"], "OCCUPIED")
+        self.assertEqual(t5["status"], "RESERVED")
+        self.assertEqual(t1["status"], "AVAILABLE")
+
+        # Release Table #5
+        rel = floor_plan_service.release_table(5)
+        self.assertTrue(rel["success"])
+
 if __name__ == "__main__":
     unittest.main()
+
 
 
 

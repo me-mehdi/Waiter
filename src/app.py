@@ -22,8 +22,10 @@ from src.modules.inventory import inventory_service
 from src.modules.exporter import exporter_service
 from src.modules.venue import venue_service
 from src.modules.staff import staff_service
+from src.modules.floor_plan import floor_plan_service
 
 app = Flask(__name__)
+
 
 
 app.config['SECRET_KEY'] = Config.SECRET_KEY
@@ -1366,6 +1368,28 @@ def staff_clock_out():
 def get_labor_summary():
     curr = request.args.get("currency", "GBP")
     return jsonify(staff_service.get_labor_analytics(currency=curr))
+
+# --- 1f. Floor Plan Map & Reservation Endpoints ---
+@app.route("/api/floorplan/tables", methods=["GET"])
+def get_floorplan():
+    return jsonify(floor_plan_service.get_floor_plan())
+
+@app.route("/api/floorplan/reserve", methods=["POST"])
+def reserve_table():
+    data = request.json or {}
+    table_num = int(data.get("table_number", 0))
+    guest = data.get("guest_name", "Guest")
+    time_slot = data.get("time_slot", "19:00")
+    res = floor_plan_service.reserve_table(table_num, guest, time_slot)
+    return jsonify(res)
+
+@app.route("/api/floorplan/release", methods=["POST"])
+def release_table():
+    data = request.json or {}
+    table_num = int(data.get("table_number", 0))
+    res = floor_plan_service.release_table(table_num)
+    return jsonify(res)
+
 
 
 
