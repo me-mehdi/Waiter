@@ -16,7 +16,6 @@ from src.modules.finance import finance_service
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
 
-# Rich Interactive UI Template
 INDEX_HTML = """
 <!DOCTYPE html>
 <html lang="en">
@@ -36,6 +35,8 @@ INDEX_HTML = """
         .kds-card { border-left: 4px solid #00b4db; }
         .kds-preparing { border-left: 4px solid #ff9800; }
         .kds-ready { border-left: 4px solid #4caf50; }
+        .star-rating { cursor: pointer; color: #ffc107; font-size: 1.5rem; }
+        .star-rating .far { color: #ccc; }
     </style>
 </head>
 <body>
@@ -47,6 +48,7 @@ INDEX_HTML = """
                 <span class="badge bg-light text-dark"><i class="fa-solid fa-sterling-sign me-1"></i>UK VAT 20%</span>
                 <span class="badge bg-info text-dark"><i class="fa-solid fa-mobile-screen me-1"></i>BYOD Enterprise</span>
                 <span class="badge bg-success"><i class="fa-solid fa-bolt me-1"></i>99.9% Uptime</span>
+                <span class="badge bg-warning text-dark"><i class="fa-solid fa-shield-heart me-1"></i>Private Reviews</span>
             </div>
         </div>
     </div>
@@ -59,6 +61,9 @@ INDEX_HTML = """
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-bold" id="kds-tab" data-bs-toggle="tab" data-bs-target="#kds" type="button" onclick="loadKDS()"><i class="fa-solid fa-fire-burner me-1"></i> Kitchen KDS</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" onclick="loadReviews()"><i class="fa-solid fa-star me-1"></i> Avis Clients (Reviews)</button>
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-bold" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" onclick="loadAnalytics()"><i class="fa-solid fa-chart-line me-1"></i> RevPASH Analytics</button>
@@ -108,7 +113,8 @@ INDEX_HTML = """
                                 <span id="cartTotal">£0.00</span>
                             </div>
 
-                            <button class="btn btn-primary w-100 fw-bold" onclick="placeOrder()"><i class="fa-solid fa-check-circle me-1"></i> Submit Order</button>
+                            <button class="btn btn-primary w-100 fw-bold mb-2" onclick="placeOrder()"><i class="fa-solid fa-check-circle me-1"></i> Submit Order</button>
+                            <button class="btn btn-outline-warning text-dark w-100 btn-sm" data-bs-toggle="modal" data-bs-target="#reviewModal"><i class="fa-solid fa-comment-dots me-1"></i> Leave Private Feedback</button>
                         </div>
                     </div>
                 </div>
@@ -125,7 +131,25 @@ INDEX_HTML = """
                 </div>
             </div>
 
-            <!-- TAB 3: Analytics -->
+            <!-- TAB 3: Reviews (Avis Clients) -->
+            <div class="tab-pane fade" id="reviews" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold mb-0">Private Customer Reviews ("Avis clients")</h4>
+                        <p class="text-muted small mb-0">Internal feedback captured before public social reviews.</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="fs-4 fw-bold text-warning" id="avgRatingScore">0.0</span>
+                        <span class="text-muted fs-6">/ 5.0</span>
+                        <div id="avgRatingStars" class="small text-warning"></div>
+                    </div>
+                </div>
+                <div id="reviewsContainer" class="row g-3">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- TAB 4: Analytics -->
             <div class="tab-pane fade" id="analytics" role="tabpanel">
                 <h4 class="fw-bold mb-3">RevPASH & Performance Analytics</h4>
                 <div class="row g-3 mb-4" id="analyticsStats">
@@ -133,11 +157,36 @@ INDEX_HTML = """
                 </div>
             </div>
 
-            <!-- TAB 4: Strategy Document -->
+            <!-- TAB 5: Strategy Document -->
             <div class="tab-pane fade" id="strategy" role="tabpanel">
                 <div class="card card-custom p-4 bg-white">
                     <h3 class="fw-bold mb-3">UK Market Strategy & Operational Blueprint</h3>
                     <iframe src="/docs/strategy" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 8px;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Modal for Guests -->
+    <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-header-title fw-bold" id="reviewModalLabel"><i class="fa-solid fa-heart text-danger me-2"></i>How was your experience?</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p class="text-muted small">Your feedback is kept private and goes directly to restaurant management.</p>
+                    <div class="star-rating mb-3" id="modalStars">
+                        <i class="fa-solid fa-star" onclick="setRating(1)"></i>
+                        <i class="fa-solid fa-star" onclick="setRating(2)"></i>
+                        <i class="fa-solid fa-star" onclick="setRating(3)"></i>
+                        <i class="fa-solid fa-star" onclick="setRating(4)"></i>
+                        <i class="fa-solid fa-star" onclick="setRating(5)"></i>
+                    </div>
+                    <input type="hidden" id="selectedRating" value="5">
+                    <textarea id="reviewComment" class="form-control mb-3" rows="3" placeholder="Tell us about the food quality, speed of service, or staff..."></textarea>
+                    <button type="button" class="btn btn-primary w-100 fw-bold" onclick="submitGuestReview()">Submit Private Review</button>
                 </div>
             </div>
         </div>
@@ -217,7 +266,6 @@ INDEX_HTML = """
             const res = await fetch('/api/menu?lang=' + currentLang);
             const menu = await res.json();
             
-            // Recommend Tartare Sauce or Fresh Juice if in cart
             const hasCod = itemIds.includes('item-1');
             const hasSide = itemIds.includes('item-4');
             const upsellContainer = document.getElementById('upsellContent');
@@ -255,6 +303,85 @@ INDEX_HTML = """
             currentCart = [];
             renderCart();
             document.getElementById('upsellBox').classList.add('d-none');
+            
+            // Automatically prompt for feedback
+            const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
+            reviewModal.show();
+        }
+
+        function setRating(stars) {
+            document.getElementById('selectedRating').value = stars;
+            const starElements = document.querySelectorAll('#modalStars i');
+            starElements.forEach((s, idx) => {
+                if(idx < stars) {
+                    s.className = 'fa-solid fa-star';
+                } else {
+                    s.className = 'fa-regular fa-star';
+                }
+            });
+        }
+
+        async function submitGuestReview() {
+            const rating = parseInt(document.getElementById('selectedRating').value);
+            const comment = document.getElementById('reviewComment').value.trim();
+
+            await fetch('/api/reviews', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    table_number: 4,
+                    rating: rating,
+                    comment: comment
+                })
+            });
+
+            alert('Thank you! Your feedback has been sent to management.');
+            const modalEl = document.getElementById('reviewModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+            document.getElementById('reviewComment').value = '';
+        }
+
+        async function loadReviews() {
+            const res = await fetch('/api/reviews');
+            const data = await res.json();
+            
+            document.getElementById('avgRatingScore').innerText = data.average_rating.toFixed(1);
+            
+            // Render average rating stars
+            const fullStars = Math.floor(data.average_rating);
+            let starsHtml = '';
+            for(let i=0; i<5; i++) {
+                if(i < fullStars) starsHtml += '<i class="fa-solid fa-star me-1"></i>';
+                else starsHtml += '<i class="fa-regular fa-star me-1"></i>';
+            }
+            document.getElementById('avgRatingStars').innerHTML = starsHtml;
+
+            const container = document.getElementById('reviewsContainer');
+            if(data.reviews.length === 0) {
+                container.innerHTML = '<div class="col-12 text-muted">No private reviews received yet.</div>';
+                return;
+            }
+
+            container.innerHTML = data.reviews.map(rev => {
+                let rStars = '';
+                for(let i=0; i<5; i++) {
+                    if(i < rev.rating) rStars += '<i class="fa-solid fa-star text-warning"></i>';
+                    else rStars += '<i class="fa-regular fa-star text-warning"></i>';
+                }
+                return `
+                    <div class="col-md-6">
+                        <div class="card card-custom p-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold">Table #${rev.table_number}</span>
+                                <div>${rStars}</div>
+                            </div>
+                            <p class="text-dark mb-1 font-italic">"${rev.comment || 'No written comment.'}"</p>
+                            <small class="text-muted">${rev.created_at.substring(0, 19).replace('T', ' ')} UTC</small>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         async function loadKDS() {
