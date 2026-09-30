@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from src.core.db import db
 from src.core.config import Config
+from src.core.auth import auth_service
 from src.core.translation import translator
 from src.modules.qr_ordering import qr_ordering_service
 from src.modules.kds import kds_service
@@ -18,6 +19,11 @@ from src.modules.inventory import inventory_service
 class TestWaiterModules(unittest.TestCase):
     def setUp(self):
         db.reset()
+
+    def test_staff_pin_authentication(self):
+        self.assertTrue(auth_service.verify_pin("1234"))
+        self.assertFalse(auth_service.verify_pin("0000"))
+        self.assertFalse(auth_service.verify_pin(""))
 
     def test_qr_menu_translation_and_currency(self):
         menu_en = qr_ordering_service.get_menu("en", "GBP")

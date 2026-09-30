@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from src.core.config import Config
 from src.core.db import db
+from src.core.auth import auth_service
 from src.modules.qr_ordering import qr_ordering_service
 from src.modules.kds import kds_service
 from src.modules.promos import promo_service
@@ -41,6 +42,7 @@ INDEX_HTML = """
         .star-rating { cursor: pointer; color: #ffc107; font-size: 1.5rem; }
         .star-rating .far { color: #ccc; }
         .receipt-preview { font-family: 'Courier New', Courier, monospace; background: #fff; border: 1px solid #ddd; padding: 15px; font-size: 0.85rem; border-radius: 6px; }
+        .pin-input { letter-spacing: 12px; font-size: 2rem; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -54,7 +56,8 @@ INDEX_HTML = """
                 <span class="badge bg-success"><i class="fa-solid fa-boxes-stacked me-1"></i>Stock Auto-Deduction</span>
                 <span class="badge bg-primary"><i class="fa-solid fa-print me-1"></i>ESC/POS Thermal Print</span>
                 <a href="/api/qr/cards/pdf" target="_blank" class="badge bg-danger text-decoration-none"><i class="fa-solid fa-file-pdf me-1"></i>Print Table QR Cards (PDF)</a>
-                <a href="/terminal" target="_blank" class="badge bg-warning text-dark text-decoration-none"><i class="fa-solid fa-desktop me-1"></i>Netoff Terminal Pro Kiosk</a>
+                <button class="badge bg-warning text-dark border-0" id="pinAuthBtn" data-bs-toggle="modal" data-bs-target="#pinModal"><i class="fa-solid fa-lock me-1"></i> Manager Mode (PIN: 1234)</button>
+                <a href="/terminal" target="_blank" class="badge bg-secondary text-white text-decoration-none"><i class="fa-solid fa-desktop me-1"></i>Netoff Terminal Pro</a>
             </div>
         </div>
     </div>
@@ -207,6 +210,23 @@ INDEX_HTML = """
         </div>
     </div>
 
+    <!-- Manager PIN Authentication Modal -->
+    <div class="modal fade" id="pinModal" tabindex="-1" aria-labelledby="pinModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="pinModalLabel"><i class="fa-solid fa-user-shield text-warning me-2"></i>Manager Mode</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p class="text-muted small">Enter 4-digit Manager PIN (Default: <code>1234</code>)</p>
+                    <input type="password" id="pinInput" class="form-control pin-input mb-3" maxlength="4" placeholder="••••">
+                    <button type="button" class="btn btn-warning text-dark w-100 fw-bold" onclick="authenticatePIN()"><i class="fa-solid fa-unlock me-1"></i> Unlock Admin Access</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Review Modal for Guests -->
     <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -257,6 +277,7 @@ INDEX_HTML = """
         let currentLang = 'en';
         let currentCurr = 'GBP';
         let activeTable = 1;
+        let isAdminUnlocked = false;
         let currSymbols = { 'GBP': '£', 'EUR': '€', 'USD': '$' };
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -266,6 +287,27 @@ INDEX_HTML = """
 
         function updateTableDisplay() {
             document.getElementById('activeTableBadge').innerText = 'Table #' + activeTable;
+        }
+
+        async function authenticatePIN() {
+            const pin = document.getElementById('pinInput').value.trim();
+            const res = await fetch('/api/auth/pin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: pin })
+            });
+            const data = await res.json();
+            if(data.success) {
+                isAdminUnlocked = true;
+                document.getElementById('pinAuthBtn').className = 'badge bg-success border-0';
+                document.getElementById('pinAuthBtn').innerHTML = '<i class="fa-solid fa-shield-halved me-1"></i> Admin Unlocked';
+                const modalEl = document.getElementById('pinModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                alert('Manager Mode Unlocked! Admin controls active.');
+            } else {
+                alert('Invalid Manager PIN. Try 1234');
+            }
         }
 
         function setLanguage(lang, btn) {
@@ -399,7 +441,7 @@ INDEX_HTML = """
             currentCart = [];
             renderCart();
             document.getElementById('upsellBox').classList.add('d-none');
-            loadMenu(); // Refresh stock quantities
+            loadMenu();
             
             const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
             reviewModal.show();
@@ -433,6 +475,12 @@ INDEX_HTML = """
         }
 
         async function restockItem(id) {
+            if(!isAdminUnlocked) {
+                alert('Manager PIN required to restock inventory!');
+                const modal = new bootstrap.Modal(document.getElementById('pinModal'));
+                modal.show();
+                return;
+            }
             await fetch(`/api/inventory/restock/${id}`, { method: 'POST' });
             loadInventory();
             loadMenu();
@@ -821,7 +869,16 @@ def home():
 def terminal():
     return render_template_string(TERMINAL_HTML)
 
-# --- 1. Inventory Endpoints ---
+# --- 1. PIN Auth Endpoint ---
+@app.route("/api/auth/pin", methods=["POST"])
+def verify_pin():
+    data = request.json or {}
+    pin = data.get("pin", "")
+    if auth_service.verify_pin(pin):
+        return jsonify({"success": True, "role": "ADMIN"})
+    return jsonify({"success": False, "error": "Invalid PIN"}), 401
+
+# --- 2. Inventory Endpoints ---
 @app.route("/api/inventory", methods=["GET"])
 def get_inventory():
     return jsonify(inventory_service.get_inventory_status())
@@ -834,7 +891,7 @@ def restock_item(item_id):
         return jsonify(res)
     return jsonify({"error": "Item not found"}), 404
 
-# --- 2. QR Code & Table Tent Generation Endpoints ---
+# --- 3. QR Code & Table Tent Generation Endpoints ---
 @app.route("/api/qr/table/<int:table_num>", methods=["GET"])
 def get_table_qr_png(table_num):
     base_url = request.host_url.rstrip("/")
@@ -852,7 +909,7 @@ def get_table_tents_pdf():
         headers={"Content-Disposition": "inline; filename=Table_Tent_Cards_1_to_12.pdf"}
     )
 
-# --- 3. QR Ordering Endpoints ---
+# --- 4. QR Ordering Endpoints ---
 @app.route("/api/menu", methods=["GET"])
 def get_menu():
     lang = request.args.get("lang", "en")
@@ -868,7 +925,7 @@ def place_order():
     order = qr_ordering_service.submit_order(table_num, items, promo)
     return jsonify(order), 201
 
-# --- 4. KDS Endpoints ---
+# --- 5. KDS Endpoints ---
 @app.route("/api/kds/active", methods=["GET"])
 def kds_active():
     return jsonify(kds_service.get_active_kitchen_orders())
@@ -884,12 +941,12 @@ def kds_advance(order_id):
         return jsonify(updated)
     return jsonify({"error": "Order not found"}), 404
 
-# --- 5. Promo Code Endpoints ---
+# --- 6. Promo Code Endpoints ---
 @app.route("/api/promos", methods=["GET"])
 def get_promos():
     return jsonify(db.promos)
 
-# --- 6. Review Endpoints ---
+# --- 7. Review Endpoints ---
 @app.route("/api/reviews", methods=["GET"])
 def get_reviews():
     return jsonify({
@@ -906,7 +963,7 @@ def submit_review():
     rev = review_service.submit_review(table_num, rating, comment)
     return jsonify(rev), 201
 
-# --- 7. Finance, Invoicing & Thermal Receipt Endpoints ---
+# --- 8. Finance, Invoicing & Thermal Receipt Endpoints ---
 @app.route("/api/invoice/<order_id>", methods=["GET"])
 def get_invoice(order_id):
     curr = request.args.get("currency", "GBP")
