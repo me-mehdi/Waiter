@@ -194,10 +194,28 @@ class TestWaiterModules(unittest.TestCase):
         order = qr_ordering_service.submit_order(table_number=2, item_ids=["item-1"])
         self.assertEqual(order["venue_id"], "venue-3")
 
-        # Reset active venue back to default
         venue_service.set_active_venue("venue-1")
+
+    def test_sse_kds_events(self):
+        q = kds_service.subscribe()
+        try:
+            self.assertTrue(q.empty())
+
+            order = qr_ordering_service.submit_order(table_number=5, item_ids=["item-2"])
+            self.assertFalse(q.empty())
+
+            event_msg = q.get_nowait()
+            self.assertIn("event: kds_update", event_msg)
+            self.assertIn(order["id"], event_msg)
+
+            kds_service.advance_order_status(order["id"])
+            event_msg2 = q.get_nowait()
+            self.assertIn("STATUS_ADVANCED", event_msg2)
+        finally:
+            kds_service.unsubscribe(q)
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

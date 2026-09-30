@@ -1,6 +1,9 @@
 from flask import Flask, jsonify, request, render_template_string, Response
 import os
 import sys
+import json
+import queue
+
 
 # Ensure src path is accessible
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -758,6 +761,15 @@ INDEX_HTML = """
         updateTableDisplay();
         loadMenu();
 
+        // Zero-Latency Server-Sent Events (SSE) Listener
+        if ('EventSource' in window) {
+            const evtSource = new EventSource('/api/kds/events');
+            evtSource.addEventListener('kds_update', function(e) {
+                loadKDS();
+            });
+        }
+
+
     </script>
 </body>
 </html>
@@ -814,34 +826,55 @@ TV_HTML = """
     </div>
 
     <script>
+        function renderTVData(data) {
+            const prepContainer = document.getElementById('preparingContainer');
+            if(!data.preparing || data.preparing.length === 0) {
+                prepContainer.innerHTML = '<div class="text-center text-muted fs-4 my-5">No orders preparing</div>';
+            } else {
+                prepContainer.innerHTML = data.preparing.map(id => `
+                    <div class="ticket-badge badge-preparing">${id}</div>
+                `).join('');
+            }
+
+            const readyContainer = document.getElementById('readyContainer');
+            if(!data.ready || data.ready.length === 0) {
+                readyContainer.innerHTML = '<div class="text-center text-muted fs-4 my-5">No orders ready</div>';
+            } else {
+                readyContainer.innerHTML = data.ready.map(id => `
+                    <div class="ticket-badge badge-ready">${id}</div>
+                `).join('');
+            }
+        }
+
         async function updateTVDisplay() {
             try {
                 const res = await fetch('/api/kds/tv');
                 const data = await res.json();
-                
-                const prepContainer = document.getElementById('preparingContainer');
-                if(data.preparing.length === 0) {
-                    prepContainer.innerHTML = '<div class="text-center text-muted fs-4 my-5">No orders preparing</div>';
-                } else {
-                    prepContainer.innerHTML = data.preparing.map(id => `
-                        <div class="ticket-badge badge-preparing">${id}</div>
-                    `).join('');
-                }
-
-                const readyContainer = document.getElementById('readyContainer');
-                if(data.ready.length === 0) {
-                    readyContainer.innerHTML = '<div class="text-center text-muted fs-4 my-5">No orders ready</div>';
-                } else {
-                    readyContainer.innerHTML = data.ready.map(id => `
-                        <div class="ticket-badge badge-ready">${id}</div>
-                    `).join('');
-                }
+                renderTVData(data);
             } catch(e) { console.error(e); }
         }
 
         updateTVDisplay();
-        setInterval(updateTVDisplay, 3000); // 3-second live auto refresh
+
+        // Zero-Latency Server-Sent Events (SSE) Stream
+        if ('EventSource' in window) {
+            const evtSource = new EventSource('/api/kds/events');
+            evtSource.addEventListener('kds_update', function(e) {
+                const payload = JSON.parse(e.data);
+                if (payload.tv) {
+                    renderTVData(payload.tv);
+                } else {
+                    updateTVDisplay();
+                }
+            });
+            evtSource.onerror = function() {
+                setInterval(updateTVDisplay, 5000);
+            };
+        } else {
+            setInterval(updateTVDisplay, 3000);
+        }
     </script>
+
 </body>
 </html>
 """
@@ -1135,6 +1168,33 @@ def switch_venue():
     if venue_service.set_active_venue(venue_id):
         return jsonify({"success": True, "active_venue": venue_service.get_active_venue()})
     return jsonify({"success": False, "error": "Invalid venue_id"}), 400
+
+# --- 1d. SSE Real-Time KDS & TV Event Stream ---
+@app.route("/api/kds/events", methods=["GET"])
+def stream_kds_events():
+    def event_stream():
+        q = kds_service.subscribe()
+        try:
+            yield f"event: connected\ndata: {json.dumps({'status': 'connected'})}\n\n"
+            while True:
+                try:
+                    msg = q.get(timeout=15)
+                    yield msg
+                except queue.Empty:
+                    yield ": heartbeat\n\n"
+        finally:
+            kds_service.unsubscribe(q)
+
+    return Response(
+        event_stream(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive"
+        }
+    )
+
 
 
 # --- 2. PIN Auth Endpoint ---

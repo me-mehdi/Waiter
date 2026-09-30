@@ -4,6 +4,7 @@ from src.core.translation import translator
 from src.core.config import Config
 
 from src.modules.venue import venue_service
+from src.modules.kds import kds_service
 
 class QROrderingModule:
     """
@@ -97,7 +98,14 @@ class QROrderingModule:
             "venue_id": venue_id
         }
         
-        return db.add_order(order_payload)
+        order = db.add_order(order_payload)
+        kds_service.publish_event("kds_update", {
+            "action": "ORDER_CREATED",
+            "order_id": order["id"],
+            "tv": kds_service.get_tv_display_status()
+        })
+        return order
+
 
 
 qr_ordering_service = QROrderingModule()
