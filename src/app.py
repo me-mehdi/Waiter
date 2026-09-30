@@ -582,6 +582,7 @@ INDEX_HTML = """
                         </ul>
                         <div class="d-flex flex-wrap gap-1 align-items-center">
                             <button class="btn btn-sm btn-success" onclick="advanceKDS('${order.id}')">Advance Status</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="cancelOrder('${order.id}')"><i class="fa-solid fa-ban"></i> Cancel/Refund</button>
                             <button class="btn btn-sm btn-outline-primary" onclick="previewThermalReceipt('${order.id}')"><i class="fa-solid fa-print"></i> Thermal</button>
                             <a href="/api/invoice/${order.id}/pdf?currency=${currentCurr}" target="_blank" class="btn btn-sm btn-outline-dark"><i class="fa-solid fa-file-pdf text-danger"></i> PDF</a>
                         </div>
@@ -602,6 +603,20 @@ INDEX_HTML = """
         async function advanceKDS(id) {
             await fetch('/api/kds/advance/' + id, { method: 'POST' });
             loadKDS();
+        }
+
+        async function cancelOrder(id) {
+            if(!isAdminUnlocked) {
+                alert('Manager PIN required to cancel & refund orders!');
+                const modal = new bootstrap.Modal(document.getElementById('pinModal'));
+                modal.show();
+                return;
+            }
+            if(!confirm(`Are you sure you want to cancel & refund order ${id}? Items will be returned to inventory.`)) return;
+            await fetch('/api/order/cancel/' + id, { method: 'POST' });
+            alert(`Order ${id} cancelled and refunded. Stock returned.`);
+            loadKDS();
+            loadMenu();
         }
 
         async function loadAnalytics(currency) {
@@ -924,6 +939,13 @@ def place_order():
     promo = data.get("promo_code")
     order = qr_ordering_service.submit_order(table_num, items, promo)
     return jsonify(order), 201
+
+@app.route("/api/order/cancel/<order_id>", methods=["POST"])
+def cancel_order(order_id):
+    cancelled = db.cancel_order(order_id)
+    if cancelled:
+        return jsonify(cancelled)
+    return jsonify({"error": "Order not found"}), 404
 
 # --- 5. KDS Endpoints ---
 @app.route("/api/kds/active", methods=["GET"])

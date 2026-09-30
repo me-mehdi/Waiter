@@ -25,6 +25,26 @@ class TestWaiterModules(unittest.TestCase):
         self.assertFalse(auth_service.verify_pin("0000"))
         self.assertFalse(auth_service.verify_pin(""))
 
+    def test_order_cancellation_and_refund(self):
+        # 1. Place order
+        stock_before = db.menu_items["item-1"]["stock_qty"]
+        order = qr_ordering_service.submit_order(table_number=3, item_ids=["item-1"])
+        order_id = order["id"]
+        
+        self.assertEqual(db.menu_items["item-1"]["stock_qty"], stock_before - 1)
+
+        # 2. Cancel & Refund order
+        cancelled_order = db.cancel_order(order_id)
+        self.assertEqual(cancelled_order["status"], "CANCELLED")
+
+        # 3. Stock should be returned to inventory
+        self.assertEqual(db.menu_items["item-1"]["stock_qty"], stock_before)
+
+        # 4. Analytics should exclude cancelled order
+        analytics = finance_service.calculate_analytics()
+        self.assertEqual(analytics["total_orders"], 0)
+        self.assertEqual(analytics["total_revenue"], 0.0)
+
     def test_qr_menu_translation_and_currency(self):
         menu_en = qr_ordering_service.get_menu("en", "GBP")
         self.assertGreater(len(menu_en), 0)

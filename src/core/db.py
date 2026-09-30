@@ -4,10 +4,9 @@ import os
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
 import threading
+from contextlib import contextmanager
 
 DB_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "waiter.db")
-
-from contextlib import contextmanager
 
 class DatabaseStore:
     def __init__(self, db_path: str = DB_FILE):
@@ -28,7 +27,7 @@ class DatabaseStore:
         with self._lock, self._get_connection() as conn:
             cursor = conn.cursor()
             
-            # 1. Menu Items Table (with stock_qty)
+            # 1. Menu Items Table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS menu_items (
                     id TEXT PRIMARY KEY,
@@ -45,7 +44,6 @@ class DatabaseStore:
                 )
             """)
 
-            # Add stock_qty column if table existed previously without it
             cursor.execute("PRAGMA table_info(menu_items)")
             cols = [col["name"] for col in cursor.fetchall()]
             if "stock_qty" not in cols:
@@ -129,7 +127,7 @@ class DatabaseStore:
                  2.50, "Sides", json.dumps([]), 35),
                 ("item-5", "Fresh Orange Juice", "Jus d'Orange Frais", "عصير برتقال طازج",
                  "Freshly squeezed juice", "Jus fraîchement pressé", "عصير برتقال طازج مكرر",
-                 3.80, "Drinks", json.dumps([]), 4) # LOW_STOCK for demo
+                 3.80, "Drinks", json.dumps([]), 25)
             ]
             cursor.executemany("""
                 INSERT INTO menu_items (id, name_en, name_fr, name_ar, desc_en, desc_fr, desc_ar, price, category, upsell_ids, stock_qty)
@@ -325,7 +323,6 @@ class DatabaseStore:
                 order["updated_at"]
             ))
             
-            # Deduct stock for each ordered item
             for item in order["items"]:
                 item_id = item.get("item_id")
                 if item_id:
@@ -341,6 +338,36 @@ class DatabaseStore:
             cursor.execute("""
                 UPDATE orders SET status = ?, updated_at = ? WHERE id = ?
             """, (new_status, now_iso, order_id))
+            conn.commit()
+            return self.orders.get(order_id)
+
+    def cancel_order(self, order_id: str) -> Optional[dict]:
+        """
+        Cancels order, returns items to inventory stock, and marks invoice as REFUNDED.
+        """
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM orders WHERE id = ?", (order_id,))
+            order_row = cursor.fetchone()
+            if not order_row:
+                return None
+
+            if order_row["status"] == "CANCELLED":
+                return self.orders.get(order_id)
+
+            now_iso = datetime.now(timezone.utc).isoformat()
+            cursor.execute("UPDATE orders SET status = 'CANCELLED', updated_at = ? WHERE id = ?", (now_iso, order_id))
+
+            # Return stock back to inventory
+            items = json.loads(order_row["items_json"])
+            for item in items:
+                item_id = item.get("item_id")
+                if item_id:
+                    cursor.execute("UPDATE menu_items SET stock_qty = stock_qty + 1 WHERE id = ?", (item_id,))
+
+            # Update invoice status to REFUNDED if invoice exists
+            cursor.execute("UPDATE invoices SET status = 'REFUNDED' WHERE order_id = ?", (order_id,))
+
             conn.commit()
             return self.orders.get(order_id)
 

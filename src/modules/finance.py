@@ -14,6 +14,7 @@ class FinanceModule:
     """
     Automated Finance & Analytics Module
     Generates digital invoices with sequential numbering, multi-currency PDF exports, and RevPASH analytics.
+    Excludes cancelled/refunded orders from net financial metrics.
     """
     def generate_invoice(self, order_id: str, currency: str = "GBP") -> Optional[dict]:
         order = db.orders.get(order_id)
@@ -42,6 +43,8 @@ class FinanceModule:
             item_copy["price"] = Config.convert_price(item["price"], curr)
             items_converted.append(item_copy)
 
+        invoice_status = "REFUNDED" if order["status"] == "CANCELLED" else "PAID"
+
         invoice = {
             "invoice_number": invoice_number,
             "order_id": order_id,
@@ -56,7 +59,7 @@ class FinanceModule:
             "currency": curr,
             "currency_symbol": symbol,
             "issued_at": datetime.now(timezone.utc).isoformat(),
-            "status": "PAID"
+            "status": invoice_status
         }
         db.invoices[order_id] = invoice
         return invoice
@@ -84,7 +87,9 @@ class FinanceModule:
         story.append(Paragraph(f"<b>Invoice No:</b> {invoice['invoice_number']} | <b>Table:</b> #{invoice['table_number']}", styles['Normal']))
         story.append(Paragraph(f"<b>Date:</b> {invoice['issued_at'][:19].replace('T', ' ')} UTC", styles['Normal']))
         story.append(Paragraph(f"<b>Currency:</b> {invoice['currency']} ({symbol})", styles['Normal']))
-        story.append(Paragraph(f"<b>Status:</b> <font color='green'>{invoice['status']}</font>", styles['Normal']))
+        
+        status_color = "red" if invoice['status'] == "REFUNDED" else "green"
+        story.append(Paragraph(f"<b>Status:</b> <font color='{status_color}'>{invoice['status']}</font>", styles['Normal']))
         story.append(Spacer(1, 16))
 
         # Table data
@@ -129,19 +134,20 @@ class FinanceModule:
         return buffer.getvalue()
 
     def calculate_analytics(self, total_seats: int = 50, operating_hours: int = 12, currency: str = "GBP") -> dict:
-        orders = list(db.orders.values())
+        # Exclude CANCELLED orders from net financial metrics
+        active_orders = [o for o in db.orders.values() if o["status"] != "CANCELLED"]
         curr = currency.upper()
         symbol = Config.CURRENCY_SYMBOLS.get(curr, "£")
 
-        total_revenue_gbp = sum(o["total"] for o in orders)
+        total_revenue_gbp = sum(o["total"] for o in active_orders)
         total_revenue = Config.convert_price(total_revenue_gbp, curr)
-        total_orders = len(orders)
+        total_orders = len(active_orders)
         
         available_seat_hours = total_seats * operating_hours
         rev_pash = round(total_revenue / available_seat_hours, 2) if available_seat_hours > 0 else 0.0
 
         dish_counts = {}
-        for order in orders:
+        for order in active_orders:
             for item in order["items"]:
                 name = item["name"]
                 dish_counts[name] = dish_counts.get(name, 0) + 1
