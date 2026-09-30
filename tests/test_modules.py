@@ -101,5 +101,16 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIsNotNone(escpos_bytes)
         self.assertTrue(escpos_bytes.startswith(b"\x1b@"))
 
+    def test_qr_code_and_table_tent_pdf(self):
+        from src.modules.qr_generator import qr_generator_service
+        
+        png_bytes = qr_generator_service.generate_table_qr_png(table_number=4)
+        self.assertIsNotNone(png_bytes)
+        self.assertTrue(png_bytes.startswith(b"\x89PNG"))
+
+        pdf_bytes = qr_generator_service.generate_pdf_table_tents(total_tables=3)
+        self.assertIsNotNone(pdf_bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+
 if __name__ == "__main__":
     unittest.main()
