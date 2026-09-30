@@ -25,8 +25,10 @@ from src.modules.staff import staff_service
 from src.modules.floor_plan import floor_plan_service
 from src.modules.loyalty import loyalty_service
 from src.modules.allergens import allergen_service
+from src.modules.prep_routing import prep_routing_service
 
 app = Flask(__name__)
+
 
 
 
@@ -1498,6 +1500,19 @@ def get_filtered_menu():
         dietary_filter=dietary,
         exclude_allergens=exclude_list
     ))
+
+# --- 1i. Kitchen Prep Time & Station Routing Endpoints ---
+@app.route("/api/kds/stations", methods=["GET"])
+def get_kds_stations():
+    return jsonify(prep_routing_service.get_station_queues())
+
+@app.route("/api/kds/eta/<order_id>", methods=["GET"])
+def get_order_eta(order_id):
+    eta = prep_routing_service.calculate_order_eta(order_id)
+    if eta:
+        return jsonify(eta)
+    return jsonify({"error": "Order not found"}), 404
+
 
 
 

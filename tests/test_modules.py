@@ -307,8 +307,26 @@ class TestWaiterModules(unittest.TestCase):
         no_gluten_menu = allergen_service.get_filtered_menu(exclude_allergens=["gluten"])
         self.assertTrue(all("gluten" not in item["allergens"] for item in no_gluten_menu))
 
+    def test_kitchen_prep_time_and_station_routing(self):
+        from src.modules.prep_routing import prep_routing_service
+
+        order = qr_ordering_service.submit_order(table_number=2, item_ids=["item-1", "item-3"])
+        order_id = order["id"]
+
+        eta = prep_routing_service.calculate_order_eta(order_id)
+        self.assertIsNotNone(eta)
+        self.assertEqual(eta["max_prep_mins"], 12)
+        self.assertEqual(len(eta["items"]), 2)
+
+        stations = prep_routing_service.get_station_queues()
+        self.assertIn("FRYER", stations)
+        self.assertIn("BAR", stations)
+        self.assertTrue(any(t["order_id"] == order_id for t in stations["FRYER"]))
+        self.assertTrue(any(t["order_id"] == order_id for t in stations["BAR"]))
+
 if __name__ == "__main__":
     unittest.main()
+
 
 
 
