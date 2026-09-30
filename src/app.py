@@ -51,6 +51,7 @@ INDEX_HTML = """
                 <span class="badge bg-info text-dark"><i class="fa-solid fa-mobile-screen me-1"></i>BYOD Enterprise</span>
                 <span class="badge bg-success"><i class="fa-solid fa-bolt me-1"></i>99.9% Uptime</span>
                 <span class="badge bg-primary"><i class="fa-solid fa-print me-1"></i>ESC/POS Thermal Print</span>
+                <a href="/terminal" target="_blank" class="badge bg-warning text-dark text-decoration-none"><i class="fa-solid fa-desktop me-1"></i>Netoff Terminal Pro Kiosk</a>
             </div>
         </div>
     </div>
@@ -485,9 +486,235 @@ INDEX_HTML = """
 </html>
 """
 
+TERMINAL_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Netoff Terminal Pro | Counter Kiosk POS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #1a1a24; color: #fff; user-select: none; }
+        .terminal-header { background: #12121a; border-bottom: 2px solid #00b4db; padding: 15px 25px; }
+        .touch-btn { height: 90px; border-radius: 12px; font-size: 1.1rem; font-weight: 700; border: none; transition: transform 0.1s; }
+        .touch-btn:active { transform: scale(0.96); }
+        .table-btn { height: 60px; border-radius: 10px; font-weight: bold; border: 2px solid #333; background: #252538; color: #fff; }
+        .table-btn.selected { border-color: #00b4db; background: #00b4db; color: #fff; }
+        .kiosk-cart { background: #252538; border-radius: 16px; padding: 20px; height: calc(100vh - 120px); display: flex; flex-direction: column; }
+        .scan-bar { background: #12121a; border: 1px solid #333; border-radius: 8px; color: #fff; font-family: monospace; }
+        .pay-btn { height: 70px; font-size: 1.4rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <!-- Terminal Header -->
+    <div class="terminal-header d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="fw-bold mb-0 text-info"><i class="fa-solid fa-desktop me-2"></i>Netoff Terminal Pro</h3>
+            <span class="small text-muted">All-in-One Counter POS Kiosk • UK Storefront</span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge bg-success p-2"><i class="fa-solid fa-wifi me-1"></i> Cloud Synced</span>
+            <a href="/" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-house me-1"></i> Main App</a>
+        </div>
+    </div>
+
+    <div class="container-fluid p-4">
+        <div class="row g-4">
+            <!-- Left Panel: Menu Items Grid & Table Picker -->
+            <div class="col-md-7 col-lg-8">
+                <!-- Barcode / QR Scanner Input simulator -->
+                <div class="input-group mb-4">
+                    <span class="input-group-text scan-bar"><i class="fa-solid fa-barcode text-info"></i></span>
+                    <input type="text" id="barcodeScanner" class="form-control scan-bar py-2" placeholder="Scan Item Barcode / QR Code..." onkeydown="handleBarcode(event)">
+                    <button class="btn btn-info fw-bold" onclick="simulateScan('item-1')"><i class="fa-solid fa-qrcode me-1"></i> Scan Cod</button>
+                    <button class="btn btn-warning text-dark fw-bold" onclick="simulateScan('item-3')"><i class="fa-solid fa-qrcode me-1"></i> Scan IPA</button>
+                </div>
+
+                <!-- Table Selection Grid -->
+                <h6 class="text-uppercase text-muted fw-bold mb-2">Select Table</h6>
+                <div class="row g-2 mb-4" id="tableGrid">
+                    <!-- Loaded dynamically -->
+                </div>
+
+                <!-- Touch Menu Grid -->
+                <h6 class="text-uppercase text-muted fw-bold mb-2">Touch Menu Catalogue</h6>
+                <div class="row g-3" id="kioskMenuGrid">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Right Panel: Cart & Checkout -->
+            <div class="col-md-5 col-lg-4">
+                <div class="kiosk-cart">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="fw-bold mb-0">Current Ticket</h4>
+                        <span class="badge bg-info fs-6" id="kioskTableBadge">Table #1</span>
+                    </div>
+                    
+                    <div id="kioskCartItems" class="flex-grow-1 overflow-auto mb-3 text-muted small">
+                        No items added to current ticket.
+                    </div>
+
+                    <div class="border-top border-secondary pt-3">
+                        <div class="d-flex justify-content-between fs-5 mb-1">
+                            <span>Subtotal:</span>
+                            <span id="kioskSubtotal">£0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between fs-6 text-success mb-2">
+                            <span>UK VAT (20% Inc):</span>
+                            <span id="kioskVat">£0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between fs-3 fw-bold mb-3 text-warning">
+                            <span>TOTAL:</span>
+                            <span id="kioskTotal">£0.00</span>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <button class="btn btn-success pay-btn w-100" onclick="processTerminalCheckout('CARD')">
+                                    <i class="fa-solid fa-credit-card d-block mb-1"></i> CARD
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-primary pay-btn w-100" onclick="processTerminalCheckout('CASH')">
+                                    <i class="fa-solid fa-money-bill-wave d-block mb-1"></i> CASH
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let selectedTable = 1;
+        let kioskCart = [];
+
+        function renderTableGrid() {
+            const container = document.getElementById('tableGrid');
+            let html = '';
+            for(let i=1; i<=12; i++) {
+                const isSel = i === selectedTable ? 'selected' : '';
+                html += `<div class="col-3 col-sm-2">
+                    <button class="btn table-btn w-100 ${isSel}" onclick="selectTable(${i})">T-${i}</button>
+                </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function selectTable(num) {
+            selectedTable = num;
+            document.getElementById('kioskTableBadge').innerText = 'Table #' + num;
+            renderTableGrid();
+        }
+
+        async function loadKioskMenu() {
+            const res = await fetch('/api/menu?lang=en');
+            const data = await res.json();
+            const container = document.getElementById('kioskMenuGrid');
+            
+            const btnColors = ['btn-primary', 'btn-success', 'btn-warning text-dark', 'btn-info text-dark', 'btn-secondary'];
+            container.innerHTML = data.map((item, idx) => `
+                <div class="col-6 col-sm-4">
+                    <button class="btn ${btnColors[idx % btnColors.length]} touch-btn w-100 d-flex flex-column justify-content-center align-items-center" onclick="addKioskCart('${item.id}', '${item.name_translated}', ${item.price})">
+                        <span>${item.name_translated}</span>
+                        <span class="fs-6 fw-normal mt-1">£${item.price.toFixed(2)}</span>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function addKioskCart(id, name, price) {
+            kioskCart.push({ id, name, price });
+            renderKioskCart();
+        }
+
+        function renderKioskCart() {
+            const container = document.getElementById('kioskCartItems');
+            if(kioskCart.length === 0) {
+                container.innerHTML = 'No items added to current ticket.';
+                document.getElementById('kioskSubtotal').innerText = '£0.00';
+                document.getElementById('kioskVat').innerText = '£0.00';
+                document.getElementById('kioskTotal').innerText = '£0.00';
+                return;
+            }
+
+            let subtotal = 0;
+            container.innerHTML = kioskCart.map((item, idx) => {
+                subtotal += item.price;
+                return `<div class="d-flex justify-content-between align-items-center mb-2 fs-5 bg-dark p-2 rounded">
+                    <span>${item.name}</span>
+                    <div>
+                        <span class="text-warning me-3">£${item.price.toFixed(2)}</span>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeKioskCart(${idx})">&times;</button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            const vat = subtotal * 0.20 / 1.20;
+            document.getElementById('kioskSubtotal').innerText = '£' + subtotal.toFixed(2);
+            document.getElementById('kioskVat').innerText = '£' + vat.toFixed(2);
+            document.getElementById('kioskTotal').innerText = '£' + subtotal.toFixed(2);
+        }
+
+        function removeKioskCart(idx) {
+            kioskCart.splice(idx, 1);
+            renderKioskCart();
+        }
+
+        function simulateScan(itemId) {
+            fetch('/api/menu?lang=en').then(r => r.json()).then(menu => {
+                const item = menu.find(m => m.id === itemId);
+                if(item) addKioskCart(item.id, item.name_translated, item.price);
+            });
+        }
+
+        function handleBarcode(e) {
+            if(e.key === 'Enter') {
+                const val = e.target.value.trim();
+                if(val) simulateScan(val);
+                e.target.value = '';
+            }
+        }
+
+        async function processTerminalCheckout(method) {
+            if(kioskCart.length === 0) return alert('Cannot process empty ticket.');
+            const res = await fetch('/api/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    table_number: selectedTable,
+                    items: kioskCart.map(i => i.id)
+                })
+            });
+            const order = await res.json();
+            alert(`[Netoff Terminal Pro] Ticket ${order.id} Paid via ${method}! Printing thermal receipt...`);
+            
+            // Auto open print receipt window
+            window.open('/api/receipt/' + order.id + '/txt', '_blank');
+
+            kioskCart = [];
+            renderKioskCart();
+        }
+
+        renderTableGrid();
+        loadKioskMenu();
+    </script>
+</body>
+</html>
+"""
+
 @app.route("/")
 def home():
     return render_template_string(INDEX_HTML)
+
+@app.route("/terminal")
+def terminal():
+    return render_template_string(TERMINAL_HTML)
 
 # --- 1. QR Ordering Endpoints ---
 @app.route("/api/menu", methods=["GET"])
