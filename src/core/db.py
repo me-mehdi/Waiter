@@ -184,6 +184,22 @@ class DatabaseStore:
                 )
             """)
 
+            # 10. Food Waste Table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS food_waste (
+                    id TEXT PRIMARY KEY,
+                    item_id TEXT NOT NULL,
+                    item_name TEXT NOT NULL,
+                    quantity INTEGER NOT NULL,
+                    unit_cost REAL NOT NULL,
+                    total_loss REAL NOT NULL,
+                    reason TEXT NOT NULL,
+                    staff_name TEXT NOT NULL,
+                    logged_at TEXT NOT NULL,
+                    venue_id TEXT DEFAULT 'venue-1'
+                )
+            """)
+
             conn.commit()
             self._seed_default_data(cursor, conn)
 
@@ -252,6 +268,7 @@ class DatabaseStore:
             cursor.execute("DELETE FROM staff_shifts")
             cursor.execute("DELETE FROM loyalty_accounts")
             cursor.execute("DELETE FROM order_splits")
+            cursor.execute("DELETE FROM food_waste")
             conn.commit()
             self._seed_default_data(cursor, conn)
 

@@ -422,6 +422,55 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIsNotNone(pdf_bytes)
         self.assertTrue(pdf_bytes.startswith(b"%PDF"))
 
+    def test_kitchen_waste_tracker(self):
+        from src.modules.waste_tracker import waste_tracker_service
+
+        stock_before = db.menu_items["item-1"]["stock_qty"]
+        log1 = waste_tracker_service.log_waste(item_id="item-1", quantity=2, reason="EXPIRED", staff_name="Head Chef Marco")
+        self.assertEqual(log1["item_id"], "item-1")
+        self.assertEqual(log1["quantity"], 2)
+        self.assertEqual(log1["reason"], "EXPIRED")
+        self.assertEqual(log1["remaining_stock"], max(0, stock_before - 2))
+
+        log2 = waste_tracker_service.log_waste(item_id="item-2", quantity=1, reason="SPOILED", staff_name="Sous Chef Dave")
+        self.assertEqual(log2["reason"], "SPOILED")
+
+        logs = waste_tracker_service.get_waste_logs()
+        self.assertGreaterEqual(len(logs), 2)
+
+        analytics = waste_tracker_service.get_waste_analytics(currency="GBP")
+        self.assertGreater(analytics["total_financial_loss"], 0.0)
+        self.assertIn("EXPIRED", analytics["reason_breakdown"])
+
+        pdf_bytes = waste_tracker_service.generate_waste_pdf_report(currency="GBP")
+        self.assertIsNotNone(pdf_bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+
+    def test_feedback_nps_sentiment_analytics(self):
+        from src.modules.feedback_analytics import feedback_analytics_service
+        from src.modules.reviews import review_service
+
+        review_service.submit_review(table_number=1, rating=5, comment="Delicious fresh food and fast amazing service!")
+        review_service.submit_review(table_number=2, rating=5, comment="Great craft beer and wonderful atmosphere!")
+        review_service.submit_review(table_number=3, rating=1, comment="Slow service and cold food!")
+
+        nps = feedback_analytics_service.calculate_nps()
+        self.assertIn("nps_score", nps)
+        self.assertGreater(nps["total_reviews"], 0)
+        self.assertGreater(nps["promoters_count"], 0)
+
+        sentiment = feedback_analytics_service.extract_sentiment()
+        self.assertGreater(sentiment["positive_reviews_count"], 0)
+        self.assertGreater(len(sentiment["top_positive_keywords"]), 0)
+
+        alerts = feedback_analytics_service.get_manager_alerts()
+        self.assertGreaterEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["urgency"], "HIGH")
+
+        pdf_bytes = feedback_analytics_service.generate_feedback_pdf_report()
+        self.assertIsNotNone(pdf_bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+
 if __name__ == "__main__":
     unittest.main()
 

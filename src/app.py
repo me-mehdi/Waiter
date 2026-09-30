@@ -29,6 +29,8 @@ from src.modules.prep_routing import prep_routing_service
 from src.modules.tips_tronc import tips_tronc_service
 from src.modules.bill_splitting import bill_splitting_service
 from src.modules.purchase_orders import purchase_order_service
+from src.modules.waste_tracker import waste_tracker_service
+from src.modules.feedback_analytics import feedback_analytics_service
 
 app = Flask(__name__)
 
@@ -1775,6 +1777,63 @@ def get_po_email_text(supplier_category):
         return jsonify({"error": f"No active purchase order found for supplier category '{supplier_category}'"}), 404
     email_text = purchase_order_service.generate_po_email_text(target_po)
     return Response(email_text, mimetype="text/plain; charset=utf-8")
+
+# --- 12. Kitchen Waste & Food Loss Endpoints ---
+@app.route("/api/waste/log", methods=["POST"])
+def log_kitchen_waste():
+    data = request.json or {}
+    item_id = data.get("item_id")
+    quantity = int(data.get("quantity", 1))
+    reason = data.get("reason", "EXPIRED")
+    staff_name = data.get("staff_name", "Head Chef")
+    try:
+        res = waste_tracker_service.log_waste(item_id, quantity, reason, staff_name)
+        return jsonify(res), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/waste/logs", methods=["GET"])
+def get_kitchen_waste_logs():
+    reason = request.args.get("reason")
+    logs = waste_tracker_service.get_waste_logs(reason)
+    return jsonify({"waste_logs": logs})
+
+@app.route("/api/waste/analytics", methods=["GET"])
+def get_kitchen_waste_analytics():
+    curr = request.args.get("currency", "GBP")
+    return jsonify(waste_tracker_service.get_waste_analytics(currency=curr))
+
+@app.route("/api/waste/report/pdf", methods=["GET"])
+def download_waste_pdf_report():
+    curr = request.args.get("currency", "GBP")
+    pdf_bytes = waste_tracker_service.generate_waste_pdf_report(currency=curr)
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=Waste_Audit_Report_{curr}.pdf"}
+    )
+
+# --- 13. Guest Feedback, NPS & Sentiment Endpoints ---
+@app.route("/api/feedback/nps", methods=["GET"])
+def get_feedback_nps():
+    return jsonify(feedback_analytics_service.calculate_nps())
+
+@app.route("/api/feedback/sentiment", methods=["GET"])
+def get_feedback_sentiment():
+    return jsonify(feedback_analytics_service.extract_sentiment())
+
+@app.route("/api/feedback/alerts", methods=["GET"])
+def get_feedback_alerts():
+    return jsonify({"manager_alerts": feedback_analytics_service.get_manager_alerts()})
+
+@app.route("/api/feedback/report/pdf", methods=["GET"])
+def download_feedback_pdf_report():
+    pdf_bytes = feedback_analytics_service.generate_feedback_pdf_report()
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": "inline; filename=Feedback_NPS_Report.pdf"}
+    )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
