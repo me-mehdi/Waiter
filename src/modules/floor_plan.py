@@ -39,7 +39,7 @@ class FloorPlanModule:
             if active_order:
                 status = "OCCUPIED"
             elif reservation:
-                status = "RESERVED"
+                status = reservation.get("status", "RESERVED")
             else:
                 status = "AVAILABLE"
 
@@ -62,6 +62,16 @@ class FloorPlanModule:
             self._reservations[table_number] = reservation
             return {"success": True, "reservation": reservation}
         return {"success": False, "error": "Invalid table number"}
+
+    def update_table_status(self, table_number: int, status: str, guest_name: str = "Reserved"):
+        if status in ["RESERVED", "OCCUPIED"]:
+            self._reservations[table_number] = {
+                "table_number": table_number,
+                "guest_name": guest_name,
+                "status": status
+            }
+        else:
+            self._reservations.pop(table_number, None)
 
     def release_table(self, table_number: int) -> dict:
         if table_number in self._reservations:

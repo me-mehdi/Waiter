@@ -200,6 +200,24 @@ class DatabaseStore:
                 )
             """)
 
+            # 11. Table Bookings Table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS table_bookings (
+                    id TEXT PRIMARY KEY,
+                    guest_name TEXT NOT NULL,
+                    guest_phone TEXT NOT NULL,
+                    guest_email TEXT NOT NULL,
+                    party_size INTEGER NOT NULL,
+                    table_number INTEGER NOT NULL,
+                    booking_date TEXT NOT NULL,
+                    time_slot TEXT NOT NULL,
+                    special_requests TEXT,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    venue_id TEXT DEFAULT 'venue-1'
+                )
+            """)
+
             conn.commit()
             self._seed_default_data(cursor, conn)
 
@@ -269,6 +287,7 @@ class DatabaseStore:
             cursor.execute("DELETE FROM loyalty_accounts")
             cursor.execute("DELETE FROM order_splits")
             cursor.execute("DELETE FROM food_waste")
+            cursor.execute("DELETE FROM table_bookings")
             conn.commit()
             self._seed_default_data(cursor, conn)
 

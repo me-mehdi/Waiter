@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import queue
+from datetime import datetime, timezone
 
 
 # Ensure src path is accessible
@@ -31,6 +32,7 @@ from src.modules.bill_splitting import bill_splitting_service
 from src.modules.purchase_orders import purchase_order_service
 from src.modules.waste_tracker import waste_tracker_service
 from src.modules.feedback_analytics import feedback_analytics_service
+from src.modules.table_booking import table_booking_service
 
 app = Flask(__name__)
 
@@ -1834,6 +1836,71 @@ def download_feedback_pdf_report():
         mimetype="application/pdf",
         headers={"Content-Disposition": "inline; filename=Feedback_NPS_Report.pdf"}
     )
+
+# --- 14. Table Reservation Booking Endpoints ---
+@app.route("/api/bookings", methods=["POST"])
+def create_table_booking():
+    data = request.json or {}
+    g_name = data.get("guest_name", "Guest")
+    g_phone = data.get("guest_phone", "+44 7700 900077")
+    g_email = data.get("guest_email", "guest@example.com")
+    party_size = int(data.get("party_size", 2))
+    bkg_date = data.get("booking_date", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    time_slot = data.get("time_slot", "19:00")
+    special_reqs = data.get("special_requests", "")
+    venue_id = data.get("venue_id")
+
+    try:
+        booking = table_booking_service.create_booking(
+            guest_name=g_name,
+            guest_phone=g_phone,
+            guest_email=g_email,
+            party_size=party_size,
+            booking_date=bkg_date,
+            time_slot=time_slot,
+            special_requests=special_reqs,
+            venue_id=venue_id
+        )
+        return jsonify(booking), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/bookings", methods=["GET"])
+def get_table_bookings():
+    bkg_date = request.args.get("date")
+    status = request.args.get("status")
+    venue_id = request.args.get("venue_id")
+    bookings = table_booking_service.get_bookings(booking_date=bkg_date, status=status, venue_id=venue_id)
+    return jsonify({"bookings": bookings})
+
+@app.route("/api/bookings/<booking_id>", methods=["GET"])
+def get_table_booking_details(booking_id):
+    booking = table_booking_service.get_booking_by_id(booking_id)
+    if booking:
+        return jsonify(booking)
+    return jsonify({"error": "Booking not found"}), 404
+
+@app.route("/api/bookings/<booking_id>/status", methods=["POST"])
+def update_table_booking_status(booking_id):
+    data = request.json or {}
+    new_status = data.get("status", "SEATED")
+    try:
+        updated = table_booking_service.update_booking_status(booking_id, new_status)
+        return jsonify(updated)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/bookings/<booking_id>/pdf", methods=["GET"])
+def download_booking_pdf(booking_id):
+    try:
+        pdf_bytes = table_booking_service.generate_booking_pdf(booking_id)
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={"Content-Disposition": f"inline; filename=Reservation_{booking_id}.pdf"}
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))

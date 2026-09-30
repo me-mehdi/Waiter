@@ -471,6 +471,49 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIsNotNone(pdf_bytes)
         self.assertTrue(pdf_bytes.startswith(b"%PDF"))
 
+    def test_guest_table_reservation_booking_engine(self):
+        from src.modules.table_booking import table_booking_service
+        from src.modules.floor_plan import floor_plan_service
+
+        booking = table_booking_service.create_booking(
+            guest_name="Sarah Connor",
+            guest_phone="+44 7911 123456",
+            guest_email="sarah@sky.net",
+            party_size=4,
+            booking_date="2026-10-15",
+            time_slot="20:00",
+            special_requests="Celebrating anniversary, quiet booth"
+        )
+
+        self.assertIn("BKG-UK-", booking["id"])
+        self.assertEqual(booking["guest_name"], "Sarah Connor")
+        self.assertEqual(booking["party_size"], 4)
+        self.assertEqual(booking["status"], "CONFIRMED")
+
+        # Verify floor plan table is RESERVED
+        tbl_num = booking["table_number"]
+        fp_tables = floor_plan_service.get_floor_plan()
+        target_tbl = next(t for t in fp_tables if t["table_number"] == tbl_num)
+        self.assertEqual(target_tbl["status"], "RESERVED")
+
+        # Update status to SEATED -> table becomes OCCUPIED
+        updated = table_booking_service.update_booking_status(booking["id"], "SEATED")
+        self.assertEqual(updated["status"], "SEATED")
+        fp_tables_seated = floor_plan_service.get_floor_plan()
+        seated_tbl = next(t for t in fp_tables_seated if t["table_number"] == tbl_num)
+        self.assertEqual(seated_tbl["status"], "OCCUPIED")
+
+        # Update status to COMPLETED -> table becomes AVAILABLE
+        table_booking_service.update_booking_status(booking["id"], "COMPLETED")
+        fp_tables_freed = floor_plan_service.get_floor_plan()
+        freed_tbl = next(t for t in fp_tables_freed if t["table_number"] == tbl_num)
+        self.assertEqual(freed_tbl["status"], "AVAILABLE")
+
+        # Generate PDF confirmation pass
+        pdf_bytes = table_booking_service.generate_booking_pdf(booking["id"])
+        self.assertIsNotNone(pdf_bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+
 if __name__ == "__main__":
     unittest.main()
 
