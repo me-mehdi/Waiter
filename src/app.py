@@ -26,8 +26,10 @@ from src.modules.floor_plan import floor_plan_service
 from src.modules.loyalty import loyalty_service
 from src.modules.allergens import allergen_service
 from src.modules.prep_routing import prep_routing_service
+from src.modules.tips_tronc import tips_tronc_service
 
 app = Flask(__name__)
+
 
 
 
@@ -1512,6 +1514,13 @@ def get_order_eta(order_id):
     if eta:
         return jsonify(eta)
     return jsonify({"error": "Order not found"}), 404
+
+# --- 1j. Tip & Service Charge (Tronc) Distribution Endpoints ---
+@app.route("/api/finance/tips", methods=["GET"])
+def get_tips_tronc_summary():
+    curr = request.args.get("currency", "GBP")
+    return jsonify(tips_tronc_service.get_tronc_summary(currency=curr))
+
 
 
 

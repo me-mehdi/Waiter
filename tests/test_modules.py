@@ -324,8 +324,27 @@ class TestWaiterModules(unittest.TestCase):
         self.assertTrue(any(t["order_id"] == order_id for t in stations["FRYER"]))
         self.assertTrue(any(t["order_id"] == order_id for t in stations["BAR"]))
 
+    def test_tip_and_service_charge_tronc_distribution(self):
+        from src.modules.tips_tronc import tips_tronc_service
+        from src.modules.staff import staff_service
+
+        staff_service.clock_in("1234")
+        staff_service.clock_in("7777")
+
+        order = qr_ordering_service.submit_order(table_number=1, item_ids=["item-1", "item-3"])
+
+        sc_amount = tips_tronc_service.calculate_service_charge(order["subtotal"])
+        self.assertEqual(sc_amount, round(order["subtotal"] * 0.125, 2))
+
+        summary = tips_tronc_service.get_tronc_summary(currency="GBP")
+        self.assertIsNotNone(summary)
+        self.assertEqual(summary["service_charge_rate"], "12.5%")
+        self.assertGreater(summary["total_tronc_pool"], 0.0)
+        self.assertGreaterEqual(len(summary["payout_breakdown"]), 2)
+
 if __name__ == "__main__":
     unittest.main()
+
 
 
 
