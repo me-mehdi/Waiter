@@ -1,35 +1,51 @@
 from typing import List, Dict
 from src.core.db import db
 from src.core.translation import translator
+from src.core.config import Config
 
 class QROrderingModule:
     """
     QR Code Ordering & Digital Menu Module
-    Renders dynamic, multi-language menus and triggers smart upsell recommendations.
+    Renders dynamic multi-language menus, multi-currency conversion, and smart upsell recommendations.
     """
-    def get_menu(self, language: str = "en") -> List[dict]:
+    def get_menu(self, language: str = "en", currency: str = "GBP") -> List[dict]:
         menu_items = list(db.menu_items.values())
         formatted_menu = []
         for item in menu_items:
             translated = translator.translate_item(item, language)
+            
+            # Currency conversion
+            base_price = item["price"]
+            converted_price = Config.convert_price(base_price, currency)
+            symbol = Config.CURRENCY_SYMBOLS.get(currency.upper(), "£")
+            
+            translated["price"] = converted_price
+            translated["price_formatted"] = f"{symbol}{converted_price:.2f}"
+            translated["currency"] = currency.upper()
+            
             formatted_menu.append(translated)
         return formatted_menu
 
-    def get_upsells_for_cart(self, item_ids: List[str], language: str = "en") -> List[dict]:
+    def get_upsells_for_cart(self, item_ids: List[str], language: str = "en", currency: str = "GBP") -> List[dict]:
         upsell_ids = set()
         for item_id in item_ids:
             item = db.menu_items.get(item_id)
             if item:
                 upsell_ids.update(item.get("upsell_ids", []))
         
-        # Remove items already in cart
         upsell_ids = [uid for uid in upsell_ids if uid not in item_ids]
         
         upsell_items = []
         for uid in upsell_ids:
             item = db.menu_items.get(uid)
             if item:
-                upsell_items.append(translator.translate_item(item, language))
+                translated = translator.translate_item(item, language)
+                converted_price = Config.convert_price(item["price"], currency)
+                symbol = Config.CURRENCY_SYMBOLS.get(currency.upper(), "£")
+                translated["price"] = converted_price
+                translated["price_formatted"] = f"{symbol}{converted_price:.2f}"
+                translated["currency"] = currency.upper()
+                upsell_items.append(translated)
         return upsell_items
 
     def submit_order(self, table_number: int, item_ids: List[str], promo_code: str = None) -> dict:

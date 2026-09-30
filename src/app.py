@@ -23,7 +23,7 @@ INDEX_HTML = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Waiter | UK Hospitality SaaS Platform</title>
+    <title>The Waiter | UK & Global Hospitality SaaS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -45,9 +45,9 @@ INDEX_HTML = """
     <div class="hero text-center">
         <div class="container">
             <h1 class="fw-bold"><i class="fa-solid fa-utensils me-2"></i>The Waiter</h1>
-            <p class="lead mb-2">UK Market Digital Hospitality Ecosystem & "Scan to Invoice" Platform</p>
+            <p class="lead mb-2">UK & Global Digital Hospitality Ecosystem & "Scan to Invoice" Platform</p>
             <div class="d-flex justify-content-center gap-2 mt-3">
-                <span class="badge bg-light text-dark"><i class="fa-solid fa-sterling-sign me-1"></i>UK VAT 20%</span>
+                <span class="badge bg-light text-dark"><i class="fa-solid fa-globe me-1"></i>Multi-Currency (£ / € / $)</span>
                 <span class="badge bg-info text-dark"><i class="fa-solid fa-mobile-screen me-1"></i>BYOD Enterprise</span>
                 <span class="badge bg-success"><i class="fa-solid fa-bolt me-1"></i>99.9% Uptime</span>
                 <span class="badge bg-primary"><i class="fa-solid fa-print me-1"></i>ESC/POS Thermal Print</span>
@@ -83,10 +83,19 @@ INDEX_HTML = """
                     <div class="col-md-8">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h4 class="fw-bold mb-0">Digital Menu</h4>
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-dark active" onclick="loadMenu('en', this)">EN</button>
-                                <button class="btn btn-outline-dark" onclick="loadMenu('fr', this)">FR</button>
-                                <button class="btn btn-outline-dark" onclick="loadMenu('ar', this)">AR</button>
+                            <div class="d-flex gap-2">
+                                <!-- Language Switcher -->
+                                <div class="btn-group btn-group-sm" id="langGroup">
+                                    <button class="btn btn-outline-dark active" onclick="setLanguage('en', this)">EN</button>
+                                    <button class="btn btn-outline-dark" onclick="setLanguage('fr', this)">FR</button>
+                                    <button class="btn btn-outline-dark" onclick="setLanguage('ar', this)">AR</button>
+                                </div>
+                                <!-- Currency Switcher -->
+                                <div class="btn-group btn-group-sm" id="currGroup">
+                                    <button class="btn btn-dark active" onclick="setCurrency('GBP', this)">£ GBP</button>
+                                    <button class="btn btn-outline-dark" onclick="setCurrency('EUR', this)">€ EUR</button>
+                                    <button class="btn btn-outline-dark" onclick="setCurrency('USD', this)">$ USD</button>
+                                </div>
                             </div>
                         </div>
                         <div id="menuContainer" class="row g-3">
@@ -154,7 +163,14 @@ INDEX_HTML = """
 
             <!-- TAB 4: Analytics -->
             <div class="tab-pane fade" id="analytics" role="tabpanel">
-                <h4 class="fw-bold mb-3">RevPASH & Performance Analytics</h4>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-bold mb-0">RevPASH & Performance Analytics</h4>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-dark" onclick="loadAnalytics('GBP')">£ GBP</button>
+                        <button class="btn btn-outline-dark" onclick="loadAnalytics('EUR')">€ EUR</button>
+                        <button class="btn btn-outline-dark" onclick="loadAnalytics('USD')">$ USD</button>
+                    </div>
+                </div>
                 <div class="row g-3 mb-4" id="analyticsStats">
                     <!-- Dynamically populated -->
                 </div>
@@ -218,14 +234,28 @@ INDEX_HTML = """
     <script>
         let currentCart = [];
         let currentLang = 'en';
+        let currentCurr = 'GBP';
+        let currSymbols = { 'GBP': '£', 'EUR': '€', 'USD': '$' };
 
-        async function loadMenu(lang, btn) {
+        function setLanguage(lang, btn) {
             currentLang = lang;
-            if(btn) {
-                document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            }
-            const res = await fetch('/api/menu?lang=' + lang);
+            document.querySelectorAll('#langGroup .btn').forEach(b => b.classList.remove('active', 'btn-dark'));
+            document.querySelectorAll('#langGroup .btn').forEach(b => b.classList.add('btn-outline-dark'));
+            btn.classList.add('active', 'btn-dark');
+            loadMenu();
+        }
+
+        function setCurrency(curr, btn) {
+            currentCurr = curr;
+            document.querySelectorAll('#currGroup .btn').forEach(b => b.classList.remove('active', 'btn-dark'));
+            document.querySelectorAll('#currGroup .btn').forEach(b => b.classList.add('btn-outline-dark'));
+            btn.classList.add('active', 'btn-dark');
+            currentCart = []; // reset cart on currency change
+            loadMenu();
+        }
+
+        async function loadMenu() {
+            const res = await fetch(`/api/menu?lang=${currentLang}&currency=${currentCurr}`);
             const data = await res.json();
             
             const container = document.getElementById('menuContainer');
@@ -234,28 +264,30 @@ INDEX_HTML = """
                     <div class="card card-custom p-3 h-100 bg-white">
                         <div class="d-flex justify-content-between align-items-start">
                             <h6 class="fw-bold mb-1">${item.name_translated}</h6>
-                            <span class="badge bg-primary">£${item.price.toFixed(2)}</span>
+                            <span class="badge bg-primary">${item.price_formatted}</span>
                         </div>
                         <p class="text-muted small mb-2">${item.description_translated}</p>
-                        <button class="btn btn-sm btn-outline-primary mt-auto" onclick="addToCart('${item.id}', '${item.name_translated}', ${item.price})">
+                        <button class="btn btn-sm btn-outline-primary mt-auto" onclick="addToCart('${item.id}', '${item.name_translated}', ${item.price}, '${item.price_formatted}')">
                             <i class="fa-solid fa-plus me-1"></i> Add to Order
                         </button>
                     </div>
                 </div>
             `).join('');
+            renderCart();
         }
 
-        function addToCart(id, name, price) {
-            currentCart.push({ id, name, price });
+        function addToCart(id, name, price, priceFormatted) {
+            currentCart.push({ id, name, price, priceFormatted });
             renderCart();
             checkUpsells();
         }
 
         function renderCart() {
             const container = document.getElementById('cartItems');
+            const sym = currSymbols[currentCurr] || '£';
             if(currentCart.length === 0) {
                 container.innerHTML = 'Cart is empty. Select dishes from menu.';
-                document.getElementById('cartTotal').innerText = '£0.00';
+                document.getElementById('cartTotal').innerText = sym + '0.00';
                 return;
             }
             let subtotal = 0;
@@ -264,12 +296,12 @@ INDEX_HTML = """
                 return `<div class="d-flex justify-content-between align-items-center mb-1">
                     <span>${item.name}</span>
                     <div>
-                        <span class="me-2">£${item.price.toFixed(2)}</span>
+                        <span class="me-2">${item.priceFormatted || sym + item.price.toFixed(2)}</span>
                         <button class="btn btn-link btn-sm text-danger p-0" onclick="removeFromCart(${idx})">&times;</button>
                     </div>
                 </div>`;
             }).join('');
-            document.getElementById('cartTotal').innerText = '£' + subtotal.toFixed(2);
+            document.getElementById('cartTotal').innerText = sym + subtotal.toFixed(2);
         }
 
         function removeFromCart(idx) {
@@ -284,7 +316,7 @@ INDEX_HTML = """
                 document.getElementById('upsellBox').classList.add('d-none');
                 return;
             }
-            const res = await fetch('/api/menu?lang=' + currentLang);
+            const res = await fetch(`/api/menu?lang=${currentLang}&currency=${currentCurr}`);
             const menu = await res.json();
             
             const hasCod = itemIds.includes('item-1');
@@ -296,8 +328,8 @@ INDEX_HTML = """
                 if(side) {
                     upsellContainer.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="small fw-bold">${side.name_translated} (+£${side.price.toFixed(2)})</span>
-                            <button class="btn btn-xs btn-warning text-dark py-0 px-2 fw-bold" onclick="addToCart('item-4', '${side.name_translated}', ${side.price})">+ Add</button>
+                            <span class="small fw-bold">${side.name_translated} (+${side.price_formatted})</span>
+                            <button class="btn btn-xs btn-warning text-dark py-0 px-2 fw-bold" onclick="addToCart('item-4', '${side.name_translated}', ${side.price}, '${side.price_formatted}')">+ Add</button>
                         </div>
                     `;
                     document.getElementById('upsellBox').classList.remove('d-none');
@@ -320,7 +352,8 @@ INDEX_HTML = """
                 })
             });
             const order = await res.json();
-            alert(`Order ${order.id} submitted! Total: £${order.total.toFixed(2)}`);
+            const sym = currSymbols[currentCurr] || '£';
+            alert(`Order ${order.id} submitted! Total: ${sym}${order.total.toFixed(2)}`);
             currentCart = [];
             renderCart();
             document.getElementById('upsellBox').classList.add('d-none');
@@ -426,7 +459,7 @@ INDEX_HTML = """
                         <div class="d-flex flex-wrap gap-1 align-items-center">
                             <button class="btn btn-sm btn-success" onclick="advanceKDS('${order.id}')">Advance Status</button>
                             <button class="btn btn-sm btn-outline-primary" onclick="previewThermalReceipt('${order.id}')"><i class="fa-solid fa-print"></i> Thermal</button>
-                            <a href="/api/invoice/${order.id}/pdf" target="_blank" class="btn btn-sm btn-outline-dark"><i class="fa-solid fa-file-pdf text-danger"></i> PDF</a>
+                            <a href="/api/invoice/${order.id}/pdf?currency=${currentCurr}" target="_blank" class="btn btn-sm btn-outline-dark"><i class="fa-solid fa-file-pdf text-danger"></i> PDF</a>
                         </div>
                     </div>
                 </div>
@@ -447,15 +480,17 @@ INDEX_HTML = """
             loadKDS();
         }
 
-        async function loadAnalytics() {
-            const res = await fetch('/api/analytics');
+        async function loadAnalytics(currency) {
+            const curr = currency || currentCurr;
+            const res = await fetch('/api/analytics?currency=' + curr);
             const data = await res.json();
             const container = document.getElementById('analyticsStats');
+            const sym = data.currency_symbol || '£';
             container.innerHTML = `
                 <div class="col-md-3">
                     <div class="card card-custom p-3 bg-white text-center">
-                        <small class="text-muted text-uppercase">Total Revenue</small>
-                        <h3 class="fw-bold text-success">£${data.total_revenue.toFixed(2)}</h3>
+                        <small class="text-muted text-uppercase">Total Revenue (${data.currency})</small>
+                        <h3 class="fw-bold text-success">${sym}${data.total_revenue.toFixed(2)}</h3>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -467,242 +502,20 @@ INDEX_HTML = """
                 <div class="col-md-3">
                     <div class="card card-custom p-3 bg-white text-center">
                         <small class="text-muted text-uppercase">Avg Order Value</small>
-                        <h3 class="fw-bold text-info">£${data.average_transaction_value.toFixed(2)}</h3>
+                        <h3 class="fw-bold text-info">${sym}${data.average_transaction_value.toFixed(2)}</h3>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card card-custom p-3 bg-white text-center">
-                        <small class="text-muted text-uppercase">RevPASH</small>
-                        <h3 class="fw-bold text-warning text-dark">£${data.rev_pash.toFixed(2)}</h3>
+                        <small class="text-muted text-uppercase">RevPASH (${data.currency})</small>
+                        <h3 class="fw-bold text-warning text-dark">${sym}${data.rev_pash.toFixed(2)}</h3>
                     </div>
                 </div>
             `;
         }
 
         // Initial load
-        loadMenu('en');
-    </script>
-</body>
-</html>
-"""
-
-TERMINAL_HTML = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Netoff Terminal Pro | Counter Kiosk POS</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #1a1a24; color: #fff; user-select: none; }
-        .terminal-header { background: #12121a; border-bottom: 2px solid #00b4db; padding: 15px 25px; }
-        .touch-btn { height: 90px; border-radius: 12px; font-size: 1.1rem; font-weight: 700; border: none; transition: transform 0.1s; }
-        .touch-btn:active { transform: scale(0.96); }
-        .table-btn { height: 60px; border-radius: 10px; font-weight: bold; border: 2px solid #333; background: #252538; color: #fff; }
-        .table-btn.selected { border-color: #00b4db; background: #00b4db; color: #fff; }
-        .kiosk-cart { background: #252538; border-radius: 16px; padding: 20px; height: calc(100vh - 120px); display: flex; flex-direction: column; }
-        .scan-bar { background: #12121a; border: 1px solid #333; border-radius: 8px; color: #fff; font-family: monospace; }
-        .pay-btn { height: 70px; font-size: 1.4rem; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <!-- Terminal Header -->
-    <div class="terminal-header d-flex justify-content-between align-items-center">
-        <div>
-            <h3 class="fw-bold mb-0 text-info"><i class="fa-solid fa-desktop me-2"></i>Netoff Terminal Pro</h3>
-            <span class="small text-muted">All-in-One Counter POS Kiosk • UK Storefront</span>
-        </div>
-        <div class="d-flex align-items-center gap-3">
-            <span class="badge bg-success p-2"><i class="fa-solid fa-wifi me-1"></i> Cloud Synced</span>
-            <a href="/" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-house me-1"></i> Main App</a>
-        </div>
-    </div>
-
-    <div class="container-fluid p-4">
-        <div class="row g-4">
-            <!-- Left Panel: Menu Items Grid & Table Picker -->
-            <div class="col-md-7 col-lg-8">
-                <!-- Barcode / QR Scanner Input simulator -->
-                <div class="input-group mb-4">
-                    <span class="input-group-text scan-bar"><i class="fa-solid fa-barcode text-info"></i></span>
-                    <input type="text" id="barcodeScanner" class="form-control scan-bar py-2" placeholder="Scan Item Barcode / QR Code..." onkeydown="handleBarcode(event)">
-                    <button class="btn btn-info fw-bold" onclick="simulateScan('item-1')"><i class="fa-solid fa-qrcode me-1"></i> Scan Cod</button>
-                    <button class="btn btn-warning text-dark fw-bold" onclick="simulateScan('item-3')"><i class="fa-solid fa-qrcode me-1"></i> Scan IPA</button>
-                </div>
-
-                <!-- Table Selection Grid -->
-                <h6 class="text-uppercase text-muted fw-bold mb-2">Select Table</h6>
-                <div class="row g-2 mb-4" id="tableGrid">
-                    <!-- Loaded dynamically -->
-                </div>
-
-                <!-- Touch Menu Grid -->
-                <h6 class="text-uppercase text-muted fw-bold mb-2">Touch Menu Catalogue</h6>
-                <div class="row g-3" id="kioskMenuGrid">
-                    <!-- Loaded dynamically -->
-                </div>
-            </div>
-
-            <!-- Right Panel: Cart & Checkout -->
-            <div class="col-md-5 col-lg-4">
-                <div class="kiosk-cart">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="fw-bold mb-0">Current Ticket</h4>
-                        <span class="badge bg-info fs-6" id="kioskTableBadge">Table #1</span>
-                    </div>
-                    
-                    <div id="kioskCartItems" class="flex-grow-1 overflow-auto mb-3 text-muted small">
-                        No items added to current ticket.
-                    </div>
-
-                    <div class="border-top border-secondary pt-3">
-                        <div class="d-flex justify-content-between fs-5 mb-1">
-                            <span>Subtotal:</span>
-                            <span id="kioskSubtotal">£0.00</span>
-                        </div>
-                        <div class="d-flex justify-content-between fs-6 text-success mb-2">
-                            <span>UK VAT (20% Inc):</span>
-                            <span id="kioskVat">£0.00</span>
-                        </div>
-                        <div class="d-flex justify-content-between fs-3 fw-bold mb-3 text-warning">
-                            <span>TOTAL:</span>
-                            <span id="kioskTotal">£0.00</span>
-                        </div>
-
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <button class="btn btn-success pay-btn w-100" onclick="processTerminalCheckout('CARD')">
-                                    <i class="fa-solid fa-credit-card d-block mb-1"></i> CARD
-                                </button>
-                            </div>
-                            <div class="col-6">
-                                <button class="btn btn-primary pay-btn w-100" onclick="processTerminalCheckout('CASH')">
-                                    <i class="fa-solid fa-money-bill-wave d-block mb-1"></i> CASH
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        let selectedTable = 1;
-        let kioskCart = [];
-
-        function renderTableGrid() {
-            const container = document.getElementById('tableGrid');
-            let html = '';
-            for(let i=1; i<=12; i++) {
-                const isSel = i === selectedTable ? 'selected' : '';
-                html += `<div class="col-3 col-sm-2">
-                    <button class="btn table-btn w-100 ${isSel}" onclick="selectTable(${i})">T-${i}</button>
-                </div>`;
-            }
-            container.innerHTML = html;
-        }
-
-        function selectTable(num) {
-            selectedTable = num;
-            document.getElementById('kioskTableBadge').innerText = 'Table #' + num;
-            renderTableGrid();
-        }
-
-        async function loadKioskMenu() {
-            const res = await fetch('/api/menu?lang=en');
-            const data = await res.json();
-            const container = document.getElementById('kioskMenuGrid');
-            
-            const btnColors = ['btn-primary', 'btn-success', 'btn-warning text-dark', 'btn-info text-dark', 'btn-secondary'];
-            container.innerHTML = data.map((item, idx) => `
-                <div class="col-6 col-sm-4">
-                    <button class="btn ${btnColors[idx % btnColors.length]} touch-btn w-100 d-flex flex-column justify-content-center align-items-center" onclick="addKioskCart('${item.id}', '${item.name_translated}', ${item.price})">
-                        <span>${item.name_translated}</span>
-                        <span class="fs-6 fw-normal mt-1">£${item.price.toFixed(2)}</span>
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        function addKioskCart(id, name, price) {
-            kioskCart.push({ id, name, price });
-            renderKioskCart();
-        }
-
-        function renderKioskCart() {
-            const container = document.getElementById('kioskCartItems');
-            if(kioskCart.length === 0) {
-                container.innerHTML = 'No items added to current ticket.';
-                document.getElementById('kioskSubtotal').innerText = '£0.00';
-                document.getElementById('kioskVat').innerText = '£0.00';
-                document.getElementById('kioskTotal').innerText = '£0.00';
-                return;
-            }
-
-            let subtotal = 0;
-            container.innerHTML = kioskCart.map((item, idx) => {
-                subtotal += item.price;
-                return `<div class="d-flex justify-content-between align-items-center mb-2 fs-5 bg-dark p-2 rounded">
-                    <span>${item.name}</span>
-                    <div>
-                        <span class="text-warning me-3">£${item.price.toFixed(2)}</span>
-                        <button class="btn btn-sm btn-outline-danger" onclick="removeKioskCart(${idx})">&times;</button>
-                    </div>
-                </div>`;
-            }).join('');
-
-            const vat = subtotal * 0.20 / 1.20;
-            document.getElementById('kioskSubtotal').innerText = '£' + subtotal.toFixed(2);
-            document.getElementById('kioskVat').innerText = '£' + vat.toFixed(2);
-            document.getElementById('kioskTotal').innerText = '£' + subtotal.toFixed(2);
-        }
-
-        function removeKioskCart(idx) {
-            kioskCart.splice(idx, 1);
-            renderKioskCart();
-        }
-
-        function simulateScan(itemId) {
-            fetch('/api/menu?lang=en').then(r => r.json()).then(menu => {
-                const item = menu.find(m => m.id === itemId);
-                if(item) addKioskCart(item.id, item.name_translated, item.price);
-            });
-        }
-
-        function handleBarcode(e) {
-            if(e.key === 'Enter') {
-                const val = e.target.value.trim();
-                if(val) simulateScan(val);
-                e.target.value = '';
-            }
-        }
-
-        async function processTerminalCheckout(method) {
-            if(kioskCart.length === 0) return alert('Cannot process empty ticket.');
-            const res = await fetch('/api/order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    table_number: selectedTable,
-                    items: kioskCart.map(i => i.id)
-                })
-            });
-            const order = await res.json();
-            alert(`[Netoff Terminal Pro] Ticket ${order.id} Paid via ${method}! Printing thermal receipt...`);
-            
-            // Auto open print receipt window
-            window.open('/api/receipt/' + order.id + '/txt', '_blank');
-
-            kioskCart = [];
-            renderKioskCart();
-        }
-
-        renderTableGrid();
-        loadKioskMenu();
+        loadMenu();
     </script>
 </body>
 </html>
@@ -714,13 +527,16 @@ def home():
 
 @app.route("/terminal")
 def terminal():
+    doc_path = os.path.join(os.path.dirname(__file__), "app.py")
+    from src.app import TERMINAL_HTML
     return render_template_string(TERMINAL_HTML)
 
 # --- 1. QR Ordering Endpoints ---
 @app.route("/api/menu", methods=["GET"])
 def get_menu():
     lang = request.args.get("lang", "en")
-    return jsonify(qr_ordering_service.get_menu(lang))
+    curr = request.args.get("currency", "GBP")
+    return jsonify(qr_ordering_service.get_menu(lang, curr))
 
 @app.route("/api/order", methods=["POST"])
 def place_order():
@@ -772,19 +588,21 @@ def submit_review():
 # --- 5. Finance, Invoicing & Thermal Receipt Endpoints ---
 @app.route("/api/invoice/<order_id>", methods=["GET"])
 def get_invoice(order_id):
-    invoice = finance_service.generate_invoice(order_id)
+    curr = request.args.get("currency", "GBP")
+    invoice = finance_service.generate_invoice(order_id, curr)
     if invoice:
         return jsonify(invoice)
     return jsonify({"error": "Order not found"}), 404
 
 @app.route("/api/invoice/<order_id>/pdf", methods=["GET"])
 def get_invoice_pdf(order_id):
-    pdf_bytes = finance_service.generate_pdf_invoice(order_id)
+    curr = request.args.get("currency", "GBP")
+    pdf_bytes = finance_service.generate_pdf_invoice(order_id, curr)
     if pdf_bytes:
         return Response(
             pdf_bytes,
             mimetype="application/pdf",
-            headers={"Content-Disposition": f"inline; filename=Invoice_{order_id}.pdf"}
+            headers={"Content-Disposition": f"inline; filename=Invoice_{order_id}_{curr}.pdf"}
         )
     return jsonify({"error": "Order not found"}), 404
 
@@ -810,7 +628,8 @@ def get_thermal_receipt_escpos(order_id):
 
 @app.route("/api/analytics", methods=["GET"])
 def get_analytics():
-    return jsonify(finance_service.calculate_analytics())
+    curr = request.args.get("currency", "GBP")
+    return jsonify(finance_service.calculate_analytics(currency=curr))
 
 @app.route("/docs/strategy")
 def strategy_doc():

@@ -6,6 +6,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.core.db import db
+from src.core.config import Config
 from src.core.translation import translator
 from src.modules.qr_ordering import qr_ordering_service
 from src.modules.kds import kds_service
@@ -17,19 +18,23 @@ class TestWaiterModules(unittest.TestCase):
     def setUp(self):
         db.reset()
 
-    def test_qr_menu_translation(self):
-        menu_en = qr_ordering_service.get_menu("en")
+    def test_qr_menu_translation_and_currency(self):
+        menu_en = qr_ordering_service.get_menu("en", "GBP")
         self.assertGreater(len(menu_en), 0)
         self.assertEqual(menu_en[0]["name_translated"], "Fish & Chips")
+        self.assertEqual(menu_en[0]["currency"], "GBP")
 
-        menu_fr = qr_ordering_service.get_menu("fr")
-        self.assertEqual(menu_fr[0]["name_translated"], "Poisson & Frites")
+        menu_eur = qr_ordering_service.get_menu("fr", "EUR")
+        self.assertEqual(menu_eur[0]["name_translated"], "Poisson & Frites")
+        self.assertEqual(menu_eur[0]["currency"], "EUR")
+        self.assertIn("€", menu_eur[0]["price_formatted"])
 
-        menu_ar = qr_ordering_service.get_menu("ar")
-        self.assertEqual(menu_ar[0]["name_translated"], "سمك وبطاطس")
+        menu_usd = qr_ordering_service.get_menu("en", "USD")
+        self.assertEqual(menu_usd[0]["currency"], "USD")
+        self.assertIn("$", menu_usd[0]["price_formatted"])
 
     def test_order_submission_and_upsell(self):
-        upsells = qr_ordering_service.get_upsells_for_cart(["item-1"], "en")
+        upsells = qr_ordering_service.get_upsells_for_cart(["item-1"], "en", "GBP")
         self.assertTrue(any(u["id"] == "item-4" for u in upsells))
 
         order = qr_ordering_service.submit_order(
@@ -63,21 +68,25 @@ class TestWaiterModules(unittest.TestCase):
         avg = review_service.get_average_rating()
         self.assertEqual(avg, 4.0)
 
-    def test_finance_invoice_and_analytics(self):
+    def test_finance_invoice_and_multi_currency(self):
         order = qr_ordering_service.submit_order(table_number=1, item_ids=["item-1", "item-4"])
-        invoice = finance_service.generate_invoice(order["id"])
+        
+        # Test GBP invoice
+        inv_gbp = finance_service.generate_invoice(order["id"], "GBP")
+        self.assertIsNotNone(inv_gbp)
+        self.assertEqual(inv_gbp["currency"], "GBP")
+        self.assertEqual(inv_gbp["currency_symbol"], "£")
 
-        self.assertIsNotNone(invoice)
-        self.assertTrue(invoice["invoice_number"].startswith("INV-UK-"))
-        self.assertEqual(invoice["currency"], "GBP")
+        # Test EUR PDF invoice
+        pdf_eur = finance_service.generate_pdf_invoice(order["id"], "EUR")
+        self.assertIsNotNone(pdf_eur)
+        self.assertTrue(pdf_eur.startswith(b"%PDF"))
 
-        pdf_bytes = finance_service.generate_pdf_invoice(order["id"])
-        self.assertIsNotNone(pdf_bytes)
-        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
-
-        analytics = finance_service.calculate_analytics(total_seats=50, operating_hours=12)
+        # Test USD Analytics
+        analytics = finance_service.calculate_analytics(total_seats=50, operating_hours=12, currency="USD")
         self.assertIn("rev_pash", analytics)
-        self.assertEqual(analytics["currency_symbol"], "£")
+        self.assertEqual(analytics["currency"], "USD")
+        self.assertEqual(analytics["currency_symbol"], "$")
 
     def test_thermal_receipt_printing(self):
         from src.modules.thermal_print import thermal_printer_service

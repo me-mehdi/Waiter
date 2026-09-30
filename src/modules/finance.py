@@ -13,47 +13,60 @@ from reportlab.lib import colors
 class FinanceModule:
     """
     Automated Finance & Analytics Module
-    Generates professional digital invoices with sequential numbering, PDF exports, and tracks RevPASH metrics.
+    Generates digital invoices with sequential numbering, multi-currency PDF exports, and RevPASH analytics.
     """
-    def generate_invoice(self, order_id: str) -> Optional[dict]:
+    def generate_invoice(self, order_id: str, currency: str = "GBP") -> Optional[dict]:
         order = db.orders.get(order_id)
         if not order:
             return None
 
-        # Check if invoice already exists
         if order_id in db.invoices:
             return db.invoices[order_id]
 
         invoice_number = f"INV-UK-{db.invoice_counter}"
+        curr = currency.upper()
+        symbol = Config.CURRENCY_SYMBOLS.get(curr, "£")
+        tax_rate = Config.TAX_RATES.get(curr, 0.20)
+        tax_label = Config.TAX_LABELS.get(curr, "UK VAT (20%)")
 
-        subtotal = order["subtotal"]
-        vat_rate = 0.20  # UK VAT 20%
-        vat_amount = round(subtotal * vat_rate, 2)
-        total_with_vat = round(order["total"] + vat_amount, 2)
+        subtotal_gbp = order["subtotal"]
+        subtotal = Config.convert_price(subtotal_gbp, curr)
+        discount = Config.convert_price(order["discount"], curr)
+        
+        vat_amount = round(subtotal * tax_rate, 2)
+        total_with_vat = round((subtotal - discount) + vat_amount, 2)
+
+        items_converted = []
+        for item in order["items"]:
+            item_copy = dict(item)
+            item_copy["price"] = Config.convert_price(item["price"], curr)
+            items_converted.append(item_copy)
 
         invoice = {
             "invoice_number": invoice_number,
             "order_id": order_id,
             "table_number": order["table_number"],
-            "items": order["items"],
+            "items": items_converted,
             "subtotal": subtotal,
-            "discount": order["discount"],
-            "vat_rate": "20%",
+            "discount": discount,
+            "vat_rate": f"{int(tax_rate*100)}%",
+            "vat_label": tax_label,
             "vat_amount": vat_amount,
             "total": total_with_vat,
-            "currency": Config.DEFAULT_CURRENCY,
-            "currency_symbol": Config.CURRENCY_SYMBOL,
+            "currency": curr,
+            "currency_symbol": symbol,
             "issued_at": datetime.now(timezone.utc).isoformat(),
             "status": "PAID"
         }
         db.invoices[order_id] = invoice
         return invoice
 
-    def generate_pdf_invoice(self, order_id: str) -> Optional[bytes]:
-        invoice = self.generate_invoice(order_id)
+    def generate_pdf_invoice(self, order_id: str, currency: str = "GBP") -> Optional[bytes]:
+        invoice = self.generate_invoice(order_id, currency)
         if not invoice:
             return None
 
+        symbol = invoice.get("currency_symbol", "£")
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
         story = []
@@ -70,19 +83,20 @@ class FinanceModule:
         story.append(Paragraph("THE WAITER - OFFICIAL INVOICE", title_style))
         story.append(Paragraph(f"<b>Invoice No:</b> {invoice['invoice_number']} | <b>Table:</b> #{invoice['table_number']}", styles['Normal']))
         story.append(Paragraph(f"<b>Date:</b> {invoice['issued_at'][:19].replace('T', ' ')} UTC", styles['Normal']))
+        story.append(Paragraph(f"<b>Currency:</b> {invoice['currency']} ({symbol})", styles['Normal']))
         story.append(Paragraph(f"<b>Status:</b> <font color='green'>{invoice['status']}</font>", styles['Normal']))
         story.append(Spacer(1, 16))
 
         # Table data
-        data = [["Item Description", "Price (£)"]]
+        data = [[f"Item Description", f"Price ({symbol})"]]
         for item in invoice["items"]:
-            data.append([item["name"], f"£{item['price']:.2f}"])
+            data.append([item["name"], f"{symbol}{item['price']:.2f}"])
 
         data.append(["", ""])
-        data.append(["Subtotal", f"£{invoice['subtotal']:.2f}"])
-        data.append(["Discount", f"-£{invoice['discount']:.2f}"])
-        data.append(["UK VAT (20%)", f"£{invoice['vat_amount']:.2f}"])
-        data.append(["TOTAL PAID", f"£{invoice['total']:.2f}"])
+        data.append(["Subtotal", f"{symbol}{invoice['subtotal']:.2f}"])
+        data.append(["Discount", f"-{symbol}{invoice['discount']:.2f}"])
+        data.append([invoice.get('vat_label', 'Tax'), f"{symbol}{invoice['vat_amount']:.2f}"])
+        data.append(["TOTAL PAID", f"{symbol}{invoice['total']:.2f}"])
 
         table = Table(data, colWidths=[350, 150])
         table.setStyle(TableStyle([
@@ -114,16 +128,18 @@ class FinanceModule:
         buffer.seek(0)
         return buffer.getvalue()
 
-    def calculate_analytics(self, total_seats: int = 50, operating_hours: int = 12) -> dict:
+    def calculate_analytics(self, total_seats: int = 50, operating_hours: int = 12, currency: str = "GBP") -> dict:
         orders = list(db.orders.values())
-        total_revenue = sum(o["total"] for o in orders)
+        curr = currency.upper()
+        symbol = Config.CURRENCY_SYMBOLS.get(curr, "£")
+
+        total_revenue_gbp = sum(o["total"] for o in orders)
+        total_revenue = Config.convert_price(total_revenue_gbp, curr)
         total_orders = len(orders)
         
-        # Calculate RevPASH (Revenue Per Available Seat Hour)
         available_seat_hours = total_seats * operating_hours
         rev_pash = round(total_revenue / available_seat_hours, 2) if available_seat_hours > 0 else 0.0
 
-        # Calculate dish popularity ranking
         dish_counts = {}
         for order in orders:
             for item in order["items"]:
@@ -138,7 +154,8 @@ class FinanceModule:
             "average_transaction_value": round(total_revenue / total_orders, 2) if total_orders > 0 else 0.0,
             "rev_pash": rev_pash,
             "popular_dishes": popular_dishes,
-            "currency_symbol": Config.CURRENCY_SYMBOL
+            "currency": curr,
+            "currency_symbol": symbol
         }
 
 finance_service = FinanceModule()
