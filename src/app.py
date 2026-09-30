@@ -14,6 +14,7 @@ from src.modules.reviews import review_service
 from src.modules.finance import finance_service
 from src.modules.thermal_print import thermal_printer_service
 from src.modules.qr_generator import qr_generator_service
+from src.modules.inventory import inventory_service
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
@@ -50,7 +51,7 @@ INDEX_HTML = """
             <div class="d-flex justify-content-center flex-wrap gap-2 mt-3">
                 <span class="badge bg-light text-dark"><i class="fa-solid fa-globe me-1"></i>Multi-Currency (£ / € / $)</span>
                 <span class="badge bg-info text-dark"><i class="fa-solid fa-mobile-screen me-1"></i>BYOD Enterprise</span>
-                <span class="badge bg-success"><i class="fa-solid fa-bolt me-1"></i>99.9% Uptime</span>
+                <span class="badge bg-success"><i class="fa-solid fa-boxes-stacked me-1"></i>Stock Auto-Deduction</span>
                 <span class="badge bg-primary"><i class="fa-solid fa-print me-1"></i>ESC/POS Thermal Print</span>
                 <a href="/api/qr/cards/pdf" target="_blank" class="badge bg-danger text-decoration-none"><i class="fa-solid fa-file-pdf me-1"></i>Print Table QR Cards (PDF)</a>
                 <a href="/terminal" target="_blank" class="badge bg-warning text-dark text-decoration-none"><i class="fa-solid fa-desktop me-1"></i>Netoff Terminal Pro Kiosk</a>
@@ -66,6 +67,9 @@ INDEX_HTML = """
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-bold" id="kds-tab" data-bs-toggle="tab" data-bs-target="#kds" type="button" onclick="loadKDS()"><i class="fa-solid fa-fire-burner me-1"></i> Kitchen KDS</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button" onclick="loadInventory()"><i class="fa-solid fa-boxes-stacked me-1"></i> Inventory Stock</button>
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-bold" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" onclick="loadReviews()"><i class="fa-solid fa-star me-1"></i> Avis Clients (Reviews)</button>
@@ -86,13 +90,11 @@ INDEX_HTML = """
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h4 class="fw-bold mb-0">Digital Menu</h4>
                             <div class="d-flex gap-2">
-                                <!-- Language Switcher -->
                                 <div class="btn-group btn-group-sm" id="langGroup">
                                     <button class="btn btn-outline-dark active" onclick="setLanguage('en', this)">EN</button>
                                     <button class="btn btn-outline-dark" onclick="setLanguage('fr', this)">FR</button>
                                     <button class="btn btn-outline-dark" onclick="setLanguage('ar', this)">AR</button>
                                 </div>
-                                <!-- Currency Switcher -->
                                 <div class="btn-group btn-group-sm" id="currGroup">
                                     <button class="btn btn-dark active" onclick="setCurrency('GBP', this)">£ GBP</button>
                                     <button class="btn btn-outline-dark" onclick="setCurrency('EUR', this)">€ EUR</button>
@@ -148,7 +150,21 @@ INDEX_HTML = """
                 </div>
             </div>
 
-            <!-- TAB 3: Reviews (Avis Clients) -->
+            <!-- TAB 3: Inventory Stock -->
+            <div class="tab-pane fade" id="inventory" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold mb-0">Automated Stock & Ingredient Tracking</h4>
+                        <p class="text-muted small mb-0">Real-time inventory deduction upon order placement.</p>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="loadInventory()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
+                </div>
+                <div id="inventoryContainer" class="row g-3">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- TAB 4: Reviews (Avis Clients) -->
             <div class="tab-pane fade" id="reviews" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
@@ -166,7 +182,7 @@ INDEX_HTML = """
                 </div>
             </div>
 
-            <!-- TAB 4: Analytics -->
+            <!-- TAB 5: Analytics -->
             <div class="tab-pane fade" id="analytics" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0">RevPASH & Performance Analytics</h4>
@@ -181,7 +197,7 @@ INDEX_HTML = """
                 </div>
             </div>
 
-            <!-- TAB 5: Strategy Document -->
+            <!-- TAB 6: Strategy Document -->
             <div class="tab-pane fade" id="strategy" role="tabpanel">
                 <div class="card card-custom p-4 bg-white">
                     <h3 class="fw-bold mb-3">UK Market Strategy & Operational Blueprint</h3>
@@ -243,7 +259,6 @@ INDEX_HTML = """
         let activeTable = 1;
         let currSymbols = { 'GBP': '£', 'EUR': '€', 'USD': '$' };
 
-        // Read ?table= query parameter if present
         const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.has('table')) {
             activeTable = parseInt(urlParams.get('table')) || 1;
@@ -275,20 +290,31 @@ INDEX_HTML = """
             const data = await res.json();
             
             const container = document.getElementById('menuContainer');
-            container.innerHTML = data.map(item => `
-                <div class="col-md-6">
-                    <div class="card card-custom p-3 h-100 bg-white">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <h6 class="fw-bold mb-1">${item.name_translated}</h6>
-                            <span class="badge bg-primary">${item.price_formatted}</span>
+            container.innerHTML = data.map(item => {
+                let stockBadge = '';
+                let btnDisabled = '';
+                if(item.stock_status === 'OUT_OF_STOCK') {
+                    stockBadge = '<span class="badge bg-danger ms-2">Out of Stock</span>';
+                    btnDisabled = 'disabled';
+                } else if(item.stock_status === 'LOW_STOCK') {
+                    stockBadge = `<span class="badge bg-warning text-dark ms-2">Only ${item.stock_qty} left!</span>`;
+                }
+
+                return `
+                    <div class="col-md-6">
+                        <div class="card card-custom p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h6 class="fw-bold mb-1">${item.name_translated} ${stockBadge}</h6>
+                                <span class="badge bg-primary">${item.price_formatted}</span>
+                            </div>
+                            <p class="text-muted small mb-2">${item.description_translated}</p>
+                            <button class="btn btn-sm btn-outline-primary mt-auto" ${btnDisabled} onclick="addToCart('${item.id}', '${item.name_translated}', ${item.price}, '${item.price_formatted}')">
+                                <i class="fa-solid fa-plus me-1"></i> Add to Order
+                            </button>
                         </div>
-                        <p class="text-muted small mb-2">${item.description_translated}</p>
-                        <button class="btn btn-sm btn-outline-primary mt-auto" onclick="addToCart('${item.id}', '${item.name_translated}', ${item.price}, '${item.price_formatted}')">
-                            <i class="fa-solid fa-plus me-1"></i> Add to Order
-                        </button>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
             renderCart();
         }
 
@@ -341,7 +367,7 @@ INDEX_HTML = """
 
             if(hasCod && !hasSide) {
                 const side = menu.find(m => m.id === 'item-4');
-                if(side) {
+                if(side && side.stock_status !== 'OUT_OF_STOCK') {
                     upsellContainer.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="small fw-bold">${side.name_translated} (+${side.price_formatted})</span>
@@ -373,9 +399,43 @@ INDEX_HTML = """
             currentCart = [];
             renderCart();
             document.getElementById('upsellBox').classList.add('d-none');
+            loadMenu(); // Refresh stock quantities
             
             const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
             reviewModal.show();
+        }
+
+        async function loadInventory() {
+            const res = await fetch('/api/inventory');
+            const items = await res.json();
+            const container = document.getElementById('inventoryContainer');
+            
+            container.innerHTML = items.map(item => {
+                let badgeClass = 'bg-success';
+                if(item.stock_status === 'OUT_OF_STOCK') badgeClass = 'bg-danger';
+                else if(item.stock_status === 'LOW_STOCK') badgeClass = 'bg-warning text-dark';
+
+                return `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card card-custom p-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold mb-0">${item.name.en}</h6>
+                                <span class="badge ${badgeClass}">${item.stock_status}</span>
+                            </div>
+                            <p class="text-muted small mb-2">Current Stock: <strong class="fs-5 text-dark">${item.stock_qty}</strong> units</p>
+                            <button class="btn btn-sm btn-outline-success" onclick="restockItem('${item.id}')">
+                                <i class="fa-solid fa-plus me-1"></i> Restock (+20 Units)
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function restockItem(id) {
+            await fetch(`/api/inventory/restock/${id}`, { method: 'POST' });
+            loadInventory();
+            loadMenu();
         }
 
         function setRating(stars) {
@@ -560,7 +620,6 @@ TERMINAL_HTML = """
     </style>
 </head>
 <body>
-    <!-- Terminal Header -->
     <div class="terminal-header d-flex justify-content-between align-items-center">
         <div>
             <h3 class="fw-bold mb-0 text-info"><i class="fa-solid fa-desktop me-2"></i>Netoff Terminal Pro</h3>
@@ -574,9 +633,7 @@ TERMINAL_HTML = """
 
     <div class="container-fluid p-4">
         <div class="row g-4">
-            <!-- Left Panel: Menu Items Grid & Table Picker -->
             <div class="col-md-7 col-lg-8">
-                <!-- Barcode / QR Scanner Input simulator -->
                 <div class="input-group mb-4">
                     <span class="input-group-text scan-bar"><i class="fa-solid fa-barcode text-info"></i></span>
                     <input type="text" id="barcodeScanner" class="form-control scan-bar py-2" placeholder="Scan Item Barcode / QR Code..." onkeydown="handleBarcode(event)">
@@ -584,20 +641,17 @@ TERMINAL_HTML = """
                     <button class="btn btn-warning text-dark fw-bold" onclick="simulateScan('item-3')"><i class="fa-solid fa-qrcode me-1"></i> Scan IPA</button>
                 </div>
 
-                <!-- Table Selection Grid -->
                 <h6 class="text-uppercase text-muted fw-bold mb-2">Select Table</h6>
                 <div class="row g-2 mb-4" id="tableGrid">
                     <!-- Loaded dynamically -->
                 </div>
 
-                <!-- Touch Menu Grid -->
                 <h6 class="text-uppercase text-muted fw-bold mb-2">Touch Menu Catalogue</h6>
                 <div class="row g-3" id="kioskMenuGrid">
                     <!-- Loaded dynamically -->
                 </div>
             </div>
 
-            <!-- Right Panel: Cart & Checkout -->
             <div class="col-md-5 col-lg-4">
                 <div class="kiosk-cart">
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -767,7 +821,20 @@ def home():
 def terminal():
     return render_template_string(TERMINAL_HTML)
 
-# --- 1. QR Code & Table Tent Generation Endpoints ---
+# --- 1. Inventory Endpoints ---
+@app.route("/api/inventory", methods=["GET"])
+def get_inventory():
+    return jsonify(inventory_service.get_inventory_status())
+
+@app.route("/api/inventory/restock/<item_id>", methods=["POST"])
+def restock_item(item_id):
+    qty = int(request.args.get("qty", 20))
+    res = inventory_service.restock(item_id, qty)
+    if res:
+        return jsonify(res)
+    return jsonify({"error": "Item not found"}), 404
+
+# --- 2. QR Code & Table Tent Generation Endpoints ---
 @app.route("/api/qr/table/<int:table_num>", methods=["GET"])
 def get_table_qr_png(table_num):
     base_url = request.host_url.rstrip("/")
@@ -785,7 +852,7 @@ def get_table_tents_pdf():
         headers={"Content-Disposition": "inline; filename=Table_Tent_Cards_1_to_12.pdf"}
     )
 
-# --- 2. QR Ordering Endpoints ---
+# --- 3. QR Ordering Endpoints ---
 @app.route("/api/menu", methods=["GET"])
 def get_menu():
     lang = request.args.get("lang", "en")
@@ -801,7 +868,7 @@ def place_order():
     order = qr_ordering_service.submit_order(table_num, items, promo)
     return jsonify(order), 201
 
-# --- 3. KDS Endpoints ---
+# --- 4. KDS Endpoints ---
 @app.route("/api/kds/active", methods=["GET"])
 def kds_active():
     return jsonify(kds_service.get_active_kitchen_orders())
@@ -817,12 +884,12 @@ def kds_advance(order_id):
         return jsonify(updated)
     return jsonify({"error": "Order not found"}), 404
 
-# --- 4. Promo Code Endpoints ---
+# --- 5. Promo Code Endpoints ---
 @app.route("/api/promos", methods=["GET"])
 def get_promos():
     return jsonify(db.promos)
 
-# --- 5. Review Endpoints ---
+# --- 6. Review Endpoints ---
 @app.route("/api/reviews", methods=["GET"])
 def get_reviews():
     return jsonify({
@@ -839,7 +906,7 @@ def submit_review():
     rev = review_service.submit_review(table_num, rating, comment)
     return jsonify(rev), 201
 
-# --- 6. Finance, Invoicing & Thermal Receipt Endpoints ---
+# --- 7. Finance, Invoicing & Thermal Receipt Endpoints ---
 @app.route("/api/invoice/<order_id>", methods=["GET"])
 def get_invoice(order_id):
     curr = request.args.get("currency", "GBP")

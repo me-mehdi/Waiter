@@ -6,7 +6,7 @@ from src.core.config import Config
 class QROrderingModule:
     """
     QR Code Ordering & Digital Menu Module
-    Renders dynamic multi-language menus, multi-currency conversion, and smart upsell recommendations.
+    Renders dynamic multi-language menus, multi-currency conversion, stock status, and smart upsell recommendations.
     """
     def get_menu(self, language: str = "en", currency: str = "GBP") -> List[dict]:
         menu_items = list(db.menu_items.values())
@@ -19,9 +19,20 @@ class QROrderingModule:
             converted_price = Config.convert_price(base_price, currency)
             symbol = Config.CURRENCY_SYMBOLS.get(currency.upper(), "£")
             
+            # Stock Status calculation
+            stock = item.get("stock_qty", 0)
+            if stock <= 0:
+                stock_status = "OUT_OF_STOCK"
+            elif stock <= 5:
+                stock_status = "LOW_STOCK"
+            else:
+                stock_status = "IN_STOCK"
+
             translated["price"] = converted_price
             translated["price_formatted"] = f"{symbol}{converted_price:.2f}"
             translated["currency"] = currency.upper()
+            translated["stock_qty"] = stock
+            translated["stock_status"] = stock_status
             
             formatted_menu.append(translated)
         return formatted_menu
@@ -38,13 +49,14 @@ class QROrderingModule:
         upsell_items = []
         for uid in upsell_ids:
             item = db.menu_items.get(uid)
-            if item:
+            if item and item.get("stock_qty", 0) > 0:
                 translated = translator.translate_item(item, language)
                 converted_price = Config.convert_price(item["price"], currency)
                 symbol = Config.CURRENCY_SYMBOLS.get(currency.upper(), "£")
                 translated["price"] = converted_price
                 translated["price_formatted"] = f"{symbol}{converted_price:.2f}"
                 translated["currency"] = currency.upper()
+                translated["stock_qty"] = item.get("stock_qty", 0)
                 upsell_items.append(translated)
         return upsell_items
 

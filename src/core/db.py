@@ -7,22 +7,28 @@ import threading
 
 DB_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "waiter.db")
 
+from contextlib import contextmanager
+
 class DatabaseStore:
     def __init__(self, db_path: str = DB_FILE):
         self.db_path = os.path.abspath(db_path)
         self._lock = threading.Lock()
         self.init_db()
 
+    @contextmanager
     def _get_connection(self):
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def init_db(self):
         with self._lock, self._get_connection() as conn:
             cursor = conn.cursor()
             
-            # 1. Menu Items Table
+            # 1. Menu Items Table (with stock_qty)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS menu_items (
                     id TEXT PRIMARY KEY,
@@ -34,9 +40,16 @@ class DatabaseStore:
                     desc_ar TEXT,
                     price REAL NOT NULL,
                     category TEXT NOT NULL,
-                    upsell_ids TEXT
+                    upsell_ids TEXT,
+                    stock_qty INTEGER DEFAULT 30
                 )
             """)
+
+            # Add stock_qty column if table existed previously without it
+            cursor.execute("PRAGMA table_info(menu_items)")
+            cols = [col["name"] for col in cursor.fetchall()]
+            if "stock_qty" not in cols:
+                cursor.execute("ALTER TABLE menu_items ADD COLUMN stock_qty INTEGER DEFAULT 30")
 
             # 2. Orders Table
             cursor.execute("""
@@ -104,23 +117,23 @@ class DatabaseStore:
             default_items = [
                 ("item-1", "Fish & Chips", "Poisson & Frites", "سمك وبطاطس",
                  "Fresh Atlantic cod with crispy chips", "Cabillaud frais et frites croustillantes", "قد أطلسي طازج مع بطاطس مقرمشة",
-                 14.50, "Mains", json.dumps(["item-4"])),
+                 14.50, "Mains", json.dumps(["item-4"]), 25),
                 ("item-2", "Full English Breakfast", "Petit déjeuner anglais", "إفطار إنجليزي كامل",
                  "Sausages, bacon, eggs, beans, toast", "Saucisses, bacon, œufs, haricots, pain grillé", "نقانق، لحم قديد، بيض، فاصوليا، نخب",
-                 11.00, "Mains", json.dumps(["item-5"])),
+                 11.00, "Mains", json.dumps(["item-5"]), 20),
                 ("item-3", "Craft IPA Pint", "Pinte de Bière Artisanale", "بيل ايل حرفية",
                  "Local UK craft brewery IPA", "Bière IPA artisanale britannique", "بيرة بريطانية حرفية",
-                 6.20, "Drinks", json.dumps([])),
+                 6.20, "Drinks", json.dumps([]), 50),
                 ("item-4", "Tartare Sauce & Peas", "Sauce Tartare & Petits Pois", "صلصة التارتار والبسلة",
                  "Homemade tartare sauce & crushed mint peas", "Sauce tartare maison et petits pois écrasés", "صلصة تارتار منزلية وبسلة بالنيداد",
-                 2.50, "Sides", json.dumps([])),
+                 2.50, "Sides", json.dumps([]), 35),
                 ("item-5", "Fresh Orange Juice", "Jus d'Orange Frais", "عصير برتقال طازج",
                  "Freshly squeezed juice", "Jus fraîchement pressé", "عصير برتقال طازج مكرر",
-                 3.80, "Drinks", json.dumps([]))
+                 3.80, "Drinks", json.dumps([]), 4) # LOW_STOCK for demo
             ]
             cursor.executemany("""
-                INSERT INTO menu_items (id, name_en, name_fr, name_ar, desc_en, desc_fr, desc_ar, price, category, upsell_ids)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO menu_items (id, name_en, name_fr, name_ar, desc_en, desc_fr, desc_ar, price, category, upsell_ids, stock_qty)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, default_items)
 
         cursor.execute("SELECT COUNT(*) FROM promos")
@@ -147,7 +160,6 @@ class DatabaseStore:
             conn.commit()
             self._seed_default_data(cursor, conn)
 
-    # --- Property Accessors for Dict Compatibility ---
     @property
     def menu_items(self) -> Dict[str, dict]:
         with self._get_connection() as conn:
@@ -162,7 +174,8 @@ class DatabaseStore:
                     "description": {"en": row["desc_en"], "fr": row["desc_fr"], "ar": row["desc_ar"]},
                     "price": row["price"],
                     "category": row["category"],
-                    "upsell_ids": json.loads(row["upsell_ids"] or "[]")
+                    "upsell_ids": json.loads(row["upsell_ids"] or "[]"),
+                    "stock_qty": row["stock_qty"] if "stock_qty" in row.keys() else 30
                 }
             return items
 
@@ -253,6 +266,30 @@ class DatabaseStore:
             return 1001 + count
 
     # --- Write Operations ---
+    def deduct_stock(self, item_id: str, qty: int = 1) -> bool:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT stock_qty FROM menu_items WHERE id = ?", (item_id,))
+            row = cursor.fetchone()
+            if row and row["stock_qty"] >= qty:
+                new_qty = row["stock_qty"] - qty
+                cursor.execute("UPDATE menu_items SET stock_qty = ? WHERE id = ?", (new_qty, item_id))
+                conn.commit()
+                return True
+            return False
+
+    def restock_item(self, item_id: str, qty: int = 20) -> Optional[int]:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT stock_qty FROM menu_items WHERE id = ?", (item_id,))
+            row = cursor.fetchone()
+            if row:
+                new_qty = row["stock_qty"] + qty
+                cursor.execute("UPDATE menu_items SET stock_qty = ? WHERE id = ?", (new_qty, item_id))
+                conn.commit()
+                return new_qty
+            return None
+
     def add_order(self, order_data: dict) -> dict:
         with self._lock, self._get_connection() as conn:
             cursor = conn.cursor()
@@ -287,6 +324,13 @@ class DatabaseStore:
                 order["created_at"],
                 order["updated_at"]
             ))
+            
+            # Deduct stock for each ordered item
+            for item in order["items"]:
+                item_id = item.get("item_id")
+                if item_id:
+                    cursor.execute("UPDATE menu_items SET stock_qty = MAX(0, stock_qty - 1) WHERE id = ?", (item_id,))
+
             conn.commit()
             return order
 
