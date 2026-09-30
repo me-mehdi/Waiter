@@ -165,6 +165,25 @@ class DatabaseStore:
                 )
             """)
 
+            # 9. Order Splits Table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS order_splits (
+                    id TEXT PRIMARY KEY,
+                    order_id TEXT NOT NULL,
+                    split_type TEXT NOT NULL,
+                    guest_name TEXT NOT NULL,
+                    guest_index INTEGER NOT NULL,
+                    items_json TEXT DEFAULT '[]',
+                    subtotal REAL NOT NULL,
+                    service_charge REAL NOT NULL,
+                    total REAL NOT NULL,
+                    status TEXT NOT NULL,
+                    payment_method TEXT,
+                    paid_at TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
             conn.commit()
             self._seed_default_data(cursor, conn)
 
@@ -232,6 +251,7 @@ class DatabaseStore:
             cursor.execute("DELETE FROM promos")
             cursor.execute("DELETE FROM staff_shifts")
             cursor.execute("DELETE FROM loyalty_accounts")
+            cursor.execute("DELETE FROM order_splits")
             conn.commit()
             self._seed_default_data(cursor, conn)
 
@@ -429,6 +449,13 @@ class DatabaseStore:
                 conn.commit()
                 return new_qty
             return None
+
+    def update_stock_qty(self, item_id: str, qty: int) -> Optional[int]:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE menu_items SET stock_qty = ? WHERE id = ?", (qty, item_id))
+            conn.commit()
+            return qty
 
     def add_order(self, order_data: dict) -> dict:
         with self._lock, self._get_connection() as conn:

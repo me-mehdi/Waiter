@@ -27,6 +27,8 @@ from src.modules.loyalty import loyalty_service
 from src.modules.allergens import allergen_service
 from src.modules.prep_routing import prep_routing_service
 from src.modules.tips_tronc import tips_tronc_service
+from src.modules.bill_splitting import bill_splitting_service
+from src.modules.purchase_orders import purchase_order_service
 
 app = Flask(__name__)
 
@@ -1580,7 +1582,9 @@ def get_menu():
 def place_order():
     data = request.json or {}
     table_num = data.get("table_number", 1)
-    items = data.get("items", ["item-1", "item-3"])
+    raw_items = data.get("items", ["item-1", "item-3"])
+    items = [it if isinstance(it, str) else (it.get("item_id") or it.get("id")) for it in raw_items]
+    items = [i for i in items if i]
     promo = data.get("promo_code")
     order = qr_ordering_service.submit_order(table_num, items, promo)
     return jsonify(order), 201
@@ -1682,6 +1686,95 @@ def strategy_doc():
     with open(doc_path, "r", encoding="utf-8") as f:
         content = f.read()
     return f"<pre style='white-space: pre-wrap; font-family: monospace; padding: 20px;'>{content}</pre>"
+
+# --- 10. Bill Splitting & Group Payment Endpoints ---
+@app.route("/api/orders/<order_id>/split/even", methods=["POST"])
+def split_order_evenly(order_id):
+    data = request.json or {}
+    num_guests = int(data.get("num_guests", 2))
+    include_sc = bool(data.get("include_service_charge", True))
+    try:
+        res = bill_splitting_service.split_evenly(order_id, num_guests, include_sc)
+        return jsonify(res)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/orders/<order_id>/split/itemized", methods=["POST"])
+def split_order_itemized(order_id):
+    data = request.json or {}
+    guest_assignments = data.get("guest_assignments", [])
+    include_sc = bool(data.get("include_service_charge", True))
+    try:
+        res = bill_splitting_service.split_itemized(order_id, guest_assignments, include_sc)
+        return jsonify(res)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/orders/<order_id>/pay-share", methods=["POST"])
+def pay_order_split_share(order_id):
+    data = request.json or {}
+    split_target = data.get("split_id_or_index", 1)
+    payment_method = data.get("payment_method", "CARD")
+    try:
+        res = bill_splitting_service.pay_split_share(order_id, split_target, payment_method)
+        return jsonify(res)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/orders/<order_id>/split/status", methods=["GET"])
+def get_order_split_status(order_id):
+    try:
+        res = bill_splitting_service.get_split_status(order_id)
+        return jsonify(res)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+@app.route("/api/orders/<order_id>/split/sub-receipt/<split_target>", methods=["GET"])
+def get_order_sub_receipt(order_id, split_target):
+    width = int(request.args.get("width", 32))
+    try:
+        sub_receipt_txt = bill_splitting_service.generate_sub_receipt(order_id, split_target, width)
+        return Response(sub_receipt_txt, mimetype="text/plain; charset=utf-8")
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+# --- 11. Automated Purchase Order Endpoints ---
+@app.route("/api/inventory/low-stock", methods=["GET"])
+def get_low_stock_inventory():
+    threshold = int(request.args.get("threshold", 10))
+    items = purchase_order_service.get_low_stock_items(threshold)
+    return jsonify({"threshold": threshold, "low_stock_count": len(items), "items": items})
+
+@app.route("/api/inventory/purchase-orders", methods=["GET"])
+def get_purchase_orders():
+    threshold = int(request.args.get("threshold", 10))
+    reorder_qty = int(request.args.get("reorder_qty", 50))
+    pos = purchase_order_service.generate_purchase_orders(threshold, reorder_qty)
+    return jsonify({"purchase_orders": pos})
+
+@app.route("/api/inventory/purchase-orders/<supplier_category>/pdf", methods=["GET"])
+def download_po_pdf(supplier_category):
+    threshold = int(request.args.get("threshold", 10))
+    pos = purchase_order_service.generate_purchase_orders(threshold)
+    target_po = next((p for p in pos if p["supplier_category"].upper() == supplier_category.upper()), None)
+    if not target_po:
+        return jsonify({"error": f"No active purchase order found for supplier category '{supplier_category}'"}), 404
+    pdf_bytes = purchase_order_service.generate_po_pdf(target_po)
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"inline; filename={target_po['po_number']}_{supplier_category}.pdf"}
+    )
+
+@app.route("/api/inventory/purchase-orders/<supplier_category>/email", methods=["GET"])
+def get_po_email_text(supplier_category):
+    threshold = int(request.args.get("threshold", 10))
+    pos = purchase_order_service.generate_purchase_orders(threshold)
+    target_po = next((p for p in pos if p["supplier_category"].upper() == supplier_category.upper()), None)
+    if not target_po:
+        return jsonify({"error": f"No active purchase order found for supplier category '{supplier_category}'"}), 404
+    email_text = purchase_order_service.generate_po_email_text(target_po)
+    return Response(email_text, mimetype="text/plain; charset=utf-8")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))

@@ -342,6 +342,86 @@ class TestWaiterModules(unittest.TestCase):
         self.assertGreater(summary["total_tronc_pool"], 0.0)
         self.assertGreaterEqual(len(summary["payout_breakdown"]), 2)
 
+    def test_equal_bill_splitting_and_group_payment(self):
+        from src.modules.bill_splitting import bill_splitting_service
+
+        order = qr_ordering_service.submit_order(table_number=4, item_ids=["item-1", "item-2"])
+        order_id = order["id"]
+
+        split_res = bill_splitting_service.split_evenly(order_id, num_guests=3, include_service_charge=True)
+        self.assertEqual(split_res["total_guests"], 3)
+        self.assertEqual(len(split_res["splits"]), 3)
+
+        sum_splits = sum(s["total"] for s in split_res["splits"])
+        self.assertEqual(round(sum_splits, 2), round(split_res["order_total"], 2))
+
+        # Pay share for guest 1
+        st1 = bill_splitting_service.pay_split_share(order_id, split_id_or_index=1, payment_method="CARD")
+        self.assertEqual(st1["settlement_status"], "PARTIAL")
+
+        # Pay share for guest 2 & 3
+        bill_splitting_service.pay_split_share(order_id, split_id_or_index=2, payment_method="CASH")
+        st3 = bill_splitting_service.pay_split_share(order_id, split_id_or_index=3, payment_method="APPLE_PAY")
+        self.assertEqual(st3["settlement_status"], "SETTLED")
+
+        # Check main order status updated to PAID
+        updated_order = db.orders.get(order_id)
+        self.assertEqual(updated_order["status"], "PAID")
+
+        # Generate sub-receipt
+        receipt_txt = bill_splitting_service.generate_sub_receipt(order_id, split_id_or_index=1)
+        self.assertIn("THE WAITER UK", receipt_txt)
+        self.assertIn("GUEST: Guest 1", receipt_txt)
+        self.assertIn("STATUS: PAID (CARD)", receipt_txt)
+
+    def test_itemized_bill_splitting(self):
+        from src.modules.bill_splitting import bill_splitting_service
+
+        order = qr_ordering_service.submit_order(table_number=6, item_ids=["item-1", "item-3"])
+        order_id = order["id"]
+
+        guest_assignments = [
+            {"guest_name": "Alice", "items": [{"name": "Fish & Chips", "price": 14.50}]},
+            {"guest_name": "Bob", "items": [{"name": "Craft IPA Pint", "price": 6.20}]}
+        ]
+
+        split_res = bill_splitting_service.split_itemized(order_id, guest_assignments, include_service_charge=True)
+        self.assertEqual(split_res["split_type"], "ITEMIZED")
+        self.assertEqual(len(split_res["splits"]), 2)
+        self.assertEqual(split_res["splits"][0]["guest_name"], "Alice")
+        self.assertEqual(split_res["splits"][1]["guest_name"], "Bob")
+
+        sum_totals = sum(s["total"] for s in split_res["splits"])
+        self.assertEqual(round(sum_totals, 2), round(split_res["order_total"], 2))
+
+    def test_automated_purchase_order_generator(self):
+        from src.modules.purchase_orders import purchase_order_service
+
+        # Artificially set item stock to low stock level
+        db.update_stock_qty("item-1", 3)
+        db.update_stock_qty("item-3", 4)
+
+        low_items = purchase_order_service.get_low_stock_items(threshold=10)
+        self.assertGreaterEqual(len(low_items), 2)
+
+        pos = purchase_order_service.generate_purchase_orders(threshold=10, reorder_qty=50)
+        self.assertGreaterEqual(len(pos), 2)
+
+        seafood_po = next(p for p in pos if p["supplier_category"] == "SEAFOOD")
+        self.assertIn("PO-UK-", seafood_po["po_number"])
+        self.assertEqual(seafood_po["supplier_name"], "Brixham Seafood Direct Ltd")
+        self.assertGreater(seafood_po["total_estimated_cost"], 0.0)
+
+        # Email text check
+        email_text = purchase_order_service.generate_po_email_text(seafood_po)
+        self.assertIn("Dear Dave Miller", email_text)
+        self.assertIn("Brixham Seafood Direct Ltd", email_text)
+
+        # PDF generation check
+        pdf_bytes = purchase_order_service.generate_po_pdf(seafood_po)
+        self.assertIsNotNone(pdf_bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+
 if __name__ == "__main__":
     unittest.main()
 
