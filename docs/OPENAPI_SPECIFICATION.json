@@ -1,0 +1,272 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "The Waiter | Enterprise Digital Hospitality SaaS API",
+    "description": "Comprehensive REST API specification covering all 19 enterprise hospitality modules for The Waiter platform.",
+    "version": "2.0.0",
+    "contact": {
+      "name": "The Waiter Engineering Team",
+      "email": "api@waiter.co.uk"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:5050",
+      "description": "Local Development & Daemon Application Server"
+    }
+  ],
+  "paths": {
+    "/api/menu/filtered": {
+      "get": {
+        "summary": "Get Filtered Menu Catalog",
+        "description": "Retrieves menu items with dynamic translation (EN/FR/AR), multi-currency conversion (£/€/$), dietary filters (Vegan, Vegetarian, Halal, Gluten-Free), and allergen exclusions.",
+        "parameters": [
+          {"name": "lang", "in": "query", "schema": {"type": "string", "default": "en"}},
+          {"name": "currency", "in": "query", "schema": {"type": "string", "default": "GBP"}},
+          {"name": "dietary", "in": "query", "schema": {"type": "string"}},
+          {"name": "exclude", "in": "query", "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Filtered menu items list"}
+        }
+      }
+    },
+    "/api/order": {
+      "post": {
+        "summary": "Place New Customer Order",
+        "description": "Submits a new QR code order, updates stock levels, and triggers real-time KDS SSE events.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "table_number": {"type": "integer", "example": 5},
+                  "items": {"type": "array", "items": {"type": "string"}, "example": ["item-1", "item-3"]},
+                  "promo_code": {"type": "string", "example": "WELCOME10"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Order created successfully"}
+        }
+      }
+    },
+    "/api/orders/{order_id}/split/even": {
+      "post": {
+        "summary": "Split Order Bill Evenly",
+        "description": "Divides total order bill and 12.5% UK service charge evenly across N guests.",
+        "parameters": [
+          {"name": "order_id", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "num_guests": {"type": "integer", "example": 3},
+                  "include_service_charge": {"type": "boolean", "example": true}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Bill split breakdown"}
+        }
+      }
+    },
+    "/api/orders/{order_id}/pay-share": {
+      "post": {
+        "summary": "Process Guest Split Share Payment",
+        "description": "Records partial payment for a guest split share (CARD, CASH, APPLE_PAY) and updates order status to PAID once all shares are settled.",
+        "parameters": [
+          {"name": "order_id", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "split_id_or_index": {"type": "integer", "example": 1},
+                  "payment_method": {"type": "string", "example": "CARD"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Updated split settlement status"}
+        }
+      }
+    },
+    "/api/inventory/purchase-orders": {
+      "get": {
+        "summary": "Get Supplier Purchase Orders",
+        "description": "Auto-detects low-stock inventory items, groups by UK suppliers, and generates PO records.",
+        "parameters": [
+          {"name": "threshold", "in": "query", "schema": {"type": "integer", "default": 10}}
+        ],
+        "responses": {
+          "200": {"description": "List of purchase orders"}
+        }
+      }
+    },
+    "/api/inventory/purchase-orders/{supplier_category}/pdf": {
+      "get": {
+        "summary": "Download Supplier PO PDF",
+        "description": "Generates a ReportLab PDF Purchase Order document for a supplier (SEAFOOD, MEAT, BEVERAGE, PRODUCE).",
+        "parameters": [
+          {"name": "supplier_category", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "ReportLab PDF document", "content": {"application/pdf": {}}}
+        }
+      }
+    },
+    "/api/waste/log": {
+      "post": {
+        "summary": "Log Kitchen Food Waste",
+        "description": "Records kitchen food waste/spoilage, deducts stock, and computes financial loss.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "item_id": {"type": "string", "example": "item-1"},
+                  "quantity": {"type": "integer", "example": 2},
+                  "reason": {"type": "string", "example": "EXPIRED"},
+                  "staff_name": {"type": "string", "example": "Chef Marco"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Waste entry recorded"}
+        }
+      }
+    },
+    "/api/waste/report/pdf": {
+      "get": {
+        "summary": "Download Kitchen Waste PDF Audit Report",
+        "description": "Exports a ReportLab PDF Kitchen Waste Audit & Loss Summary report.",
+        "responses": {
+          "200": {"description": "ReportLab PDF document", "content": {"application/pdf": {}}}
+        }
+      }
+    },
+    "/api/feedback/nps": {
+      "get": {
+        "summary": "Get Net Promoter Score (NPS)",
+        "description": "Calculates venue NPS score (-100 to +100) and segment ratios (Promoters, Passives, Detractors).",
+        "responses": {
+          "200": {"description": "NPS metrics summary"}
+        }
+      }
+    },
+    "/api/bookings": {
+      "post": {
+        "summary": "Create Table Reservation Booking",
+        "description": "Reserves a dining table based on party size capacity and updates floor plan table state.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "guest_name": {"type": "string", "example": "Sarah Connor"},
+                  "guest_phone": {"type": "string", "example": "+44 7911 123456"},
+                  "guest_email": {"type": "string", "example": "sarah@sky.net"},
+                  "party_size": {"type": "integer", "example": 4},
+                  "booking_date": {"type": "string", "example": "2026-10-15"},
+                  "time_slot": {"type": "string", "example": "20:00"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Booking created"}
+        }
+      }
+    },
+    "/api/bookings/{booking_id}/pdf": {
+      "get": {
+        "summary": "Download Booking Confirmation PDF Voucher",
+        "description": "Exports a ReportLab PDF Table Reservation Pass featuring check-in QR Code.",
+        "parameters": [
+          {"name": "booking_id", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "ReportLab PDF document", "content": {"application/pdf": {}}}
+        }
+      }
+    },
+    "/api/transfers": {
+      "post": {
+        "summary": "Create Inter-Venue Stock Transfer",
+        "description": "Requests stock transfer between Central Kitchen and branch store locations.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "source_venue_id": {"type": "string", "example": "venue-1"},
+                  "target_venue_id": {"type": "string", "example": "venue-2"},
+                  "items": {"type": "array", "items": {"type": "object"}},
+                  "requested_by": {"type": "string", "example": "Manager Dave"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Transfer requested"}
+        }
+      }
+    },
+    "/api/tax/vat-ledger": {
+      "get": {
+        "summary": "Get HMRC 9-Box MTD VAT Ledger",
+        "description": "Generates HMRC Making Tax Digital (MTD) 9-box VAT ledger return summary.",
+        "responses": {
+          "200": {"description": "MTD VAT ledger summary"}
+        }
+      }
+    },
+    "/api/integrations/webhook/{platform}": {
+      "post": {
+        "summary": "Inbound Delivery Order Webhook Simulator",
+        "description": "Simulates external order webhooks from Deliveroo, UberEats, Deliverect, and Toast POS.",
+        "parameters": [
+          {"name": "platform", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "201": {"description": "Order injected into KDS"}
+        }
+      }
+    },
+    "/api/forecasting/prep-demand": {
+      "get": {
+        "summary": "Get AI Kitchen Prep Demand Forecast",
+        "description": "Calculates predictive daily kitchen prep batch quantities based on sales history trends and day-of-week surge factors.",
+        "responses": {
+          "200": {"description": "Prep demand forecasts list"}
+        }
+      }
+    }
+  }
+}
