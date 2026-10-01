@@ -84,6 +84,10 @@ INDEX_HTML = """
                 <a href="/tv" target="_blank" class="badge bg-warning text-dark text-decoration-none"><i class="fa-solid fa-tv me-1"></i>Guest TV Display</a>
                 <a href="/api/qr/cards/pdf" target="_blank" class="badge bg-danger text-decoration-none"><i class="fa-solid fa-file-pdf me-1"></i>Print Table QR Cards (PDF)</a>
                 <a href="/api/finance/z-report/pdf" target="_blank" class="badge bg-dark text-warning text-decoration-none"><i class="fa-solid fa-chart-line me-1"></i>Z-Report Daily PDF</a>
+                <a href="/api/waste/report/pdf" target="_blank" class="badge bg-danger text-white text-decoration-none"><i class="fa-solid fa-trash-can me-1"></i>Waste Audit PDF</a>
+                <a href="/api/tax/report/pdf" target="_blank" class="badge bg-success text-white text-decoration-none"><i class="fa-solid fa-file-invoice-dollar me-1"></i>HMRC VAT PDF</a>
+                <a href="/api/feedback/report/pdf" target="_blank" class="badge bg-primary text-white text-decoration-none"><i class="fa-solid fa-star me-1"></i>NPS Report PDF</a>
+                <a href="/api/inventory/purchase-orders/SEAFOOD/pdf" target="_blank" class="badge bg-info text-dark text-decoration-none"><i class="fa-solid fa-truck-ramp-box me-1"></i>Supplier PO PDF</a>
                 <button class="badge bg-dark text-white border-0" id="pinAuthBtn" data-bs-toggle="modal" data-bs-target="#pinModal"><i class="fa-solid fa-lock me-1"></i> Manager Mode (PIN: 1234)</button>
                 <a href="/terminal" target="_blank" class="badge bg-secondary text-white text-decoration-none"><i class="fa-solid fa-desktop me-1"></i>Netoff Terminal Pro</a>
             </div>
