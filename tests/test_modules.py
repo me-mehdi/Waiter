@@ -593,6 +593,22 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIn("DELIVERECT", ch_names)
         self.assertIn("TOAST", ch_names)
 
+    def test_ai_menu_analytics_and_demand_forecasting(self):
+        from src.modules.ai_forecasting import ai_forecasting_service
+
+        forecasts = ai_forecasting_service.predict_prep_demand(target_day_of_week=5)
+        self.assertGreaterEqual(len(forecasts), 5)
+        self.assertGreater(forecasts[0]["predicted_prep_units"], 0)
+
+        matrix = ai_forecasting_service.get_menu_engineering_matrix()
+        self.assertIn("matrix", matrix)
+        self.assertIn("STARS", matrix["matrix"])
+        self.assertIn("DOGS", matrix["matrix"])
+
+        pdf_bytes = ai_forecasting_service.generate_forecasting_pdf_report(currency="GBP")
+        self.assertIsNotNone(pdf_bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+
 if __name__ == "__main__":
     unittest.main()
 

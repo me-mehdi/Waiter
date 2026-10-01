@@ -36,6 +36,7 @@ from src.modules.table_booking import table_booking_service
 from src.modules.store_transfers import store_transfers_service
 from src.modules.tax_compliance import tax_compliance_service
 from src.modules.integrations import integrations_service
+from src.modules.ai_forecasting import ai_forecasting_service
 
 app = Flask(__name__)
 
@@ -2027,6 +2028,28 @@ def sync_menu_to_platform(platform):
 def get_integration_channels_status():
     channels = integrations_service.get_integration_channels()
     return jsonify({"channels": channels})
+
+# --- 18. AI Menu Analytics & Demand Forecasting Endpoints ---
+@app.route("/api/forecasting/prep-demand", methods=["GET"])
+def get_ai_prep_demand_forecast():
+    target_day = request.args.get("day")
+    day_idx = int(target_day) if target_day and target_day.isdigit() else None
+    forecasts = ai_forecasting_service.predict_prep_demand(target_day_of_week=day_idx)
+    return jsonify({"prep_demand_forecasts": forecasts})
+
+@app.route("/api/forecasting/menu-matrix", methods=["GET"])
+def get_ai_menu_engineering_matrix():
+    return jsonify(ai_forecasting_service.get_menu_engineering_matrix())
+
+@app.route("/api/forecasting/report/pdf", methods=["GET"])
+def download_ai_forecasting_pdf_report():
+    curr = request.args.get("currency", "GBP")
+    pdf_bytes = ai_forecasting_service.generate_forecasting_pdf_report(currency=curr)
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=AI_Demand_Forecast_Report_{curr}.pdf"}
+    )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
