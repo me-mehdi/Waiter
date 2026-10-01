@@ -48,148 +48,239 @@ app = Flask(__name__)
 
 app.config['SECRET_KEY'] = Config.SECRET_KEY
 
-INDEX_HTML = """
-<!DOCTYPE html>
+INDEX_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Waiter | UK & Global Hospitality SaaS</title>
+    <title>The Waiter | Enterprise Hospitality SaaS OS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f4f6f9; }
-        .hero { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); color: white; padding: 35px 0; border-bottom: 4px solid #00b4db; }
-        .card-custom { border-radius: 12px; border: 1px solid #e3e8ee; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s; }
-        .card-custom:hover { transform: translateY(-2px); }
-        .badge-status { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 5px 10px; border-radius: 12px; }
-        .upsell-box { background: #fff8e1; border: 1px dashed #ffa000; border-radius: 8px; padding: 12px; }
-        .kds-card { border-left: 4px solid #00b4db; }
-        .kds-preparing { border-left: 4px solid #ff9800; }
-        .kds-ready { border-left: 4px solid #4caf50; }
-        .star-rating { cursor: pointer; color: #ffc107; font-size: 1.5rem; }
-        .star-rating .far { color: #ccc; }
-        .receipt-preview { font-family: 'Courier New', Courier, monospace; background: #fff; border: 1px solid #ddd; padding: 15px; font-size: 0.85rem; border-radius: 6px; }
-        .pin-input { letter-spacing: 12px; font-size: 2rem; text-align: center; font-weight: bold; }
+        :root {
+            --primary-bg: #0f172a;
+            --card-bg: #ffffff;
+            --accent-blue: #0284c7;
+            --accent-hover: #0369a1;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+        }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f8fafc; color: var(--text-dark); }
+        .hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f2942 100%); color: white; padding: 30px 0; border-bottom: 4px solid #38bdf8; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+        .hero .badge { font-weight: 500; padding: 6px 12px; border-radius: 20px; transition: all 0.2s; }
+        .hero .badge:hover { transform: translateY(-1px); filter: brightness(1.1); }
+        .card-custom { border-radius: 12px; border: 1px solid #e2e8f0; background: var(--card-bg); box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s, box-shadow 0.2s; }
+        .card-custom:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.06); }
+        .badge-status { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 5px 10px; border-radius: 20px; font-weight: 700; }
+        .kds-card { border-left: 5px solid #38bdf8; }
+        .kds-preparing { border-left: 5px solid #f59e0b; }
+        .kds-ready { border-left: 5px solid #10b981; }
+        .kds-completed { border-left: 5px solid #64748b; }
+        .star-rating { cursor: pointer; color: #f59e0b; font-size: 1.6rem; }
+        .star-rating .far { color: #cbd5e1; }
+        .receipt-preview { font-family: 'Courier New', Courier, monospace; background: #0f172a; color: #38bdf8; padding: 18px; font-size: 0.85rem; border-radius: 8px; border: 1px solid #334155; }
+        .pin-input { letter-spacing: 14px; font-size: 2.2rem; text-align: center; font-weight: 800; border-radius: 10px; }
+        .nav-pills .nav-link { color: #475569; font-weight: 600; padding: 10px 16px; border-radius: 10px; font-size: 0.88rem; transition: all 0.2s; white-space: nowrap; }
+        .nav-pills .nav-link:hover { color: #0284c7; background-color: #e0f2fe; }
+        .nav-pills .nav-link.active { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3); }
+        .live-dot { height: 8px; width: 8px; background-color: #10b981; border-radius: 50%; display: inline-block; animation: pulse-green 1.5s infinite; }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        .upsell-box { background: #fffbeb; border: 1px dashed #f59e0b; border-radius: 10px; padding: 12px 16px; }
+        .nps-badge { font-size: 2rem; font-weight: 800; }
+        .kpi-card { border-radius: 12px; border: 1px solid #e2e8f0; background: white; padding: 16px; }
+        .kpi-title { font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.5px; }
+        .kpi-val { font-size: 1.6rem; font-weight: 800; }
     </style>
 </head>
 <body>
+    <!-- Top Hero Section -->
     <div class="hero text-center">
         <div class="container">
-            <h1 class="fw-bold"><i class="fa-solid fa-utensils me-2"></i>The Waiter</h1>
-            <p class="lead mb-2">UK & Global Digital Hospitality Ecosystem & "Scan to Invoice" Platform</p>
-            <div class="d-flex justify-content-center flex-wrap gap-2 mt-3">
-                <span class="badge bg-light text-dark"><i class="fa-solid fa-globe me-1"></i>Multi-Currency (£ / € / $)</span>
+            <div class="d-flex justify-content-between align-items-center flex-wrap mb-2">
+                <div class="text-start">
+                    <h2 class="fw-bold mb-0 text-white"><i class="fa-solid fa-utensils me-2 text-info"></i>The Waiter</h2>
+                    <p class="small text-light opacity-75 mb-0">UK & Global Digital Hospitality Enterprise OS & "Scan to Invoice" Platform</p>
+                </div>
+                <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success"><span class="live-dot me-1"></i> System Online</span>
+                    <button class="btn btn-sm btn-outline-light rounded-pill px-3" id="pinAuthBtn" data-bs-toggle="modal" data-bs-target="#pinModal"><i class="fa-solid fa-lock me-1"></i> Manager Mode (PIN: 1234)</button>
+                    <a href="/terminal" target="_blank" class="btn btn-sm btn-info text-dark font-weight-bold rounded-pill px-3 text-decoration-none"><i class="fa-solid fa-desktop me-1"></i> Netoff POS Terminal</a>
+                </div>
+            </div>
+
+            <!-- PDF Quick Action Header Badges Bar -->
+            <div class="d-flex justify-content-center flex-wrap gap-2 mt-3 pt-2 border-top border-secondary border-opacity-50">
+                <span class="badge bg-dark text-light border border-secondary"><i class="fa-solid fa-globe me-1"></i>Multi-Currency (£/€/$)</span>
                 <span class="badge bg-info text-dark"><i class="fa-solid fa-mobile-screen me-1"></i>BYOD Enterprise</span>
-                <span class="badge bg-success"><i class="fa-solid fa-boxes-stacked me-1"></i>Stock Auto-Deduction</span>
-                <span class="badge bg-primary"><i class="fa-solid fa-print me-1"></i>ESC/POS Thermal Print</span>
                 <a href="/tv" target="_blank" class="badge bg-warning text-dark text-decoration-none"><i class="fa-solid fa-tv me-1"></i>Guest TV Display</a>
-                <a href="/api/qr/cards/pdf" target="_blank" class="badge bg-danger text-decoration-none"><i class="fa-solid fa-file-pdf me-1"></i>Print Table QR Cards (PDF)</a>
-                <a href="/api/finance/z-report/pdf" target="_blank" class="badge bg-dark text-warning text-decoration-none"><i class="fa-solid fa-chart-line me-1"></i>Z-Report Daily PDF</a>
+                <a href="/api/qr/cards/pdf" target="_blank" class="badge bg-danger text-white text-decoration-none"><i class="fa-solid fa-file-pdf me-1"></i>Table QR Tents (PDF)</a>
+                <a href="/api/finance/z-report/pdf" target="_blank" class="badge bg-dark text-warning border border-warning text-decoration-none"><i class="fa-solid fa-chart-line me-1"></i>Z-Report Daily PDF</a>
                 <a href="/api/waste/report/pdf" target="_blank" class="badge bg-danger text-white text-decoration-none"><i class="fa-solid fa-trash-can me-1"></i>Waste Audit PDF</a>
                 <a href="/api/tax/report/pdf" target="_blank" class="badge bg-success text-white text-decoration-none"><i class="fa-solid fa-file-invoice-dollar me-1"></i>HMRC VAT PDF</a>
                 <a href="/api/feedback/report/pdf" target="_blank" class="badge bg-primary text-white text-decoration-none"><i class="fa-solid fa-star me-1"></i>NPS Report PDF</a>
                 <a href="/api/inventory/purchase-orders/SEAFOOD/pdf" target="_blank" class="badge bg-info text-dark text-decoration-none"><i class="fa-solid fa-truck-ramp-box me-1"></i>Supplier PO PDF</a>
-                <button class="badge bg-dark text-white border-0" id="pinAuthBtn" data-bs-toggle="modal" data-bs-target="#pinModal"><i class="fa-solid fa-lock me-1"></i> Manager Mode (PIN: 1234)</button>
-                <a href="/terminal" target="_blank" class="badge bg-secondary text-white text-decoration-none"><i class="fa-solid fa-desktop me-1"></i>Netoff Terminal Pro</a>
+                <a href="/api/forecasting/report/pdf" target="_blank" class="badge bg-secondary text-white text-decoration-none"><i class="fa-solid fa-brain me-1"></i>AI Forecast PDF</a>
             </div>
         </div>
     </div>
 
     <div class="container my-4">
-        <!-- Store Location / Venue Switcher Bar -->
-        <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-white border rounded shadow-sm">
-            <div class="d-flex align-items-center gap-2">
-                <i class="fa-solid fa-store text-primary fs-4"></i>
+
+        <!-- Store Location Switcher Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-white border rounded-3 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="p-2 bg-primary bg-opacity-10 text-primary rounded-3 fs-4"><i class="fa-solid fa-store"></i></div>
                 <div>
-                    <span class="small text-muted d-block fw-bold text-uppercase">Active Store Location</span>
+                    <span class="kpi-title d-block">Active Store Location</span>
                     <strong id="activeVenueName" class="fs-6 text-dark">Covent Garden Flagship (UK)</strong>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <label for="venueSelect" class="small fw-bold text-muted mb-0"><i class="fa-solid fa-location-dot me-1"></i>Switch Venue:</label>
+                <label for="venueSelect" class="small fw-bold text-muted mb-0"><i class="fa-solid fa-location-dot me-1"></i>Venue Switcher:</label>
                 <select id="venueSelect" class="form-select form-select-sm w-auto fw-bold text-dark border-primary" onchange="switchVenue(this.value)">
                     <!-- Dynamically populated -->
                 </select>
             </div>
         </div>
 
-        <!-- Navigation Tabs -->
-        <ul class="nav nav-pills mb-4 justify-content-center" id="mainTabs" role="tablist">
+        <!-- Executive Real-time Live KPIs Summary Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="kpi-card shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="kpi-title">Gross Revenue</span>
+                        <i class="fa-solid fa-coins text-success"></i>
+                    </div>
+                    <div class="kpi-val text-success" id="kpiGrossRev">£0.00</div>
+                    <span class="small text-muted" id="kpiTotalOrdersCount">0 orders today</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="kpi-title">Active Kitchen Tickets</span>
+                        <span class="live-dot"></span>
+                    </div>
+                    <div class="kpi-val text-primary" id="kpiActiveKds">0</div>
+                    <span class="small text-muted">Real-time KDS stream</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="kpi-title">Active Staff & Labor</span>
+                        <i class="fa-solid fa-user-clock text-info"></i>
+                    </div>
+                    <div class="kpi-val text-info" id="kpiActiveStaff">0 Staff</div>
+                    <span class="small text-muted" id="kpiLaborCost">£0.00 (0% labor)</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="kpi-title">NPS Guest Score</span>
+                        <i class="fa-solid fa-heart-pulse text-danger"></i>
+                    </div>
+                    <div class="kpi-val text-warning" id="kpiNpsScore">0.0</div>
+                    <span class="small text-muted" id="kpiNpsLabel">0 Reviews</span>
+                </div>
+            </div>
+        </div>
 
+        <!-- Navigation Tabs Bar -->
+        <ul class="nav nav-pills mb-4 justify-content-start justify-content-md-center flex-nowrap overflow-auto py-1" id="mainTabs" role="tablist">
             <li class="nav-item">
-                <button class="nav-link active fw-bold" id="ordering-tab" data-bs-toggle="tab" data-bs-target="#ordering" type="button"><i class="fa-solid fa-qrcode me-1"></i> Scan & Order</button>
+                <button class="nav-link active" id="ordering-tab" data-bs-toggle="tab" data-bs-target="#ordering" type="button"><i class="fa-solid fa-qrcode me-1"></i> Scan & Order</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold" id="kds-tab" data-bs-toggle="tab" data-bs-target="#kds" type="button" onclick="loadKDS()"><i class="fa-solid fa-fire-burner me-1"></i> Kitchen KDS</button>
+                <button class="nav-link" id="kds-tab" data-bs-toggle="tab" data-bs-target="#kds" type="button" onclick="loadKDS()"><i class="fa-solid fa-fire-burner me-1"></i> Kitchen KDS</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button" onclick="loadInventory()"><i class="fa-solid fa-boxes-stacked me-1"></i> Inventory Stock</button>
+                <button class="nav-link" id="bookings-tab" data-bs-toggle="tab" data-bs-target="#bookings" type="button" onclick="loadBookings()"><i class="fa-solid fa-calendar-check me-1"></i> Reservations</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" onclick="loadReviews()"><i class="fa-solid fa-star me-1"></i> Avis Clients (Reviews)</button>
+                <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button" onclick="loadInventory()"><i class="fa-solid fa-boxes-stacked me-1"></i> Stock & POs</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" onclick="loadAnalytics()"><i class="fa-solid fa-chart-line me-1"></i> RevPASH Analytics</button>
+                <button class="nav-link" id="waste-tab" data-bs-toggle="tab" data-bs-target="#waste" type="button" onclick="loadWaste()"><i class="fa-solid fa-trash-can me-1"></i> Kitchen Waste</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button"><i class="fa-solid fa-file-csv me-1"></i> CSV Reports</button>
+                <button class="nav-link" id="tax-tab" data-bs-toggle="tab" data-bs-target="#tax" type="button" onclick="loadTax()"><i class="fa-solid fa-file-invoice-dollar me-1"></i> MTD VAT & Transfers</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" onclick="loadStaff()"><i class="fa-solid fa-user-clock me-1"></i> Staff Shift Clock</button>
+                <button class="nav-link" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" onclick="loadFeedback()"><i class="fa-solid fa-comments me-1"></i> Guest NPS</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold" id="strategy-tab" data-bs-toggle="tab" data-bs-target="#strategy" type="button"><i class="fa-solid fa-file-contract me-1"></i> Strategy Report</button>
+                <button class="nav-link" id="forecasting-tab" data-bs-toggle="tab" data-bs-target="#forecasting" type="button" onclick="loadForecasting()"><i class="fa-solid fa-brain me-1"></i> AI Forecast</button>
             </li>
-
+            <li class="nav-item">
+                <button class="nav-link" id="splitting-tab" data-bs-toggle="tab" data-bs-target="#splitting" type="button" onclick="loadSplitter()"><i class="fa-solid fa-calculator me-1"></i> Bill Split & Loyalty</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" onclick="loadStaff()"><i class="fa-solid fa-user-clock me-1"></i> Staff & Tronc</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button"><i class="fa-solid fa-file-csv me-1"></i> Reports Exporter</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="strategy-tab" data-bs-toggle="tab" data-bs-target="#strategy" type="button"><i class="fa-solid fa-file-contract me-1"></i> Strategy</button>
+            </li>
         </ul>
 
         <div class="tab-content" id="mainTabContent">
+
             <!-- TAB 1: QR Ordering -->
             <div class="tab-pane fade show active" id="ordering" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-8">
+                <div class="row g-4">
+                    <div class="col-lg-8">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h4 class="fw-bold mb-0">Digital Menu</h4>
+                            <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-book-open text-primary me-2"></i>Digital Menu</h4>
                             <div class="d-flex gap-2">
                                 <div class="btn-group btn-group-sm" id="langGroup">
-                                    <button class="btn btn-outline-dark active" onclick="setLanguage('en', this)">EN</button>
-                                    <button class="btn btn-outline-dark" onclick="setLanguage('fr', this)">FR</button>
-                                    <button class="btn btn-outline-dark" onclick="setLanguage('ar', this)">AR</button>
+                                    <button class="btn btn-outline-dark active fw-bold" onclick="setLanguage('en', this)">EN</button>
+                                    <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('fr', this)">FR</button>
+                                    <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('ar', this)">AR</button>
                                 </div>
                                 <div class="btn-group btn-group-sm" id="currGroup">
-                                    <button class="btn btn-dark active" onclick="setCurrency('GBP', this)">£ GBP</button>
-                                    <button class="btn btn-outline-dark" onclick="setCurrency('EUR', this)">€ EUR</button>
-                                    <button class="btn btn-outline-dark" onclick="setCurrency('USD', this)">$ USD</button>
+                                    <button class="btn btn-dark active fw-bold" onclick="setCurrency('GBP', this)">£ GBP</button>
+                                    <button class="btn btn-outline-dark fw-bold" onclick="setCurrency('EUR', this)">€ EUR</button>
+                                    <button class="btn btn-outline-dark fw-bold" onclick="setCurrency('USD', this)">$ USD</button>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Dietary & Allergen Filter Bar -->
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 bg-light rounded border">
-                            <span class="small fw-bold text-muted me-1"><i class="fa-solid fa-filter me-1"></i>Dietary & Allergens:</span>
-                            <button class="btn btn-xs btn-outline-success active rounded-pill px-2 py-0 fw-bold" onclick="filterMenuDiet('all', this)">All</button>
-                            <button class="btn btn-xs btn-outline-success rounded-pill px-2 py-0 fw-bold" onclick="filterMenuDiet('vegan', this)">🌱 Vegan</button>
-                            <button class="btn btn-xs btn-outline-success rounded-pill px-2 py-0 fw-bold" onclick="filterMenuDiet('vegetarian', this)">🥬 Vegetarian</button>
-                            <button class="btn btn-xs btn-outline-success rounded-pill px-2 py-0 fw-bold" onclick="filterMenuDiet('halal', this)">🕌 Halal</button>
-                            <button class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0 fw-bold ms-auto" onclick="toggleExclusion('gluten', this)">🌾 Exclude Gluten</button>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-3 bg-white rounded-3 border shadow-sm">
+                            <span class="small fw-bold text-muted me-1"><i class="fa-solid fa-filter me-1 text-primary"></i>Dietary & Allergens:</span>
+                            <button class="btn btn-sm btn-outline-success active rounded-pill px-3 py-1 fw-bold" onclick="filterMenuDiet('all', this)">All Dishes</button>
+                            <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold" onclick="filterMenuDiet('vegan', this)">🌱 Vegan</button>
+                            <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold" onclick="filterMenuDiet('vegetarian', this)">🥬 Vegetarian</button>
+                            <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold" onclick="filterMenuDiet('halal', this)">🕌 Halal</button>
+                            <button class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold ms-auto" onclick="toggleExclusion('gluten', this)">🌾 Exclude Gluten</button>
                         </div>
 
                         <div id="menuContainer" class="row g-3">
-
                             <!-- Dynamically loaded -->
                         </div>
                     </div>
 
                     <!-- Cart Sidebar -->
-                    <div class="col-md-4">
-                        <div class="card card-custom p-3 bg-white">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h5 class="fw-bold mb-0"><i class="fa-solid fa-cart-shopping me-2"></i>Your Order</h5>
-                                <span class="badge bg-info text-dark" id="activeTableBadge">Table #1</span>
+                    <div class="col-lg-4">
+                        <div class="card card-custom p-4 bg-white sticky-top" style="top: 20px;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold mb-0"><i class="fa-solid fa-cart-shopping text-primary me-2"></i>Your Table Cart</h5>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-primary dropdown-toggle fw-bold" type="button" id="tableSelectBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Table #<span id="activeTableBadgeNum">1</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" id="tableDropdownMenu">
+                                        <!-- Populated 1 to 12 -->
+                                    </ul>
+                                </div>
                             </div>
-                            <hr class="mt-2">
-                            <div id="cartItems" class="mb-3 text-muted small">Cart is empty. Select dishes from menu.</div>
+                            <hr class="my-2">
+                            <div id="cartItems" class="mb-3 text-muted small py-2">Cart is empty. Select dishes from menu.</div>
                             
                             <!-- Smart Upsell Box -->
                             <div id="upsellBox" class="upsell-box mb-3 d-none">
@@ -201,13 +292,13 @@ INDEX_HTML = """
                                 <input type="text" id="promoInput" class="form-control form-control-sm" placeholder="Promo code (e.g. WELCOME10)">
                             </div>
 
-                            <div class="d-flex justify-content-between fw-bold mb-3">
+                            <div class="d-flex justify-content-between fw-bold mb-3 fs-5">
                                 <span>Total:</span>
-                                <span id="cartTotal">£0.00</span>
+                                <span id="cartTotal" class="text-success">£0.00</span>
                             </div>
 
-                            <button class="btn btn-primary w-100 fw-bold mb-2" onclick="placeOrder()"><i class="fa-solid fa-check-circle me-1"></i> Submit Order</button>
-                            <button class="btn btn-outline-warning text-dark w-100 btn-sm" data-bs-toggle="modal" data-bs-target="#reviewModal"><i class="fa-solid fa-comment-dots me-1"></i> Leave Private Feedback</button>
+                            <button class="btn btn-primary w-100 fw-bold mb-2 py-2" onclick="placeOrder()"><i class="fa-solid fa-check-circle me-1"></i> Submit Order</button>
+                            <button class="btn btn-outline-warning text-dark w-100 btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#reviewModal"><i class="fa-solid fa-comment-dots me-1"></i> Leave Private Feedback</button>
                         </div>
                     </div>
                 </div>
@@ -216,131 +307,378 @@ INDEX_HTML = """
             <!-- TAB 2: KDS -->
             <div class="tab-pane fade" id="kds" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="fw-bold mb-0">Kitchen Display System (KDS) & Thermal Printing</h4>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="loadKDS()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
+                    <div>
+                        <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-fire-burner text-warning me-2"></i>Kitchen Display System (KDS)</h4>
+                        <p class="text-muted small mb-0">Zero-Latency SSE SSE Stream & ESC/POS Thermal Printing</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="/api/finance/z-report/pdf" target="_blank" class="btn btn-sm btn-outline-dark"><i class="fa-solid fa-file-pdf text-danger me-1"></i> Daily Z-Report PDF</a>
+                        <button class="btn btn-sm btn-outline-primary fw-bold" onclick="loadKDS()"><i class="fa-solid fa-rotate me-1"></i> Refresh Orders</button>
+                    </div>
                 </div>
                 <div id="kdsContainer" class="row g-3">
                     <!-- Loaded dynamically -->
                 </div>
             </div>
 
-            <!-- TAB 3: Inventory Stock -->
+            <!-- TAB 3: Reservations / Bookings -->
+            <div class="tab-pane fade" id="bookings" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-calendar-check text-success me-2"></i>Guest Table Reservations</h4>
+                        <p class="text-muted small mb-0">Manage guest table bookings, party sizes, and seated status.</p>
+                    </div>
+                    <button class="btn btn-sm btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#bookingModal"><i class="fa-solid fa-plus me-1"></i> New Reservation</button>
+                </div>
+                <div class="card card-custom p-3 bg-white shadow-sm">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Booking Ref</th>
+                                    <th>Guest Name</th>
+                                    <th>Party</th>
+                                    <th>Date & Time</th>
+                                    <th>Special Requests</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bookingsTableBody">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: Inventory & Purchase Orders -->
             <div class="tab-pane fade" id="inventory" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <h4 class="fw-bold mb-0">Automated Stock & Ingredient Tracking</h4>
-                        <p class="text-muted small mb-0">Real-time inventory deduction upon order placement.</p>
+                        <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-boxes-stacked text-primary me-2"></i>Inventory Stock & Purchase Orders</h4>
+                        <p class="text-muted small mb-0">Automated ingredient deductions and supplier purchase order generation.</p>
                     </div>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="loadInventory()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
+                    <button class="btn btn-sm btn-outline-primary fw-bold" onclick="loadInventory()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
                 </div>
-                <div id="inventoryContainer" class="row g-3">
+
+                <!-- Stock Grid -->
+                <div id="inventoryContainer" class="row g-3 mb-4">
                     <!-- Loaded dynamically -->
                 </div>
-            </div>
 
-            <!-- TAB 4: Reviews (Avis Clients) -->
-            <div class="tab-pane fade" id="reviews" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h4 class="fw-bold mb-0">Private Customer Reviews ("Avis clients")</h4>
-                        <p class="text-muted small mb-0">Internal feedback captured before public social reviews.</p>
-                    </div>
-                    <div class="text-end">
-                        <span class="fs-4 fw-bold text-warning" id="avgRatingScore">0.0</span>
-                        <span class="text-muted fs-6">/ 5.0</span>
-                        <div id="avgRatingStars" class="small text-warning"></div>
-                    </div>
-                </div>
-                <div id="reviewsContainer" class="row g-3">
-                    <!-- Dynamically populated -->
-                </div>
-            </div>
-
-            <!-- TAB 5: Analytics -->
-            <div class="tab-pane fade" id="analytics" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="fw-bold mb-0">RevPASH & Performance Analytics</h4>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-dark" onclick="loadAnalytics('GBP')">£ GBP</button>
-                        <button class="btn btn-outline-dark" onclick="loadAnalytics('EUR')">€ EUR</button>
-                        <button class="btn btn-outline-dark" onclick="loadAnalytics('USD')">$ USD</button>
-                    </div>
-                </div>
-                <div class="row g-3 mb-4" id="analyticsStats">
-                    <!-- Dynamically populated -->
-                </div>
-            </div>
-
-            <!-- TAB 6: CSV Reports Exporter -->
-            <div class="tab-pane fade" id="reports" role="tabpanel">
-                <div class="card card-custom p-4 bg-white">
-                    <h4 class="fw-bold mb-3"><i class="fa-solid fa-file-csv text-success me-2"></i>Download CSV Business Reports</h4>
-                    <p class="text-muted">Export operational data for accounting software (Xero, QuickBooks, Sage) and inventory audits.</p>
-                    <div class="row g-3 mt-2">
-                        <div class="col-md-3">
-                            <div class="card p-3 border text-center">
-                                <i class="fa-solid fa-receipt fs-1 text-primary mb-2"></i>
-                                <h6 class="fw-bold">Order Sales History</h6>
-                                <p class="text-muted small">Full log of transactions, table #s, items, and tax amounts.</p>
-                                <a href="/api/export/orders/csv" target="_blank" class="btn btn-primary btn-sm"><i class="fa-solid fa-download me-1"></i> Orders CSV</a>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card p-3 border text-center">
-                                <i class="fa-solid fa-boxes-stacked fs-1 text-success mb-2"></i>
-                                <h6 class="fw-bold">Inventory Audit</h6>
-                                <p class="text-muted small">Current stock levels, dish prices, and stock status warnings.</p>
-                                <a href="/api/export/inventory/csv" target="_blank" class="btn btn-success btn-sm"><i class="fa-solid fa-download me-1"></i> Inventory CSV</a>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card p-3 border text-center">
-                                <i class="fa-solid fa-comments fs-1 text-warning mb-2"></i>
-                                <h6 class="fw-bold">Private Guest Feedback</h6>
-                                <p class="text-muted small">Complete customer rating scores and private review comments.</p>
-                                <a href="/api/export/reviews/csv" target="_blank" class="btn btn-warning text-dark btn-sm"><i class="fa-solid fa-download me-1"></i> Reviews CSV</a>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card p-3 border text-center">
-                                <i class="fa-solid fa-file-pdf fs-1 text-danger mb-2"></i>
-                                <h6 class="fw-bold">Daily Z-Report PDF</h6>
-                                <p class="text-muted small">Formal End-of-Day closing report with VAT sub-totals and sign-off.</p>
-                                <a href="/api/finance/z-report/pdf" target="_blank" class="btn btn-danger btn-sm"><i class="fa-solid fa-file-pdf me-1"></i> Z-Report PDF</a>
-                            </div>
-                        </div>
+                <!-- Supplier Purchase Orders Section -->
+                <div class="card card-custom p-4 bg-white shadow-sm">
+                    <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-truck-ramp-box text-info me-2"></i>Automated Supplier Purchase Orders</h5>
+                    <div id="purchaseOrdersContainer" class="row g-3">
+                        <!-- Loaded dynamically -->
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 7: Staff Time Clock & Shift Tracking -->
-            <div class="tab-pane fade" id="staff" role="tabpanel">
+            <!-- TAB 5: Kitchen Waste Tracker -->
+            <div class="tab-pane fade" id="waste" role="tabpanel">
                 <div class="row g-4">
-                    <!-- Clock In/Out Terminal -->
                     <div class="col-md-5">
                         <div class="card card-custom p-4 bg-white shadow-sm">
-                            <h4 class="fw-bold mb-3"><i class="fa-solid fa-clock text-primary me-2"></i>Staff Shift Clock In/Out</h4>
-                            <p class="text-muted small">Enter staff PIN (Manager: <code>1234</code>, Chef: <code>5555</code>, Server: <code>7777</code> / <code>8888</code>)</p>
-                            <input type="password" id="staffPinInput" class="form-control pin-input mb-3" maxlength="4" placeholder="••••">
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <button class="btn btn-success w-100 fw-bold" onclick="staffClockIn()"><i class="fa-solid fa-right-to-bracket me-1"></i> Clock In</button>
+                            <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-trash-can text-danger me-2"></i>Log Kitchen Waste & Spoilage</h5>
+                            <form id="wasteLogForm" onsubmit="submitWasteLog(event)">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Select Item Wasted</label>
+                                    <select id="wasteItemId" class="form-select form-select-sm" required>
+                                        <option value="item-1">Fresh Atlantic Cod (Fillet)</option>
+                                        <option value="item-2">Wagyu Beef Burger (200g Patty)</option>
+                                        <option value="item-3">Truffle Parmesan Fries</option>
+                                        <option value="item-4">Hand-Cut Triple Cooked Chips</option>
+                                        <option value="item-5">Craft IPA Beer (Pint)</option>
+                                    </select>
                                 </div>
-                                <div class="col-6">
-                                    <button class="btn btn-danger w-100 fw-bold" onclick="staffClockOut()"><i class="fa-solid fa-right-from-bracket me-1"></i> Clock Out</button>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Quantity (Units)</label>
+                                    <input type="number" id="wasteQty" class="form-control form-control-sm" value="1" min="1" required>
                                 </div>
-                            </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Waste Reason</label>
+                                    <select id="wasteReason" class="form-select form-select-sm">
+                                        <option value="SPOILAGE">Spoilage / Expired</option>
+                                        <option value="PREP_TRIM">Preparation Trim Loss</option>
+                                        <option value="OVER_PREP">Over-Prepared Unsold</option>
+                                        <option value="BURNT_ACCIDENT">Burnt / Cooking Accident</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Chef / Staff Name</label>
+                                    <input type="text" id="wasteStaffName" class="form-control form-control-sm" value="Head Chef" required>
+                                </div>
+                                <button type="submit" class="btn btn-danger w-100 fw-bold"><i class="fa-solid fa-floppy-disk me-1"></i> Record Waste Log</button>
+                            </form>
                         </div>
                     </div>
 
-                    <!-- Shift Log & Labor Cost Summary -->
                     <div class="col-md-7">
                         <div class="card card-custom p-4 bg-white shadow-sm mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="fw-bold mb-0"><i class="fa-solid fa-user-check text-success me-2"></i>Active Staff & Labor Cost</h5>
+                                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-chart-pie text-warning me-2"></i>Waste Financial Analytics</h5>
+                                <a href="/api/waste/report/pdf" target="_blank" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-file-pdf me-1"></i> Waste Audit PDF</a>
+                            </div>
+                            <div id="wasteAnalyticsContent" class="row text-center">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="card card-custom p-3 bg-white shadow-sm">
+                            <h6 class="fw-bold mb-2">Recent Kitchen Waste Log</h6>
+                            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>Item</th>
+                                            <th>Qty</th>
+                                            <th>Reason</th>
+                                            <th>Staff</th>
+                                            <th>Cost</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="wasteLogsTableBody">
+                                        <!-- Loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: MTD VAT & Store Transfers -->
+            <div class="tab-pane fade" id="tax" role="tabpanel">
+                <div class="row g-4">
+                    <!-- HMRC MTD VAT Summary -->
+                    <div class="col-md-6">
+                        <div class="card card-custom p-4 bg-white shadow-sm h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-building-columns text-success me-2"></i>HMRC MTD VAT Ledger (UK)</h5>
+                                <a href="/api/tax/report/pdf" target="_blank" class="btn btn-sm btn-success fw-bold"><i class="fa-solid fa-file-pdf me-1"></i> HMRC PDF</a>
+                            </div>
+                            <div id="vatLedgerContainer">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inter-Venue Stock Transfer Dispatch -->
+                    <div class="col-md-6">
+                        <div class="card card-custom p-4 bg-white shadow-sm h-100">
+                            <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-truck-arrow-right text-primary me-2"></i>Inter-Venue Stock Transfer Dispatch</h5>
+                            <form id="transferForm" onsubmit="submitStoreTransfer(event)">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold text-muted">Source Venue</label>
+                                        <select id="transferSourceVenue" class="form-select form-select-sm">
+                                            <option value="venue-1">Covent Garden Flagship</option>
+                                            <option value="venue-2">Soho Boutique Bistro</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold text-muted">Target Venue</label>
+                                        <select id="transferTargetVenue" class="form-select form-select-sm">
+                                            <option value="venue-2" selected>Soho Boutique Bistro</option>
+                                            <option value="venue-1">Covent Garden Flagship</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted">Stock Item & Qty</label>
+                                    <div class="input-group input-group-sm">
+                                        <select id="transferItemId" class="form-select">
+                                            <option value="item-1">Fresh Atlantic Cod (Fillet)</option>
+                                            <option value="item-2">Wagyu Beef Burger (200g Patty)</option>
+                                            <option value="item-3">Truffle Parmesan Fries</option>
+                                        </select>
+                                        <input type="number" id="transferQty" class="form-control" value="10" min="1" style="max-width: 90px;">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Manager Notes</label>
+                                    <input type="text" id="transferNotes" class="form-control form-control-sm" placeholder="e.g. Urgent stock replenishment for weekend rush">
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold mb-3"><i class="fa-solid fa-paper-plane me-1"></i> Dispatch Inter-Venue Waybill</button>
+                            </form>
+                            <h6 class="fw-bold mb-2">Active Transfer Waybills</h6>
+                            <div id="transfersListContainer" style="max-height: 180px; overflow-y: auto;">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 7: Guest NPS & Private Reviews -->
+            <div class="tab-pane fade" id="feedback" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-star text-warning me-2"></i>Guest Sentiment & Net Promoter Score (NPS)</h4>
+                        <p class="text-muted small mb-0">Real-time private feedback captures guest sentiment before public social reviews.</p>
+                    </div>
+                    <a href="/api/feedback/report/pdf" target="_blank" class="btn btn-sm btn-outline-primary fw-bold"><i class="fa-solid fa-file-pdf me-1"></i> NPS Report PDF</a>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card card-custom p-4 bg-white text-center shadow-sm">
+                            <span class="kpi-title mb-2">Net Promoter Score (NPS)</span>
+                            <div class="nps-badge text-primary" id="npsScoreVal">+0</div>
+                            <div class="nps-meter my-3"></div>
+                            <small class="text-muted" id="npsBreakdownText">0 Promoters | 0 Passives | 0 Detractors</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card card-custom p-4 bg-white shadow-sm">
+                            <span class="kpi-title mb-2">Sentiment Distribution</span>
+                            <div id="sentimentDistributionContent" class="py-2">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card card-custom p-4 bg-white shadow-sm">
+                            <span class="kpi-title mb-2">Manager Action Alerts</span>
+                            <div id="managerAlertsContent" class="py-1">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-custom p-4 bg-white shadow-sm">
+                    <h5 class="fw-bold mb-3 text-dark">Recent Private Feedback Submissions</h5>
+                    <div id="reviewsContainer" class="row g-3">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 8: AI Demand Forecasting -->
+            <div class="tab-pane fade" id="forecasting" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-brain text-info me-2"></i>AI Menu Engineering & Demand Forecasting</h4>
+                        <p class="text-muted small mb-0">Predictive machine learning models for kitchen prep quantities and menu profitability matrix.</p>
+                    </div>
+                    <a href="/api/forecasting/report/pdf" target="_blank" class="btn btn-sm btn-info text-dark fw-bold"><i class="fa-solid fa-file-pdf me-1"></i> AI Forecast PDF</a>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-7">
+                        <div class="card card-custom p-4 bg-white shadow-sm">
+                            <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-chart-line text-primary me-2"></i>Predicted Kitchen Prep Demand</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Dish Name</th>
+                                            <th>Avg Daily Sales</th>
+                                            <th>Predicted Demand</th>
+                                            <th>Confidence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="aiForecastTableBody">
+                                        <!-- Loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-5">
+                        <div class="card card-custom p-4 bg-white shadow-sm">
+                            <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-cubes-stacked text-warning me-2"></i>Menu Engineering Matrix</h5>
+                            <div id="menuMatrixContainer">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 9: Bill Splitting & Loyalty -->
+            <div class="tab-pane fade" id="splitting" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card card-custom p-4 bg-white shadow-sm">
+                            <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-calculator text-success me-2"></i>Group Table Bill Splitter</h5>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">Select Active Order to Split</label>
+                                <input type="text" id="splitOrderId" class="form-control form-control-sm" placeholder="Order ID (e.g. ORD-1001)">
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold text-muted">Split Mode</label>
+                                    <select id="splitMode" class="form-select form-select-sm">
+                                        <option value="EVEN">Equal Split (by Guests)</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold text-muted">Number of Guests</label>
+                                    <input type="number" id="splitGuestCount" class="form-control form-control-sm" value="3" min="2" max="10">
+                                </div>
+                            </div>
+                            <button class="btn btn-success btn-sm w-100 fw-bold mb-3" onclick="calculateEvenSplit()"><i class="fa-solid fa-scissors me-1"></i> Calculate Split Shares</button>
+                            <div id="splitResultContainer" class="p-3 bg-light rounded border">
+                                <small class="text-muted">Enter an active order ID to split bill.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card card-custom p-4 bg-white shadow-sm">
+                            <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-gift text-danger me-2"></i>Customer Loyalty Points & Rewards</h5>
+                            <div class="input-group input-group-sm mb-3">
+                                <input type="text" id="loyaltyPhoneInput" class="form-control" placeholder="Guest Phone or Email">
+                                <button class="btn btn-dark fw-bold" onclick="lookupLoyalty()"><i class="fa-solid fa-magnifying-glass me-1"></i> Lookup</button>
+                            </div>
+                            <div id="loyaltyResultContainer" class="p-3 bg-light rounded border">
+                                <small class="text-muted">Enter customer phone/email to check rewards balance.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 10: Staff Shift Clock -->
+            <div class="tab-pane fade" id="staff" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-md-5">
+                        <div class="card card-custom p-4 bg-white shadow-sm">
+                            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-clock text-primary me-2"></i>Staff Shift Clock Terminal</h4>
+                            <p class="text-muted small">Enter staff PIN (Manager: <code>1234</code>, Head Chef: <code>5555</code>, Server: <code>7777</code>)</p>
+                            <input type="password" id="staffPinInput" class="form-control pin-input mb-3" maxlength="4" placeholder="••••">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button class="btn btn-success w-100 fw-bold py-2" onclick="staffClockIn()"><i class="fa-solid fa-right-to-bracket me-1"></i> Clock In</button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-danger w-100 fw-bold py-2" onclick="staffClockOut()"><i class="fa-solid fa-right-from-bracket me-1"></i> Clock Out</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tronc Pool Card -->
+                        <div class="card card-custom p-4 bg-white shadow-sm mt-4">
+                            <h5 class="fw-bold mb-2 text-dark"><i class="fa-solid fa-hand-holding-dollar text-warning me-2"></i>12.5% Tronc Pool Summary</h5>
+                            <div id="troncSummaryContainer">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-7">
+                        <div class="card card-custom p-4 bg-white shadow-sm mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-user-check text-success me-2"></i>Active Roster & Labor Analytics</h5>
                                 <span class="badge bg-primary fs-6" id="activeStaffBadge">0 Active</span>
                             </div>
-                            <div id="laborSummaryContent" class="row text-center mb-3">
+                            <div id="laborSummaryContent" class="row text-center mb-1">
                                 <!-- Dynamically populated -->
                             </div>
                         </div>
@@ -354,14 +692,56 @@ INDEX_HTML = """
                 </div>
             </div>
 
-            <!-- TAB 8: Strategy Document -->
-            <div class="tab-pane fade" id="strategy" role="tabpanel">
-
-                <div class="card card-custom p-4 bg-white">
-                    <h3 class="fw-bold mb-3">UK Market Strategy & Operational Blueprint</h3>
-                    <iframe src="/docs/strategy" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 8px;"></iframe>
+            <!-- TAB 11: CSV Reports Hub -->
+            <div class="tab-pane fade" id="reports" role="tabpanel">
+                <div class="card card-custom p-4 bg-white shadow-sm">
+                    <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-file-csv text-success me-2"></i>Download CSV Business Reports</h4>
+                    <p class="text-muted">Export operational data for accounting software (Xero, QuickBooks, Sage) and inventory audits.</p>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-3">
+                            <div class="card p-3 border text-center h-100">
+                                <i class="fa-solid fa-receipt fs-1 text-primary mb-2"></i>
+                                <h6 class="fw-bold">Order Sales History</h6>
+                                <p class="text-muted small">Full log of transactions, table #s, items, and tax amounts.</p>
+                                <a href="/api/export/orders/csv" target="_blank" class="btn btn-primary btn-sm mt-auto"><i class="fa-solid fa-download me-1"></i> Orders CSV</a>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card p-3 border text-center h-100">
+                                <i class="fa-solid fa-boxes-stacked fs-1 text-success mb-2"></i>
+                                <h6 class="fw-bold">Inventory Audit</h6>
+                                <p class="text-muted small">Current stock levels, dish prices, and stock status warnings.</p>
+                                <a href="/api/export/inventory/csv" target="_blank" class="btn btn-success btn-sm mt-auto"><i class="fa-solid fa-download me-1"></i> Inventory CSV</a>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card p-3 border text-center h-100">
+                                <i class="fa-solid fa-comments fs-1 text-warning mb-2"></i>
+                                <h6 class="fw-bold">Private Guest Feedback</h6>
+                                <p class="text-muted small">Complete customer rating scores and private review comments.</p>
+                                <a href="/api/export/reviews/csv" target="_blank" class="btn btn-warning text-dark btn-sm mt-auto"><i class="fa-solid fa-download me-1"></i> Reviews CSV</a>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card p-3 border text-center h-100">
+                                <i class="fa-solid fa-file-pdf fs-1 text-danger mb-2"></i>
+                                <h6 class="fw-bold">Daily Z-Report PDF</h6>
+                                <p class="text-muted small">Formal End-of-Day closing report with VAT sub-totals and sign-off.</p>
+                                <a href="/api/finance/z-report/pdf" target="_blank" class="btn btn-danger btn-sm mt-auto"><i class="fa-solid fa-file-pdf me-1"></i> Z-Report PDF</a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- TAB 12: Strategy Blueprint -->
+            <div class="tab-pane fade" id="strategy" role="tabpanel">
+                <div class="card card-custom p-4 bg-white shadow-sm">
+                    <h3 class="fw-bold mb-3 text-dark">UK Market Strategy & Operational Blueprint</h3>
+                    <iframe src="/docs/strategy" style="width: 100%; height: 600px; border: 1px solid #cbd5e1; border-radius: 8px;"></iframe>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -387,7 +767,7 @@ INDEX_HTML = """
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-header-title fw-bold" id="reviewModalLabel"><i class="fa-solid fa-heart text-danger me-2"></i>How was your experience?</h5>
+                    <h5 class="modal-title fw-bold" id="reviewModalLabel"><i class="fa-solid fa-heart text-danger me-2"></i>How was your experience?</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-center">
@@ -402,6 +782,55 @@ INDEX_HTML = """
                     <input type="hidden" id="selectedRating" value="5">
                     <textarea id="reviewComment" class="form-control mb-3" rows="3" placeholder="Tell us about the food quality, speed of service, or staff..."></textarea>
                     <button type="button" class="btn btn-primary w-100 fw-bold" onclick="submitGuestReview()">Submit Private Review</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Table Booking Modal -->
+    <div class="modal fade" id="bookingModal" tabindex="-1" aria-labelledby="bookingModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="bookingModalLabel"><i class="fa-solid fa-calendar-plus text-success me-2"></i>New Table Reservation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="newBookingForm" onsubmit="submitBooking(event)">
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-muted">Guest Full Name</label>
+                            <input type="text" id="bkgGuestName" class="form-control form-control-sm" required placeholder="e.g. Lord Charles">
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Phone Number</label>
+                                <input type="text" id="bkgGuestPhone" class="form-control form-control-sm" value="+44 7700 900088">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Email Address</label>
+                                <input type="email" id="bkgGuestEmail" class="form-control form-control-sm" value="charles@domain.co.uk">
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-4">
+                                <label class="form-label small fw-bold text-muted">Party Size</label>
+                                <input type="number" id="bkgPartySize" class="form-control form-control-sm" value="4" min="1" max="20">
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small fw-bold text-muted">Date</label>
+                                <input type="date" id="bkgDate" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small fw-bold text-muted">Time Slot</label>
+                                <input type="time" id="bkgTimeSlot" class="form-control form-control-sm" value="19:30" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">Special Requests / Dietary Notes</label>
+                            <input type="text" id="bkgRequests" class="form-control form-control-sm" placeholder="e.g. Window table preferred, 1 vegan guest">
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 fw-bold"><i class="fa-solid fa-check me-1"></i> Confirm Reservation</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -435,13 +864,19 @@ INDEX_HTML = """
         let isAdminUnlocked = false;
         let currSymbols = { 'GBP': '£', 'EUR': '€', 'USD': '$' };
 
-        const urlParams = new URLSearchParams(window.location.search);
-        if(urlParams.has('table')) {
-            activeTable = parseInt(urlParams.get('table')) || 1;
+        // Table dropdown setup
+        const dropdownMenu = document.getElementById('tableDropdownMenu');
+        if (dropdownMenu) {
+            let html = '';
+            for (let i = 1; i <= 12; i++) {
+                html += `<li><a class="dropdown-item fw-bold" href="#" onclick="selectTable(${i}); return false;">Table #${i}</a></li>`;
+            }
+            dropdownMenu.innerHTML = html;
         }
 
-        function updateTableDisplay() {
-            document.getElementById('activeTableBadge').innerText = 'Table #' + activeTable;
+        function selectTable(num) {
+            activeTable = num;
+            document.getElementById('activeTableBadgeNum').innerText = num;
         }
 
         async function authenticatePIN() {
@@ -454,11 +889,11 @@ INDEX_HTML = """
             const data = await res.json();
             if(data.success) {
                 isAdminUnlocked = true;
-                document.getElementById('pinAuthBtn').className = 'badge bg-success border-0';
+                document.getElementById('pinAuthBtn').className = 'btn btn-sm btn-success rounded-pill px-3';
                 document.getElementById('pinAuthBtn').innerHTML = '<i class="fa-solid fa-shield-halved me-1"></i> Admin Unlocked';
                 const modalEl = document.getElementById('pinModal');
                 const modal = bootstrap.Modal.getInstance(modalEl);
-                modal.hide();
+                if (modal) modal.hide();
                 alert('Manager Mode Unlocked! Admin controls active.');
             } else {
                 alert('Invalid Manager PIN. Try 1234');
@@ -480,6 +915,7 @@ INDEX_HTML = """
             btn.classList.add('active', 'btn-dark');
             currentCart = [];
             loadMenu();
+            loadExecutiveKPIs();
         }
 
         let currentDietary = 'all';
@@ -539,12 +975,12 @@ INDEX_HTML = """
                 return `
                     <div class="col-md-6">
                         <div class="card card-custom p-3 h-100 bg-white">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <h6 class="fw-bold mb-1">${item.name_translated} ${stockBadge}</h6>
-                                <span class="badge bg-primary">${item.price_formatted}</span>
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="fw-bold mb-0 text-dark">${item.name_translated} ${stockBadge}</h6>
+                                <span class="badge bg-primary fs-6">${item.price_formatted}</span>
                             </div>
-                            <p class="text-muted small mb-2">${item.description_translated}</p>
-                            <button class="btn btn-sm btn-outline-primary mt-auto" ${btnDisabled} onclick="addToCart('${item.id}', '${item.name_translated}', ${item.price}, '${item.price_formatted}')">
+                            <p class="text-muted small mb-3">${item.description_translated}</p>
+                            <button class="btn btn-sm btn-outline-primary mt-auto fw-bold" ${btnDisabled} onclick="addToCart('${item.id}', '${item.name_translated}', ${item.price}, '${item.price_formatted}')">
                                 <i class="fa-solid fa-plus me-1"></i> Add to Order
                             </button>
                         </div>
@@ -571,11 +1007,11 @@ INDEX_HTML = """
             let subtotal = 0;
             container.innerHTML = currentCart.map((item, idx) => {
                 subtotal += item.price;
-                return `<div class="d-flex justify-content-between align-items-center mb-1">
+                return `<div class="d-flex justify-content-between align-items-center mb-2 text-dark font-weight-500">
                     <span>${item.name}</span>
                     <div>
-                        <span class="me-2">${item.priceFormatted || sym + item.price.toFixed(2)}</span>
-                        <button class="btn btn-link btn-sm text-danger p-0" onclick="removeFromCart(${idx})">&times;</button>
+                        <span class="me-2 text-primary fw-bold">${item.priceFormatted || sym + item.price.toFixed(2)}</span>
+                        <button class="btn btn-link btn-sm text-danger p-0 fw-bold" onclick="removeFromCart(${idx})">&times;</button>
                     </div>
                 </div>`;
             }).join('');
@@ -606,7 +1042,7 @@ INDEX_HTML = """
                 if(side && side.stock_status !== 'OUT_OF_STOCK') {
                     upsellContainer.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="small fw-bold">${side.name_translated} (+${side.price_formatted})</span>
+                            <span class="small fw-bold text-dark">${side.name_translated} (+${side.price_formatted})</span>
                             <button class="btn btn-xs btn-warning text-dark py-0 px-2 fw-bold" onclick="addToCart('item-4', '${side.name_translated}', ${side.price}, '${side.price_formatted}')">+ Add</button>
                         </div>
                     `;
@@ -636,9 +1072,147 @@ INDEX_HTML = """
             renderCart();
             document.getElementById('upsellBox').classList.add('d-none');
             loadMenu();
+            loadExecutiveKPIs();
             
             const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
             reviewModal.show();
+        }
+
+        async function loadKDS() {
+            const res = await fetch('/api/kds/active');
+            const orders = await res.json();
+            const container = document.getElementById('kdsContainer');
+
+            if(orders.length === 0) {
+                container.innerHTML = '<div class="col-12 text-muted text-center py-4">No active kitchen orders.</div>';
+                return;
+            }
+
+            container.innerHTML = orders.map(order => `
+                <div class="col-md-4">
+                    <div class="card card-custom p-3 bg-white kds-card kds-${order.status.toLowerCase()} shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold mb-0 text-dark">${order.id} (Table #${order.table_number})</h6>
+                            <span class="badge bg-secondary badge-status">${order.status}</span>
+                        </div>
+                        <ul class="small text-dark mb-3 ps-3">
+                            ${order.items.map(i => `<li><strong>${i.name}</strong></li>`).join('')}
+                        </ul>
+                        <div class="d-flex flex-wrap gap-1 align-items-center">
+                            <button class="btn btn-sm btn-success fw-bold" onclick="advanceKDS('${order.id}')">Advance Status</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="cancelOrder('${order.id}')"><i class="fa-solid fa-ban"></i> Refund</button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="previewThermalReceipt('${order.id}')"><i class="fa-solid fa-print"></i> Thermal</button>
+                            <a href="/api/invoice/${order.id}/pdf?currency=${currentCurr}" target="_blank" class="btn btn-sm btn-outline-dark"><i class="fa-solid fa-file-pdf text-danger"></i> PDF</a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function advanceKDS(id) {
+            await fetch('/api/kds/advance/' + id, { method: 'POST' });
+            loadKDS();
+            loadExecutiveKPIs();
+        }
+
+        async function cancelOrder(id) {
+            if(!isAdminUnlocked) {
+                alert('Manager PIN required to cancel & refund orders!');
+                const modal = new bootstrap.Modal(document.getElementById('pinModal'));
+                modal.show();
+                return;
+            }
+            if(!confirm(`Are you sure you want to cancel & refund order ${id}? Items will be returned to inventory.`)) return;
+            await fetch('/api/order/cancel/' + id, { method: 'POST' });
+            alert(`Order ${id} cancelled and refunded. Stock returned.`);
+            loadKDS();
+            loadMenu();
+            loadExecutiveKPIs();
+        }
+
+        async function previewThermalReceipt(id) {
+            const res = await fetch('/api/receipt/' + id + '/txt');
+            const text = await res.text();
+            document.getElementById('receiptPreviewContent').innerText = text;
+            document.getElementById('escposDownloadBtn').href = '/api/receipt/' + id + '/escpos';
+            const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
+            modal.show();
+        }
+
+        async function loadBookings() {
+            const res = await fetch('/api/bookings');
+            const data = await res.json();
+            const tbody = document.getElementById('bookingsTableBody');
+            
+            if (!data.bookings || data.bookings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-muted text-center py-3">No table reservations recorded yet.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.bookings.map(b => {
+                let badgeClass = 'bg-success';
+                if(b.status === 'CANCELLED') badgeClass = 'bg-danger';
+                else if(b.status === 'SEATED') badgeClass = 'bg-info text-dark';
+
+                return `
+                    <tr>
+                        <td><strong>${b.id}</strong></td>
+                        <td>${b.guest_name} <br><small class="text-muted">${b.guest_phone}</small></td>
+                        <td><span class="badge bg-secondary">${b.party_size} Guests</span></td>
+                        <td>${b.booking_date} @ ${b.time_slot}</td>
+                        <td class="small text-muted">${b.special_requests || 'None'}</td>
+                        <td><span class="badge ${badgeClass}">${b.status}</span></td>
+                        <td>
+                            <button class="btn btn-xs btn-outline-info py-0 px-2 fw-bold" onclick="updateBookingStatus('${b.id}', 'SEATED')">Seat Guest</button>
+                            <a href="/api/bookings/${b.id}/pdf" target="_blank" class="btn btn-xs btn-outline-dark py-0 px-2"><i class="fa-solid fa-file-pdf text-danger"></i> PDF</a>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function submitBooking(e) {
+            e.preventDefault();
+            const gName = document.getElementById('bkgGuestName').value.trim();
+            const gPhone = document.getElementById('bkgGuestPhone').value.trim();
+            const gEmail = document.getElementById('bkgGuestEmail').value.trim();
+            const pSize = parseInt(document.getElementById('bkgPartySize').value);
+            const bDate = document.getElementById('bkgDate').value;
+            const bTime = document.getElementById('bkgTimeSlot').value;
+            const bReqs = document.getElementById('bkgRequests').value.trim();
+
+            const res = await fetch('/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    guest_name: gName,
+                    guest_phone: gPhone,
+                    guest_email: gEmail,
+                    party_size: pSize,
+                    booking_date: bDate,
+                    time_slot: bTime,
+                    special_requests: bReqs
+                })
+            });
+            const data = await res.json();
+            if(data.id) {
+                alert(`Reservation ${data.id} confirmed for ${gName}!`);
+                const modalEl = document.getElementById('bookingModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                loadBookings();
+            } else {
+                alert(data.error || 'Failed to create booking');
+            }
+        }
+
+        async function updateBookingStatus(id, newStatus) {
+            await fetch(`/api/bookings/${id}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            loadBookings();
         }
 
         async function loadInventory() {
@@ -653,19 +1227,21 @@ INDEX_HTML = """
 
                 return `
                     <div class="col-md-6 col-lg-4">
-                        <div class="card card-custom p-3 bg-white">
+                        <div class="card card-custom p-3 bg-white shadow-sm">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="fw-bold mb-0">${item.name.en}</h6>
+                                <h6 class="fw-bold mb-0 text-dark">${item.name.en}</h6>
                                 <span class="badge ${badgeClass}">${item.stock_status}</span>
                             </div>
                             <p class="text-muted small mb-2">Current Stock: <strong class="fs-5 text-dark">${item.stock_qty}</strong> units</p>
-                            <button class="btn btn-sm btn-outline-success" onclick="restockItem('${item.id}')">
+                            <button class="btn btn-sm btn-outline-success fw-bold" onclick="restockItem('${item.id}')">
                                 <i class="fa-solid fa-plus me-1"></i> Restock (+20 Units)
                             </button>
                         </div>
                     </div>
                 `;
             }).join('');
+
+            loadPurchaseOrders();
         }
 
         async function restockItem(id) {
@@ -678,6 +1254,239 @@ INDEX_HTML = """
             await fetch(`/api/inventory/restock/${id}`, { method: 'POST' });
             loadInventory();
             loadMenu();
+        }
+
+        async function loadPurchaseOrders() {
+            const res = await fetch('/api/inventory/purchase-orders');
+            const data = await res.json();
+            const container = document.getElementById('purchaseOrdersContainer');
+
+            if(!data.purchase_orders || data.purchase_orders.length === 0) {
+                container.innerHTML = '<div class="col-12 text-muted">No pending low stock purchase orders.</div>';
+                return;
+            }
+
+            container.innerHTML = data.purchase_orders.map(po => `
+                <div class="col-md-6">
+                    <div class="card p-3 border border-secondary border-opacity-25 rounded-3 bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong class="text-primary">${po.po_number}</strong>
+                            <span class="badge bg-dark">${po.supplier_category}</span>
+                        </div>
+                        <p class="small text-dark mb-1">Supplier: <strong>${po.supplier_name}</strong> (${po.supplier_email})</p>
+                        <p class="small text-muted mb-2">Total Reorder Cost: <strong class="text-success">£${po.total_cost.toFixed(2)}</strong></p>
+                        <div class="d-flex gap-2">
+                            <a href="/api/inventory/purchase-orders/${po.supplier_category}/pdf" target="_blank" class="btn btn-xs btn-outline-danger py-1 px-2 fw-bold"><i class="fa-solid fa-file-pdf me-1"></i> Download PO PDF</a>
+                            <a href="/api/inventory/purchase-orders/${po.supplier_category}/email" target="_blank" class="btn btn-xs btn-outline-dark py-1 px-2"><i class="fa-solid fa-envelope me-1"></i> View Email Text</a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadWaste() {
+            const resAnal = await fetch('/api/waste/analytics?currency=' + currentCurr);
+            const dataAnal = await resAnal.json();
+            const sym = dataAnal.currency_symbol || '£';
+
+            document.getElementById('wasteAnalyticsContent').innerHTML = `
+                <div class="col-4">
+                    <div class="p-2 border rounded bg-light">
+                        <small class="text-muted d-block text-uppercase">Total Waste Records</small>
+                        <strong class="fs-5 text-dark">${dataAnal.total_waste_records}</strong>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-2 border rounded bg-light">
+                        <small class="text-muted d-block text-uppercase">Items Wasted</small>
+                        <strong class="fs-5 text-warning">${dataAnal.total_quantity_wasted} units</strong>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-2 border rounded bg-light">
+                        <small class="text-muted d-block text-uppercase">Financial Loss</small>
+                        <strong class="fs-5 text-danger">${sym}${dataAnal.total_financial_loss.toFixed(2)}</strong>
+                    </div>
+                </div>
+            `;
+
+            const resLogs = await fetch('/api/waste/logs');
+            const dataLogs = await resLogs.json();
+            const tbody = document.getElementById('wasteLogsTableBody');
+
+            if(!dataLogs.waste_logs || dataLogs.waste_logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-2">No waste logs recorded.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = dataLogs.waste_logs.map(w => `
+                <tr>
+                    <td class="small">${w.timestamp.substring(11, 16)}</td>
+                    <td><strong>${w.item_name}</strong></td>
+                    <td><span class="badge bg-secondary">${w.quantity}</span></td>
+                    <td><span class="badge bg-danger">${w.reason}</span></td>
+                    <td class="small">${w.logged_by}</td>
+                    <td class="fw-bold text-danger">${sym}${w.cost_loss.toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function submitWasteLog(e) {
+            e.preventDefault();
+            const itemId = document.getElementById('wasteItemId').value;
+            const qty = parseInt(document.getElementById('wasteQty').value);
+            const reason = document.getElementById('wasteReason').value;
+            const staffName = document.getElementById('wasteStaffName').value.trim();
+
+            const res = await fetch('/api/waste/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    quantity: qty,
+                    reason: reason,
+                    staff_name: staffName
+                })
+            });
+            const data = await res.json();
+            if(data.id) {
+                alert(`Waste log recorded! Financial loss: £${data.cost_loss.toFixed(2)}`);
+                loadWaste();
+            } else {
+                alert(data.error || 'Failed to record waste log');
+            }
+        }
+
+        async function loadTax() {
+            const resVat = await fetch('/api/tax/vat-ledger?currency=' + currentCurr);
+            const dataVat = await resVat.json();
+            const ledger = dataVat.vat_ledger;
+            const sym = dataVat.currency_symbol || '£';
+
+            document.getElementById('vatLedgerContainer').innerHTML = `
+                <div class="row text-center mb-3">
+                    <div class="col-6 mb-2">
+                        <div class="p-2 border rounded bg-light">
+                            <small class="text-muted d-block text-uppercase">Standard 20% Net Sales</small>
+                            <strong class="fs-5 text-dark">${sym}${ledger.standard_rate_net_sales.toFixed(2)}</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-2">
+                        <div class="p-2 border rounded bg-light">
+                            <small class="text-muted d-block text-uppercase">Zero-Rated Net Sales</small>
+                            <strong class="fs-5 text-dark">${sym}${ledger.zero_rate_net_sales.toFixed(2)}</strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 border rounded bg-light">
+                            <small class="text-muted d-block text-uppercase">Output VAT Collected</small>
+                            <strong class="fs-5 text-primary">${sym}${ledger.output_vat_collected.toFixed(2)}</strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 border rounded bg-light">
+                            <small class="text-muted d-block text-uppercase">Net VAT Payable</small>
+                            <strong class="fs-5 text-success">${sym}${ledger.net_vat_payable.toFixed(2)}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-2 border-top text-muted small">
+                    <i class="fa-solid fa-circle-check text-success me-1"></i> HMRC MTD Compliance Scheme: <strong>${ledger.scheme}</strong>
+                </div>
+            `;
+
+            loadTransfers();
+        }
+
+        async function loadTransfers() {
+            const res = await fetch('/api/transfers');
+            const data = await res.json();
+            const container = document.getElementById('transfersListContainer');
+
+            if(!data.transfers || data.transfers.length === 0) {
+                container.innerHTML = '<div class="text-muted small">No inter-venue waybills recorded yet.</div>';
+                return;
+            }
+
+            container.innerHTML = data.transfers.map(t => `
+                <div class="d-flex justify-content-between align-items-center p-2 mb-2 border-bottom">
+                    <div>
+                        <strong class="d-block text-dark">${t.id} <span class="badge bg-secondary ms-1">${t.status}</span></strong>
+                        <small class="text-muted">${t.source_venue_id} ➔ ${t.target_venue_id} (${t.items.length} items)</small>
+                    </div>
+                    <a href="/api/transfers/${t.id}/pdf" target="_blank" class="btn btn-xs btn-outline-dark"><i class="fa-solid fa-file-pdf text-danger"></i> Waybill PDF</a>
+                </div>
+            `).join('');
+        }
+
+        async function submitStoreTransfer(e) {
+            e.preventDefault();
+            const srcV = document.getElementById('transferSourceVenue').value;
+            const tgtV = document.getElementById('transferTargetVenue').value;
+            const itemId = document.getElementById('transferItemId').value;
+            const qty = parseInt(document.getElementById('transferQty').value);
+            const notes = document.getElementById('transferNotes').value.trim();
+
+            const res = await fetch('/api/transfers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    source_venue_id: srcV,
+                    target_venue_id: tgtV,
+                    items: [{ item_id: itemId, quantity: qty }],
+                    notes: notes
+                })
+            });
+            const data = await res.json();
+            if(data.id) {
+                alert(`Inter-venue waybill ${data.id} dispatched!`);
+                loadTransfers();
+            } else {
+                alert(data.error || 'Failed to dispatch store transfer');
+            }
+        }
+
+        async function loadFeedback() {
+            const resNps = await fetch('/api/feedback/nps');
+            const dataNps = await resNps.json();
+            document.getElementById('npsScoreVal').innerText = (dataNps.nps_score > 0 ? '+' : '') + dataNps.nps_score.toFixed(0);
+            document.getElementById('npsBreakdownText').innerText = `${dataNps.promoters} Promoters | ${dataNps.passives} Passives | ${dataNps.detractors} Detractors`;
+
+            const resSent = await fetch('/api/feedback/sentiment');
+            const dataSent = await resSent.json();
+            const sentDist = dataSent.sentiment_distribution;
+
+            document.getElementById('sentimentDistributionContent').innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-success">Positive</span>
+                    <strong class="text-success">${sentDist.POSITIVE || 0} reviews</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-warning text-dark">Neutral</span>
+                    <strong class="text-warning">${sentDist.NEUTRAL || 0} reviews</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge bg-danger">Negative</span>
+                    <strong class="text-danger">${sentDist.NEGATIVE || 0} reviews</strong>
+                </div>
+            `;
+
+            const resAlerts = await fetch('/api/feedback/alerts');
+            const dataAlerts = await resAlerts.json();
+            const alerts = dataAlerts.manager_alerts;
+
+            if(!alerts || alerts.length === 0) {
+                document.getElementById('managerAlertsContent').innerHTML = '<div class="text-muted small">No urgent manager intervention alerts.</div>';
+            } else {
+                document.getElementById('managerAlertsContent').innerHTML = alerts.map(a => `
+                    <div class="p-2 mb-2 bg-danger bg-opacity-10 border border-danger rounded text-danger small">
+                        <strong><i class="fa-solid fa-triangle-exclamation me-1"></i> ${a.alert_type} (Table #${a.table_number})</strong>
+                        <div class="text-dark font-italic">"${a.comment}"</div>
+                    </div>
+                `).join('');
+            }
+
+            loadReviews();
         }
 
         function setRating(stars) {
@@ -709,24 +1518,15 @@ INDEX_HTML = """
             alert('Thank you! Your feedback has been sent to management.');
             const modalEl = document.getElementById('reviewModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
-            modal.hide();
+            if (modal) modal.hide();
             document.getElementById('reviewComment').value = '';
+            loadFeedback();
+            loadExecutiveKPIs();
         }
 
         async function loadReviews() {
             const res = await fetch('/api/reviews');
             const data = await res.json();
-            
-            document.getElementById('avgRatingScore').innerText = data.average_rating.toFixed(1);
-            
-            const fullStars = Math.floor(data.average_rating);
-            let starsHtml = '';
-            for(let i=0; i<5; i++) {
-                if(i < fullStars) starsHtml += '<i class="fa-solid fa-star me-1"></i>';
-                else starsHtml += '<i class="fa-regular fa-star me-1"></i>';
-            }
-            document.getElementById('avgRatingStars').innerHTML = starsHtml;
-
             const container = document.getElementById('reviewsContainer');
             if(data.reviews.length === 0) {
                 container.innerHTML = '<div class="col-12 text-muted">No private reviews received yet.</div>';
@@ -743,7 +1543,7 @@ INDEX_HTML = """
                     <div class="col-md-6">
                         <div class="card card-custom p-3 bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-bold">Table #${rev.table_number}</span>
+                                <span class="fw-bold text-dark">Table #${rev.table_number}</span>
                                 <div>${rStars}</div>
                             </div>
                             <p class="text-dark mb-1 font-italic">"${rev.comment || 'No written comment.'}"</p>
@@ -754,129 +1554,128 @@ INDEX_HTML = """
             }).join('');
         }
 
-        async function loadKDS() {
-            const res = await fetch('/api/kds/active');
-            const orders = await res.json();
-            const container = document.getElementById('kdsContainer');
+        async function loadForecasting() {
+            const resPrep = await fetch('/api/forecasting/prep-demand');
+            const dataPrep = await resPrep.json();
+            const tbody = document.getElementById('aiForecastTableBody');
 
-            if(orders.length === 0) {
-                container.innerHTML = '<div class="col-12 text-muted">No active kitchen orders.</div>';
-                return;
+            if(!dataPrep.prep_demand_forecasts || dataPrep.prep_demand_forecasts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-muted py-2">No prep forecasts generated.</td></tr>';
+            } else {
+                tbody.innerHTML = dataPrep.prep_demand_forecasts.map(f => `
+                    <tr>
+                        <td><strong>${f.item_name}</strong></td>
+                        <td>${f.historical_avg_daily_sales} units</td>
+                        <td><strong class="text-primary fs-6">${f.predicted_prep_units} units</strong></td>
+                        <td><span class="badge bg-success">${(f.confidence_score * 100).toFixed(0)}% AI Confidence</span></td>
+                    </tr>
+                `).join('');
             }
 
-            container.innerHTML = orders.map(order => `
-                <div class="col-md-4">
-                    <div class="card card-custom p-3 bg-white kds-card kds-${order.status.toLowerCase()}">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="fw-bold mb-0">${order.id} (Table #${order.table_number})</h6>
-                            <span class="badge bg-secondary badge-status">${order.status}</span>
-                        </div>
-                        <ul class="small text-muted mb-3 ps-3">
-                            ${order.items.map(i => `<li>${i.name}</li>`).join('')}
-                        </ul>
-                        <div class="d-flex flex-wrap gap-1 align-items-center">
-                            <button class="btn btn-sm btn-success" onclick="advanceKDS('${order.id}')">Advance Status</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="cancelOrder('${order.id}')"><i class="fa-solid fa-ban"></i> Cancel/Refund</button>
-                            <button class="btn btn-sm btn-outline-primary" onclick="previewThermalReceipt('${order.id}')"><i class="fa-solid fa-print"></i> Thermal</button>
-                            <a href="/api/invoice/${order.id}/pdf?currency=${currentCurr}" target="_blank" class="btn btn-sm btn-outline-dark"><i class="fa-solid fa-file-pdf text-danger"></i> PDF</a>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
+            const resMatrix = await fetch('/api/forecasting/menu-matrix');
+            const dataMatrix = await resMatrix.json();
+            const cats = dataMatrix.categories;
 
-        async function previewThermalReceipt(id) {
-            const res = await fetch('/api/receipt/' + id + '/txt');
-            const text = await res.text();
-            document.getElementById('receiptPreviewContent').innerText = text;
-            document.getElementById('escposDownloadBtn').href = '/api/receipt/' + id + '/escpos';
-            const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
-            modal.show();
-        }
-
-        async function advanceKDS(id) {
-            await fetch('/api/kds/advance/' + id, { method: 'POST' });
-            loadKDS();
-        }
-
-        async function cancelOrder(id) {
-            if(!isAdminUnlocked) {
-                alert('Manager PIN required to cancel & refund orders!');
-                const modal = new bootstrap.Modal(document.getElementById('pinModal'));
-                modal.show();
-                return;
-            }
-            if(!confirm(`Are you sure you want to cancel & refund order ${id}? Items will be returned to inventory.`)) return;
-            await fetch('/api/order/cancel/' + id, { method: 'POST' });
-            alert(`Order ${id} cancelled and refunded. Stock returned.`);
-            loadKDS();
-            loadMenu();
-        }
-
-        async function loadAnalytics(currency) {
-            const curr = currency || currentCurr;
-            const res = await fetch('/api/analytics?currency=' + curr);
-            const data = await res.json();
-            const container = document.getElementById('analyticsStats');
-            const sym = data.currency_symbol || '£';
-            container.innerHTML = `
-                <div class="col-md-3">
-                    <div class="card card-custom p-3 bg-white text-center">
-                        <small class="text-muted text-uppercase">Total Revenue (${data.currency})</small>
-                        <h3 class="fw-bold text-success">${sym}${data.total_revenue.toFixed(2)}</h3>
-                    </div>
+            document.getElementById('menuMatrixContainer').innerHTML = `
+                <div class="p-2 mb-2 bg-success bg-opacity-10 border border-success rounded">
+                    <strong class="text-success d-block"><i class="fa-solid fa-star me-1"></i> STARS (High Margin & High Demand)</strong>
+                    <small class="text-dark">${cats.STARS.map(i => i.name).join(', ') || 'None'}</small>
                 </div>
-                <div class="col-md-3">
-                    <div class="card card-custom p-3 bg-white text-center">
-                        <small class="text-muted text-uppercase">Total Orders</small>
-                        <h3 class="fw-bold text-primary">${data.total_orders}</h3>
-                    </div>
+                <div class="p-2 mb-2 bg-info bg-opacity-10 border border-info rounded">
+                    <strong class="text-info d-block"><i class="fa-solid fa-horse me-1"></i> WORKHORSES (High Demand & Low Margin)</strong>
+                    <small class="text-dark">${cats.PLOWHORSES.map(i => i.name).join(', ') || 'None'}</small>
                 </div>
-                <div class="col-md-3">
-                    <div class="card card-custom p-3 bg-white text-center">
-                        <small class="text-muted text-uppercase">Avg Order Value</small>
-                        <h3 class="fw-bold text-info">${sym}${data.average_transaction_value.toFixed(2)}</h3>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card card-custom p-3 bg-white text-center">
-                        <small class="text-muted text-uppercase">RevPASH (${data.currency})</small>
-                        <h3 class="fw-bold text-warning text-dark">${sym}${data.rev_pash.toFixed(2)}</h3>
-                    </div>
+                <div class="p-2 mb-2 bg-warning bg-opacity-10 border border-warning rounded">
+                    <strong class="text-warning text-dark d-block"><i class="fa-solid fa-puzzle-piece me-1"></i> PUZZLES (High Margin & Low Demand)</strong>
+                    <small class="text-dark">${cats.PUZZLES.map(i => i.name).join(', ') || 'None'}</small>
                 </div>
             `;
         }
 
-        async function loadVenues() {
-            try {
-                const res = await fetch('/api/venues');
-                const data = await res.json();
-                const select = document.getElementById('venueSelect');
-                select.innerHTML = data.venues.map(v => `
-                    <option value="${v.id}" ${v.id === data.active_venue.id ? 'selected' : ''}>
-                        ${v.name} (${v.market} - ${v.currency})
-                    </option>
-                `).join('');
-                document.getElementById('activeVenueName').innerText = `${data.active_venue.name} (${data.active_venue.market})`;
-            } catch(e) { console.error(e); }
+        async function calculateEvenSplit() {
+            const orderId = document.getElementById('splitOrderId').value.trim() || 'ORD-1001';
+            const guestCount = parseInt(document.getElementById('splitGuestCount').value);
+
+            const res = await fetch(`/api/orders/${orderId}/split/even`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ num_guests: guestCount, include_service_charge: true })
+            });
+            const data = await res.json();
+            const container = document.getElementById('splitResultContainer');
+
+            if(data.splits) {
+                container.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong class="text-dark">Order ${data.order_id} Total: £${data.grand_total.toFixed(2)}</strong>
+                        <span class="badge bg-primary">${data.splits.length} Guest Shares</span>
+                    </div>
+                    ${data.splits.map((s, idx) => `
+                        <div class="d-flex justify-content-between align-items-center p-2 mb-1 bg-white border rounded">
+                            <span>Guest ${idx + 1} Share: <strong class="text-success">£${s.amount.toFixed(2)}</strong></span>
+                            <a href="/api/orders/${data.order_id}/split/sub-receipt/${idx + 1}" target="_blank" class="btn btn-xs btn-outline-dark py-0 px-2"><i class="fa-solid fa-receipt me-1"></i> Sub-Receipt</a>
+                        </div>
+                    `).join('')}
+                `;
+            } else {
+                container.innerHTML = `<div class="text-danger small">${data.error || 'Failed to split order.'}</div>`;
+            }
         }
 
-        async function switchVenue(venueId) {
-            try {
-                const res = await fetch('/api/venues/switch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ venue_id: venueId })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    document.getElementById('activeVenueName').innerText = `${data.active_venue.name} (${data.active_venue.market})`;
-                    if(data.active_venue.currency) {
-                        changeCurrency(data.active_venue.currency);
-                    }
-                    alert(`Switched active store location to: ${data.active_venue.name}`);
-                }
-            } catch(e) { console.error(e); }
+        async function lookupLoyalty() {
+            const input = document.getElementById('loyaltyPhoneInput').value.trim();
+            if(!input) return alert('Enter guest phone or email');
+
+            const res = await fetch(`/api/loyalty/account?identifier=${encodeURIComponent(input)}`);
+            const data = await res.json();
+            const container = document.getElementById('loyaltyResultContainer');
+
+            if(data.success) {
+                const acc = data.account;
+                container.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong class="text-dark">${acc.guest_name}</strong>
+                        <span class="badge bg-danger fs-6">${acc.points_balance} Points</span>
+                    </div>
+                    <p class="small text-muted mb-2">Tier: <strong>${acc.tier}</strong> | Total Spent: £${acc.total_spend.toFixed(2)}</p>
+                    <button class="btn btn-xs btn-outline-danger w-100 fw-bold py-1" onclick="redeemLoyaltyReward('${acc.phone_or_email}')">Redeem Free Dessert (100 pts)</button>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="text-muted small mb-2">No account found for "${input}".</div>
+                    <button class="btn btn-xs btn-primary w-100 fw-bold py-1" onclick="registerLoyaltyAccount('${input}')">+ Register New VIP Loyalty Account</button>
+                `;
+            }
+        }
+
+        async function registerLoyaltyAccount(identifier) {
+            const name = prompt("Enter Guest Name:", "VIP Guest");
+            if(!name) return;
+            const res = await fetch('/api/loyalty/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone_or_email: identifier, guest_name: name })
+            });
+            const data = await res.json();
+            if(data.success) {
+                alert(`VIP Loyalty Account registered for ${name}!`);
+                lookupLoyalty();
+            }
+        }
+
+        async function redeemLoyaltyReward(identifier) {
+            const res = await fetch('/api/loyalty/redeem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone_or_email: identifier, reward_key: 'free_dessert' })
+            });
+            const data = await res.json();
+            if(data.success) {
+                alert(`Reward Redeemed! Free Dessert voucher issued: ${data.voucher_code}`);
+                lookupLoyalty();
+            } else {
+                alert(data.error || 'Failed to redeem reward');
+            }
         }
 
         async function staffClockIn() {
@@ -892,6 +1691,7 @@ INDEX_HTML = """
                 alert(data.already_clocked_in ? `Already clocked in as ${data.shift.staff_name}` : `Clocked in successfully as ${data.shift.staff_name}`);
                 document.getElementById('staffPinInput').value = '';
                 loadStaff();
+                loadExecutiveKPIs();
             } else {
                 alert(data.error || 'Failed to clock in');
             }
@@ -910,6 +1710,7 @@ INDEX_HTML = """
                 alert(`Clocked out ${data.shift.staff_name}. Shift hours: ${data.shift.total_hours} hrs, Labor cost: £${data.shift.labor_cost.toFixed(2)}`);
                 document.getElementById('staffPinInput').value = '';
                 loadStaff();
+                loadExecutiveKPIs();
             } else {
                 alert(data.error || 'Failed to clock out');
             }
@@ -948,13 +1749,13 @@ INDEX_HTML = """
                 `;
 
                 const logContainer = document.getElementById('shiftHistoryContainer');
-                if(dataShifts.shifts.length === 0) {
+                if(!dataShifts.shifts || dataShifts.shifts.length === 0) {
                     logContainer.innerHTML = '<div class="text-muted small text-center my-3">No shifts recorded yet</div>';
                 } else {
                     logContainer.innerHTML = dataShifts.shifts.map(s => `
                         <div class="d-flex justify-content-between align-items-center p-2 mb-2 border-bottom">
                             <div>
-                                <strong class="d-block">${s.staff_name} <span class="badge bg-secondary ms-1">${s.role}</span></strong>
+                                <strong class="d-block text-dark">${s.staff_name} <span class="badge bg-secondary ms-1">${s.role}</span></strong>
                                 <small class="text-muted">In: ${s.clock_in.substring(11, 16)} | Out: ${s.clock_out ? s.clock_out.substring(11, 16) : 'ACTIVE'}</small>
                             </div>
                             <div class="text-end">
@@ -964,28 +1765,103 @@ INDEX_HTML = """
                         </div>
                     `).join('');
                 }
+
+                // Tronc Summary
+                const resTronc = await fetch('/api/finance/tips?currency=' + currentCurr);
+                const dataTronc = await resTronc.json();
+                document.getElementById('troncSummaryContainer').innerHTML = `
+                    <div class="p-3 bg-light border rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small text-muted">Total Tips Collected:</span>
+                            <strong class="text-success">${sym}${dataTronc.total_tips_collected.toFixed(2)}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small text-muted">Staff Tronc Share (80%):</span>
+                            <strong class="text-primary">${sym}${dataTronc.tronc_pool_for_staff.toFixed(2)}</strong>
+                        </div>
+                        <small class="text-muted d-block border-top pt-2">UK Employment Rights Bill 2024 Compliant — 100% tip pass-through to floor & kitchen staff.</small>
+                    </div>
+                `;
+
             } catch(e) { console.error(e); }
         }
 
-        // Initial load
-        loadVenues();
-        updateTableDisplay();
-        loadMenu();
+        async function loadExecutiveKPIs() {
+            try {
+                const res = await fetch('/api/analytics?currency=' + currentCurr);
+                const data = await res.json();
+                const sym = data.currency_symbol || '£';
+                document.getElementById('kpiGrossRev').innerText = sym + data.total_revenue.toFixed(2);
+                document.getElementById('kpiTotalOrdersCount').innerText = `${data.total_orders} orders today`;
 
+                const resKds = await fetch('/api/kds/active');
+                const kdsOrders = await resKds.json();
+                document.getElementById('kpiActiveKds').innerText = kdsOrders.length;
+
+                const resLabor = await fetch('/api/staff/labor-summary?currency=' + currentCurr);
+                const labor = await resLabor.json();
+                document.getElementById('kpiActiveStaff').innerText = `${labor.active_staff_count} Staff`;
+                document.getElementById('kpiLaborCost').innerText = `${sym}${labor.total_labor_cost.toFixed(2)} (${labor.labor_cost_percentage}% labor)`;
+
+                const resNps = await fetch('/api/feedback/nps');
+                const nps = await resNps.json();
+                document.getElementById('kpiNpsScore').innerText = (nps.nps_score > 0 ? '+' : '') + nps.nps_score.toFixed(0);
+                document.getElementById('kpiNpsLabel').innerText = `${nps.total_responses} Guest Feedback`;
+
+            } catch(e) { console.error(e); }
+        }
+
+        async function loadVenues() {
+            try {
+                const res = await fetch('/api/venues');
+                const data = await res.json();
+                const select = document.getElementById('venueSelect');
+                select.innerHTML = data.venues.map(v => `
+                    <option value="${v.id}" ${v.id === data.active_venue.id ? 'selected' : ''}>
+                        ${v.name} (${v.market} - ${v.currency})
+                    </option>
+                `).join('');
+                document.getElementById('activeVenueName').innerText = `${data.active_venue.name} (${data.active_venue.market})`;
+            } catch(e) { console.error(e); }
+        }
+
+        async function switchVenue(venueId) {
+            try {
+                const res = await fetch('/api/venues/switch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ venue_id: venueId })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    document.getElementById('activeVenueName').innerText = `${data.active_venue.name} (${data.active_venue.market})`;
+                    alert(`Switched active store location to: ${data.active_venue.name}`);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // Set default date picker to today
+        const bkgDateInput = document.getElementById('bkgDate');
+        if (bkgDateInput) {
+            bkgDateInput.value = new Date().toISOString().split('T')[0];
+        }
+
+        // Initial Page Initialization
+        loadVenues();
+        loadMenu();
+        loadExecutiveKPIs();
 
         // Zero-Latency Server-Sent Events (SSE) Listener
         if ('EventSource' in window) {
             const evtSource = new EventSource('/api/kds/events');
             evtSource.addEventListener('kds_update', function(e) {
                 loadKDS();
+                loadExecutiveKPIs();
             });
         }
-
-
     </script>
 </body>
-</html>
-"""
+</html>"""
 
 TV_HTML = """
 <!DOCTYPE html>
