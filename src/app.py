@@ -34,6 +34,7 @@ from src.modules.waste_tracker import waste_tracker_service
 from src.modules.feedback_analytics import feedback_analytics_service
 from src.modules.table_booking import table_booking_service
 from src.modules.store_transfers import store_transfers_service
+from src.modules.tax_compliance import tax_compliance_service
 
 app = Flask(__name__)
 
@@ -1960,6 +1961,31 @@ def download_transfer_manifest_pdf(transfer_id):
         )
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
+
+# --- 16. Multi-Tax Compliance & HMRC MTD VAT Endpoints ---
+@app.route("/api/tax/breakdown/<order_id>", methods=["GET"])
+def get_tax_breakdown(order_id):
+    try:
+        breakdown = tax_compliance_service.calculate_tax_breakdown(order_id)
+        return jsonify(breakdown)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+@app.route("/api/tax/vat-ledger", methods=["GET"])
+def get_vat_ledger():
+    curr = request.args.get("currency", "GBP")
+    ledger = tax_compliance_service.generate_vat_ledger(currency=curr)
+    return jsonify(ledger)
+
+@app.route("/api/tax/report/pdf", methods=["GET"])
+def download_vat_report_pdf():
+    curr = request.args.get("currency", "GBP")
+    pdf_bytes = tax_compliance_service.generate_vat_report_pdf(currency=curr)
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=HMRC_VAT_Report_{curr}.pdf"}
+    )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))

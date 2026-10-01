@@ -544,6 +544,26 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIsNotNone(pdf_bytes)
         self.assertTrue(pdf_bytes.startswith(b"%PDF"))
 
+    def test_multi_tax_compliance_and_hmrc_mtd_vat(self):
+        from src.modules.tax_compliance import tax_compliance_service
+
+        order = qr_ordering_service.submit_order(table_number=3, item_ids=["item-1", "item-2"])
+        order_id = order["id"]
+
+        tax_info = tax_compliance_service.calculate_tax_breakdown(order_id)
+        self.assertEqual(tax_info["market"], "UK")
+        self.assertEqual(tax_info["tax_rate_pct"], "20.00%")
+        self.assertGreater(tax_info["tax_amount"], 0.0)
+
+        ledger = tax_compliance_service.generate_vat_ledger(currency="GBP")
+        self.assertIn("mtd_boxes", ledger)
+        self.assertIn("box_1_vat_due", ledger["mtd_boxes"])
+        self.assertIn("box_5_net_vat_payable", ledger["mtd_boxes"])
+
+        pdf_bytes = tax_compliance_service.generate_vat_report_pdf(currency="GBP")
+        self.assertIsNotNone(pdf_bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+
 if __name__ == "__main__":
     unittest.main()
 
