@@ -35,6 +35,7 @@ from src.modules.feedback_analytics import feedback_analytics_service
 from src.modules.table_booking import table_booking_service
 from src.modules.store_transfers import store_transfers_service
 from src.modules.tax_compliance import tax_compliance_service
+from src.modules.integrations import integrations_service
 
 app = Flask(__name__)
 
@@ -1990,6 +1991,42 @@ def download_vat_report_pdf():
         mimetype="application/pdf",
         headers={"Content-Disposition": f"inline; filename=HMRC_VAT_Report_{curr}.pdf"}
     )
+
+# --- 17. Delivery Aggregator & Enterprise POS Integration Endpoints ---
+@app.route("/api/integrations/webhook/<platform>", methods=["POST"])
+def receive_delivery_webhook(platform):
+    data = request.json or {}
+    ext_ref = data.get("external_order_ref", f"ORD-EXT-{platform[:3]}-1001")
+    c_name = data.get("customer_name", "Delivery Customer")
+    items = data.get("items", [{"item_id": "item-1"}, {"item_id": "item-3"}])
+    addr = data.get("delivery_address", "12 Floral St, London")
+    tbl_num = int(data.get("table_number", 99))
+
+    try:
+        res = integrations_service.process_inbound_webhook(
+            platform=platform,
+            external_order_ref=ext_ref,
+            customer_name=c_name,
+            items=items,
+            delivery_address=addr,
+            table_number=tbl_num
+        )
+        return jsonify(res), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/integrations/sync-menu/<platform>", methods=["POST"])
+def sync_menu_to_platform(platform):
+    try:
+        res = integrations_service.sync_menu_to_aggregator(platform)
+        return jsonify(res)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/integrations/channels", methods=["GET"])
+def get_integration_channels_status():
+    channels = integrations_service.get_integration_channels()
+    return jsonify({"channels": channels})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))

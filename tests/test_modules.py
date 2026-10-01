@@ -564,6 +564,35 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIsNotNone(pdf_bytes)
         self.assertTrue(pdf_bytes.startswith(b"%PDF"))
 
+    def test_third_party_delivery_integrations(self):
+        from src.modules.integrations import integrations_service
+
+        delivery_res = integrations_service.process_inbound_webhook(
+            platform="DELIVEROO",
+            external_order_ref="DEL-UK-9912",
+            customer_name="Gordon Ramsay",
+            items=[{"item_id": "item-1"}, {"item_id": "item-3"}],
+            delivery_address="10 Downing Street, London",
+            table_number=99
+        )
+
+        self.assertIn("ORD-", delivery_res["order_id"])
+        self.assertEqual(delivery_res["channel"], "DELIVEROO")
+        self.assertEqual(delivery_res["external_ref"], "DEL-UK-9912")
+
+        sync_res = integrations_service.sync_menu_to_aggregator(platform="UBEREATS")
+        self.assertEqual(sync_res["channel"], "UBEREATS")
+        self.assertEqual(sync_res["status"], "SYNCED")
+        self.assertGreaterEqual(sync_res["synced_items_count"], 5)
+
+        channels = integrations_service.get_integration_channels()
+        self.assertEqual(len(channels), 4)
+        ch_names = [c["channel"] for c in channels]
+        self.assertIn("DELIVEROO", ch_names)
+        self.assertIn("UBEREATS", ch_names)
+        self.assertIn("DELIVERECT", ch_names)
+        self.assertIn("TOAST", ch_names)
+
 if __name__ == "__main__":
     unittest.main()
 
