@@ -229,6 +229,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-warning text-white fw-bold rounded-pill px-3 me-1" onclick="showLoyaltyModal()"><i class="fa-solid fa-crown me-1 text-warning"></i> VIP Rewards</button>
                     <button class="btn btn-sm btn-warning text-dark font-weight-bold rounded-pill px-3" onclick="callWaiter()"><i class="fa-solid fa-bell me-1"></i> <span id="callWaiterBtnText">Call Waiter</span></button>
                     <button class="mode-switch-btn active" id="btnGuestView" onclick="setAppMode('guest')"><i class="fa-solid fa-mobile-screen me-1"></i> Table View</button>
                     <button class="mode-switch-btn" id="btnStaffView" onclick="setAppMode('staff')"><i class="fa-solid fa-user-shield me-1"></i> Staff Workspace</button>
@@ -1115,6 +1116,70 @@ INDEX_HTML = """<!DOCTYPE html>
                             <div id="itemizedSplitContainer" class="mb-3"></div>
                             <button class="btn btn-primary w-100 fw-bold" onclick="submitItemizedSplit()"><i class="fa-solid fa-check-circle me-1"></i> Apply Itemized Split</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Digital Loyalty & Rewards Studio Modal -->
+    <div class="modal fade" id="loyaltyModal" tabindex="-1" aria-labelledby="loyaltyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                    <h5 class="modal-title fw-bold" id="loyaltyModalLabel"><i class="fa-solid fa-crown text-warning me-2"></i>VIP Loyalty & Digital Rewards Studio</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Login / Account Lookup Form -->
+                    <div id="loyaltyAccountForm" class="p-4 bg-light rounded-3 border mb-4">
+                        <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-user-check me-2 text-primary"></i>Check Points or Quick Sign-Up</h6>
+                        <p class="small text-muted mb-3">Earn 10 points per £1 spent + 50 points instant welcome bonus on sign-up!</p>
+                        <div class="row g-2">
+                            <div class="col-sm-5">
+                                <input type="text" id="loyaltyIdentifierInput" class="form-control" placeholder="Phone or Email (e.g. alex@example.com)">
+                            </div>
+                            <div class="col-sm-4">
+                                <input type="text" id="loyaltyGuestNameInput" class="form-control" placeholder="Guest Name (e.g. Alex M.)">
+                            </div>
+                            <div class="col-sm-3">
+                                <button class="btn btn-primary w-100 fw-bold" onclick="loginOrRegisterLoyalty()"><i class="fa-solid fa-arrow-right me-1"></i> Access Rewards</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active VIP Profile Card -->
+                    <div id="loyaltyProfileCard" class="d-none">
+                        <div class="card bg-dark text-white border-0 rounded-3 p-4 mb-4 shadow-sm position-relative overflow-hidden">
+                            <div class="d-flex justify-content-between align-items-start position-relative z-1 mb-3">
+                                <div>
+                                    <span class="badge bg-warning text-dark fw-bold mb-2 px-3 py-1" id="loyaltyTierBadge">BRONZE VIP</span>
+                                    <h4 class="fw-bold mb-0 text-white" id="loyaltyGuestNameLabel">Guest Member</h4>
+                                    <small class="text-light opacity-75" id="loyaltyIdentifierLabel">guest@example.com</small>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-light opacity-75 d-block">Points Balance</small>
+                                    <h2 class="fw-bold text-warning mb-0" id="loyaltyPointsBalanceLabel">50 pts</h2>
+                                </div>
+                            </div>
+                            <div class="position-relative z-1">
+                                <div class="d-flex justify-content-between small text-light opacity-75 mb-1">
+                                    <span>Total Lifetime Spent: <strong class="text-white" id="loyaltyTotalSpentLabel">£0.00</strong></span>
+                                    <span id="loyaltyNextTierLabel">450 pts to SILVER</span>
+                                </div>
+                                <div class="progress bg-secondary" style="height: 8px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" id="loyaltyTierProgressBar" style="width: 10%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Available Vouchers & Rewards Store -->
+                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-gift me-2 text-danger"></i>Redeem Reward Vouchers</h6>
+                        <div class="row g-3 mb-4" id="loyaltyRewardCatalogGrid"></div>
+
+                        <!-- Active Voucher Wallet -->
+                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-wallet me-2 text-success"></i>My Active Voucher Wallet</h6>
+                        <div id="loyaltyVoucherWalletList"></div>
                     </div>
                 </div>
             </div>
@@ -2050,6 +2115,141 @@ Total Paid: ${sym}${data.grand_total.toFixed(2)} (includes ${sym}${data.tip_amou
                 }
             });
         }
+
+        let activeLoyaltyAccount = null;
+
+        function showLoyaltyModal() {
+            const modal = new bootstrap.Modal(document.getElementById('loyaltyModal'));
+            modal.show();
+        }
+
+        async function loginOrRegisterLoyalty() {
+            const identifier = document.getElementById('loyaltyIdentifierInput').value.trim();
+            const guestName = document.getElementById('loyaltyGuestNameInput').value.trim();
+            if(!identifier) return alert('Please enter phone number or email address.');
+
+            let res = await fetch(`/api/loyalty/account?identifier=${encodeURIComponent(identifier)}`);
+            let data = await res.json();
+
+            if(!data.account) {
+                if(!guestName) return alert('Account not found. Please enter Guest Name to create your VIP account!');
+                res = await fetch('/api/loyalty/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: identifier, guest_name: guestName })
+                });
+                data = await res.json();
+            }
+
+            if(data.account) {
+                activeLoyaltyAccount = data.account;
+                renderLoyaltyProfile(data.account);
+            } else {
+                alert(data.error || 'Failed to access loyalty account.');
+            }
+        }
+
+        function renderLoyaltyProfile(acc) {
+            document.getElementById('loyaltyProfileCard').classList.remove('d-none');
+            document.getElementById('loyaltyGuestNameLabel').innerText = acc.guest_name || 'VIP Member';
+            document.getElementById('loyaltyIdentifierLabel').innerText = acc.phone_or_email;
+            document.getElementById('loyaltyPointsBalanceLabel').innerText = acc.points_balance + ' pts';
+            document.getElementById('loyaltyTotalSpentLabel').innerText = '£' + (acc.total_spent || 0).toFixed(2);
+            document.getElementById('loyaltyTierBadge').innerText = acc.tier + ' VIP';
+
+            let nextTierText = 'MAX VIP TIER REACHED';
+            let pct = 100;
+            if(acc.tier === 'BRONZE') {
+                const diff = 500 - acc.points_balance;
+                nextTierText = (diff > 0 ? diff : 0) + ' pts to SILVER';
+                pct = Math.min(100, Math.round((acc.points_balance / 500) * 100));
+            } else if(acc.tier === 'SILVER') {
+                const diff = 1000 - acc.points_balance;
+                nextTierText = (diff > 0 ? diff : 0) + ' pts to GOLD';
+                pct = Math.min(100, Math.round((acc.points_balance / 1000) * 100));
+            }
+            document.getElementById('loyaltyNextTierLabel').innerText = nextTierText;
+            document.getElementById('loyaltyTierProgressBar').style.width = pct + '%';
+
+            renderRewardCatalog(acc);
+            renderVoucherWallet(acc.vouchers || []);
+        }
+
+        function renderRewardCatalog(acc) {
+            const grid = document.getElementById('loyaltyRewardCatalogGrid');
+            const rewards = [
+                { key: 'REWARD5', title: '£5 Off Voucher', cost: 100, desc: '15% Off Total Order', icon: 'fa-ticket text-info' },
+                { key: 'REWARD15', title: '£15 Off Voucher', cost: 250, desc: '30% Off Total Order', icon: 'fa-tags text-warning' },
+                { key: 'FREEMAIN', title: 'Free Main Dish', cost: 500, desc: '50% Off Gourmet Dish', icon: 'fa-utensils text-success' }
+            ];
+
+            grid.innerHTML = rewards.map(r => {
+                const canAfford = acc.points_balance >= r.cost;
+                return `
+                    <div class="col-md-4">
+                        <div class="card h-100 border p-3 rounded-3 shadow-sm ${canAfford ? 'border-primary' : 'bg-light'}">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="fa-solid ${r.icon} fs-4"></i>
+                                <h6 class="fw-bold mb-0 text-dark">${r.title}</h6>
+                            </div>
+                            <small class="text-muted mb-2 d-block">${r.desc}</small>
+                            <div class="d-flex justify-content-between align-items-center mt-auto">
+                                <span class="badge bg-secondary">${r.cost} pts</span>
+                                <button class="btn btn-sm ${canAfford ? 'btn-primary' : 'btn-outline-secondary disabled'} fw-bold" onclick="redeemLoyaltyReward('${r.key}')">Redeem</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function redeemLoyaltyReward(rewardKey) {
+            if(!activeLoyaltyAccount) return;
+            const res = await fetch('/api/loyalty/redeem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier: activeLoyaltyAccount.phone_or_email, reward_key: rewardKey })
+            });
+            const data = await res.json();
+
+            if(data.success) {
+                activeLoyaltyAccount = data.account;
+                renderLoyaltyProfile(data.account);
+                alert(`Voucher ${data.voucher_code} issued! Voucher code copied and applied.`);
+                applyPromoCodeDirect(data.voucher_code);
+            } else {
+                alert(data.error || 'Failed to redeem reward.');
+            }
+        }
+
+        function renderVoucherWallet(vouchers) {
+            const list = document.getElementById('loyaltyVoucherWalletList');
+            if(vouchers.length === 0) {
+                list.innerHTML = '<div class="text-muted small p-3 bg-light rounded text-center">No active vouchers in wallet yet. Redeem rewards above!</div>';
+                return;
+            }
+            list.innerHTML = vouchers.map(v => `
+                <div class="p-3 border rounded-3 bg-white d-flex justify-content-between align-items-center mb-2 shadow-sm">
+                    <div>
+                        <strong class="text-dark d-block"><i class="fa-solid fa-barcode text-success me-1"></i> ${v.code}</strong>
+                        <small class="text-muted">${v.description} (${v.discount_pct}% Off)</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-success fw-bold" onclick="applyPromoCodeDirect('${v.code}')"><i class="fa-solid fa-check me-1"></i> Apply to Cart</button>
+                </div>
+            `).join('');
+        }
+
+        function applyPromoCodeDirect(code) {
+            const promoInput = document.getElementById('cartPromoInput');
+            if(promoInput) {
+                promoInput.value = code;
+                applyPromoCode();
+            }
+            const modalEl = document.getElementById('loyaltyModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if(modal) modal.hide();
+        }
+
     </script>
 </body>
 </html>"""
@@ -2542,7 +2742,7 @@ def get_loyalty_account():
 @app.route("/api/loyalty/register", methods=["POST"])
 def register_loyalty_account():
     data = request.json or {}
-    identifier = data.get("phone_or_email", "")
+    identifier = data.get("phone_or_email") or data.get("identifier", "")
     guest = data.get("guest_name", "")
     res = loyalty_service.register_account(identifier, guest)
     if res.get("success"):
@@ -2552,7 +2752,7 @@ def register_loyalty_account():
 @app.route("/api/loyalty/earn", methods=["POST"])
 def earn_loyalty_points():
     data = request.json or {}
-    identifier = data.get("phone_or_email", "")
+    identifier = data.get("phone_or_email") or data.get("identifier", "")
     order_id = data.get("order_id", "")
     res = loyalty_service.earn_points(identifier, order_id)
     if res.get("success"):
@@ -2562,7 +2762,7 @@ def earn_loyalty_points():
 @app.route("/api/loyalty/redeem", methods=["POST"])
 def redeem_loyalty_reward():
     data = request.json or {}
-    identifier = data.get("phone_or_email", "")
+    identifier = data.get("phone_or_email") or data.get("identifier", "")
     reward_key = data.get("reward_key", "")
     res = loyalty_service.redeem_reward(identifier, reward_key)
     if res.get("success"):
