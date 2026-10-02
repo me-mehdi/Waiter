@@ -627,6 +627,31 @@ class TestWaiterModules(unittest.TestCase):
         new_config = brand_customizer_service.get_config()
         self.assertEqual(new_config["brand_name"], "Royal Bistro UK")
 
+    def test_online_table_payments(self):
+        from src.modules.payments import payments_service
+        order = qr_ordering_service.submit_order(table_number=4, item_ids=["item-1"])
+
+        methods = payments_service.get_payment_methods()
+        self.assertGreaterEqual(len(methods["methods"]), 3)
+
+        res_apple = payments_service.process_checkout(
+            order_id=order["id"],
+            payment_method="APPLE_PAY",
+            tip_percentage=12.5
+        )
+        self.assertEqual(res_apple["order_id"], order["id"])
+        self.assertEqual(res_apple["payment_method"], "APPLE_PAY")
+        self.assertEqual(res_apple["status"], "COMPLETED")
+        self.assertGreater(res_apple["tip_amount"], 0.0)
+
+        res_custom_tip = payments_service.process_checkout(
+            order_id=order["id"],
+            payment_method="CARD_STRIPE",
+            custom_tip_amount=5.00
+        )
+        self.assertEqual(res_custom_tip["tip_amount"], 5.00)
+        self.assertEqual(res_custom_tip["grand_total"], round(order["total"] + 5.00, 2))
+
 if __name__ == "__main__":
     unittest.main()
 

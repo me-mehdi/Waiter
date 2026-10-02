@@ -38,6 +38,7 @@ from src.modules.tax_compliance import tax_compliance_service
 from src.modules.integrations import integrations_service
 from src.modules.ai_forecasting import ai_forecasting_service
 from src.modules.brand_customizer import brand_customizer_service
+from src.modules.payments import payments_service
 
 app = Flask(__name__)
 
@@ -54,7 +55,7 @@ INDEX_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Waiter | Table QR Studio & Enterprise OS</title>
+    <title>The Waiter | Online Payments & Hospitality OS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
@@ -197,13 +198,16 @@ INDEX_HTML = """<!DOCTYPE html>
         .station-badge-LARDER { background-color: #8b5cf6; color: #fff; }
         .station-badge-HOT_LINE { background-color: #64748b; color: #fff; }
 
-        .qr-tent-mockup {
-            border: 3px solid #0f172a;
-            border-radius: 16px;
-            background: #ffffff;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        .pay-method-card {
+            border: 2px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .pay-method-card.selected {
+            border-color: #0284c7;
+            background-color: #f0f9ff;
         }
     </style>
 </head>
@@ -253,7 +257,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>Live Order Status (Table #<span id="liveTableNum">1</span>)</h6>
                 <span class="badge bg-primary" id="liveOrderRef">ORD-1001</span>
             </div>
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="order-step active" id="stepReceived">
                     <div class="order-step-icon"><i class="fa-solid fa-check"></i></div>
                     Received
@@ -267,6 +271,7 @@ INDEX_HTML = """<!DOCTYPE html>
                     Ready
                 </div>
             </div>
+            <button class="btn btn-sm btn-dark w-100 fw-bold" onclick="showOnlinePaymentModal()"><i class="fa-solid fa-credit-card text-success me-1"></i> Pay Bill at Table Now</button>
         </div>
 
         <div class="row g-4">
@@ -325,6 +330,7 @@ INDEX_HTML = """<!DOCTYPE html>
                     </div>
 
                     <button class="btn btn-primary w-100 fw-bold mb-2 py-2" onclick="placeOrder()"><i class="fa-solid fa-check-circle me-1"></i> Submit Order</button>
+                    <button class="btn btn-dark w-100 fw-bold py-2 mb-2" onclick="showOnlinePaymentModal()"><i class="fa-solid fa-credit-card text-success me-1"></i> Pay at Table Now</button>
                     <button class="btn btn-outline-success text-dark w-100 btn-sm fw-bold mb-2" onclick="showSplitBillModal()"><i class="fa-solid fa-calculator me-1"></i> Split Table Bill</button>
                     <button class="btn btn-outline-warning text-dark w-100 btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#reviewModal"><i class="fa-solid fa-comment-dots me-1"></i> Leave Private Feedback</button>
                 </div>
@@ -363,12 +369,78 @@ INDEX_HTML = """<!DOCTYPE html>
                         <span id="mobileModalCartTotal" class="text-success">£0.00</span>
                     </div>
                     <button class="btn btn-primary w-100 fw-bold mb-2 py-2" onclick="placeOrder(); bootstrap.Modal.getInstance(document.getElementById('mobileCartModal')).hide();"><i class="fa-solid fa-check-circle me-1"></i> Submit Order</button>
+                    <button class="btn btn-dark w-100 fw-bold py-2 mb-2" onclick="bootstrap.Modal.getInstance(document.getElementById('mobileCartModal')).hide(); showOnlinePaymentModal();"><i class="fa-solid fa-credit-card text-success me-1"></i> Pay at Table Now</button>
                     <button class="btn btn-outline-success w-100 btn-sm fw-bold mb-2" onclick="showSplitBillModal()"><i class="fa-solid fa-calculator me-1"></i> Split Bill</button>
                     <button class="btn btn-outline-warning text-dark w-100 btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#reviewModal"><i class="fa-solid fa-comment-dots me-1"></i> Leave Private Feedback</button>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
+
+    <!-- ONLINE TABLE PAYMENTS & DIGITAL TIP MODAL -->
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="paymentModalLabel"><i class="fa-solid fa-credit-card text-success me-2"></i>Pay at Table (Table #<span id="payModalTableNum">1</span>)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Tip Selection Pills -->
+                    <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-hand-holding-dollar me-1 text-warning"></i>Select Service Tip:</label>
+                    <div class="d-flex flex-wrap gap-2 mb-3" id="tipPresetGroup">
+                        <button class="btn btn-sm btn-outline-dark rounded-pill fw-bold" onclick="selectTipPreset(0, this)">No Tip (0%)</button>
+                        <button class="btn btn-sm btn-outline-dark rounded-pill fw-bold" onclick="selectTipPreset(10, this)">10%</button>
+                        <button class="btn btn-sm btn-dark active rounded-pill fw-bold" onclick="selectTipPreset(12.5, this)">12.5% (UK Std)</button>
+                        <button class="btn btn-sm btn-outline-dark rounded-pill fw-bold" onclick="selectTipPreset(15, this)">15%</button>
+                        <button class="btn btn-sm btn-outline-dark rounded-pill fw-bold" onclick="selectTipPreset(20, this)">20%</button>
+                    </div>
+
+                    <!-- Payment Method Selection Cards -->
+                    <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-wallet me-1 text-primary"></i>Choose Payment Method:</label>
+                    <div class="row g-2 mb-3">
+                        <div class="col-4">
+                            <div class="pay-method-card text-center selected" id="pmApplePay" onclick="selectPaymentMethod('APPLE_PAY', this)">
+                                <i class="fa-brands fa-apple fs-3 text-dark mb-1"></i>
+                                <span class="d-block small fw-bold">Apple Pay</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="pay-method-card text-center" id="pmGooglePay" onclick="selectPaymentMethod('GOOGLE_PAY', this)">
+                                <i class="fa-brands fa-google-pay fs-3 text-primary mb-1"></i>
+                                <span class="d-block small fw-bold">Google Pay</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="pay-method-card text-center" id="pmCardStripe" onclick="selectPaymentMethod('CARD_STRIPE', this)">
+                                <i class="fa-solid fa-credit-card fs-3 text-success mb-1"></i>
+                                <span class="d-block small fw-bold">Card Stripe</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total Breakdown Card -->
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Order Subtotal:</span>
+                            <span id="paySubtotalVal">£0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Selected Tip Amount:</span>
+                            <span id="payTipVal" class="text-warning fw-bold">+£0.00</span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between fs-5 fw-bold text-dark">
+                            <span>Grand Total Paid:</span>
+                            <span id="payGrandTotalVal" class="text-success">£0.00</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success w-100 fw-bold py-2 fs-6" onclick="processTableCheckout()"><i class="fa-solid fa-lock me-1"></i> Pay Now & Issue Receipt</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- STAFF & MANAGER WORKSPACE CONTAINER -->
     <main id="staffViewSection" class="container my-4 d-none">
@@ -507,7 +579,6 @@ INDEX_HTML = """<!DOCTYPE html>
                     </div>
 
                     <div class="row g-4">
-                        <!-- Table Selection Controls -->
                         <div class="col-md-5">
                             <div class="p-3 border rounded-3 bg-light">
                                 <label class="form-label fw-bold text-dark mb-1">Select Table Number</label>
@@ -526,7 +597,6 @@ INDEX_HTML = """<!DOCTYPE html>
                             </div>
                         </div>
 
-                        <!-- Live Table Tent Card Mockup Preview -->
                         <div class="col-md-7">
                             <div class="qr-tent-mockup">
                                 <h3 class="fw-extrabold text-dark mb-1" id="qrTentBrandTitle">THE WAITER UK</h3>
@@ -542,7 +612,6 @@ INDEX_HTML = """<!DOCTYPE html>
                     </div>
                 </div>
 
-                <!-- Batch Table QR Grid -->
                 <div class="card card-custom p-4 bg-white shadow-sm">
                     <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-grip me-2 text-info"></i>Quick Table QR Cards (Tables 1 to 12)</h5>
                     <div id="batchQrGridContainer" class="row g-3">
@@ -1017,6 +1086,8 @@ INDEX_HTML = """<!DOCTYPE html>
         let currentKdsStation = 'ALL';
         let isChimeEnabled = true;
         let prevOrderCount = 0;
+        let selectedTipPercentage = 12.5;
+        let selectedPaymentMethod = 'APPLE_PAY';
 
         const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.has('table')) {
@@ -1028,6 +1099,7 @@ INDEX_HTML = """<!DOCTYPE html>
             document.getElementById('desktopTableNum').innerText = activeTable;
             document.getElementById('mobileTableNum').innerText = activeTable;
             document.getElementById('alertTableNum').innerText = activeTable;
+            document.getElementById('payModalTableNum').innerText = activeTable;
             loadTableLiveOrderStatus();
         }
 
@@ -1303,6 +1375,96 @@ INDEX_HTML = """<!DOCTYPE html>
                 sPrep.className = 'order-step' + (latestOrder.status === 'PREPARING' || latestOrder.status === 'READY' ? ' active' : '');
                 sReady.className = 'order-step' + (latestOrder.status === 'READY' ? ' active' : '');
             } catch(e) { console.error(e); }
+        }
+
+        // --- Online Table Payments & Tip Calculator ---
+        function showOnlinePaymentModal() {
+            if (!activeOrderForTable && currentCart.length === 0) {
+                return alert('Please select dishes and place an order first.');
+            }
+            updatePaymentModalTotals();
+            const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+            modal.show();
+        }
+
+        function selectTipPreset(pct, btn) {
+            selectedTipPercentage = pct;
+            document.querySelectorAll('#tipPresetGroup .btn').forEach(b => {
+                b.classList.remove('active', 'btn-dark');
+                b.classList.add('btn-outline-dark');
+            });
+            btn.classList.remove('btn-outline-dark');
+            btn.classList.add('active', 'btn-dark');
+            updatePaymentModalTotals();
+        }
+
+        function selectPaymentMethod(pm, el) {
+            selectedPaymentMethod = pm;
+            document.querySelectorAll('.pay-method-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function updatePaymentModalTotals() {
+            const sym = currSymbols[currentCurr] || '£';
+            let subtotal = 0;
+            if (activeOrderForTable) {
+                subtotal = activeOrderForTable.total;
+            } else {
+                subtotal = currentCart.reduce((sum, i) => sum + i.price, 0);
+            }
+
+            const tipVal = subtotal * (selectedTipPercentage / 100.0);
+            const grandTotal = subtotal + tipVal;
+
+            document.getElementById('paySubtotalVal').innerText = sym + subtotal.toFixed(2);
+            document.getElementById('payTipVal').innerText = '+' + sym + tipVal.toFixed(2) + ` (${selectedTipPercentage}%)`;
+            document.getElementById('payGrandTotalVal').innerText = sym + grandTotal.toFixed(2);
+        }
+
+        async function processTableCheckout() {
+            let orderId = activeOrderForTable ? activeOrderForTable.id : null;
+            if (!orderId && currentCart.length > 0) {
+                const resOrder = await fetch('/api/order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        table_number: activeTable,
+                        items: currentCart.map(i => i.id)
+                    })
+                });
+                const newOrder = await resOrder.json();
+                orderId = newOrder.id;
+                activeOrderForTable = newOrder;
+                currentCart = [];
+                renderCart();
+            }
+
+            if (!orderId) return alert('No order selected for payment.');
+
+            const res = await fetch('/api/payments/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    order_id: orderId,
+                    payment_method: selectedPaymentMethod,
+                    tip_percentage: selectedTipPercentage,
+                    currency: currentCurr
+                })
+            });
+
+            const data = await res.json();
+            if (data.status === 'COMPLETED') {
+                const sym = currSymbols[currentCurr] || '£';
+                alert(`Payment Successful via ${data.payment_method}!
+Transaction Ref: ${data.transaction_ref}
+Total Paid: ${sym}${data.grand_total.toFixed(2)} (includes ${sym}${data.tip_amount.toFixed(2)} tip)`);
+                const modalEl = document.getElementById('paymentModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                loadTableLiveOrderStatus();
+            } else {
+                alert(data.error || 'Payment failed.');
+            }
         }
 
         function showSplitBillModal() {
@@ -2772,6 +2934,32 @@ def update_brand_config():
     data = request.json or {}
     updated = brand_customizer_service.update_config(data)
     return jsonify(updated)
+
+# --- 20. Online Table Payments & Tip Selector Endpoints ---
+@app.route("/api/payments/methods", methods=["GET"])
+def get_payment_methods():
+    return jsonify(payments_service.get_payment_methods())
+
+@app.route("/api/payments/checkout", methods=["POST"])
+def process_payment_checkout():
+    data = request.json or {}
+    order_id = data.get("order_id")
+    method = data.get("payment_method", "CARD_STRIPE")
+    tip_pct = float(data.get("tip_percentage", 12.5))
+    custom_tip = float(data.get("custom_tip")) if data.get("custom_tip") is not None else None
+    curr = data.get("currency", "GBP")
+
+    try:
+        res = payments_service.process_checkout(
+            order_id=order_id,
+            payment_method=method,
+            tip_percentage=tip_pct,
+            custom_tip_amount=custom_tip,
+            currency=curr
+        )
+        return jsonify(res), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
