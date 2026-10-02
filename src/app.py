@@ -37,6 +37,7 @@ from src.modules.store_transfers import store_transfers_service
 from src.modules.tax_compliance import tax_compliance_service
 from src.modules.integrations import integrations_service
 from src.modules.ai_forecasting import ai_forecasting_service
+from src.modules.brand_customizer import brand_customizer_service
 
 app = Flask(__name__)
 
@@ -53,13 +54,14 @@ INDEX_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Waiter | Station KDS & Hospitality OS</title>
+    <title>The Waiter | White-Label Brand & Station KDS OS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <style id="dynamicBrandTheme">
         :root {
             --primary-bg: #0f172a;
+            --header-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             --accent-blue: #0284c7;
             --accent-green: #10b981;
             --card-bg: #ffffff;
@@ -74,7 +76,7 @@ INDEX_HTML = """<!DOCTYPE html>
         }
 
         .app-header {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background: var(--header-bg);
             color: white;
             padding: 14px 20px;
             border-bottom: 3px solid #38bdf8;
@@ -204,7 +206,7 @@ INDEX_HTML = """<!DOCTYPE html>
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-3">
                     <div class="lh-1">
-                        <h4 class="fw-bold mb-0 text-white"><i class="fa-solid fa-utensils me-2 text-info"></i>The Waiter</h4>
+                        <h4 class="fw-bold mb-0 text-white"><i class="fa-solid fa-utensils me-2 text-info" id="brandLogoIcon"></i><span id="brandNameLabel">The Waiter</span></h4>
                         <small class="text-light opacity-75 d-none d-sm-inline" id="activeStoreLabel">Covent Garden Flagship</small>
                     </div>
                     <div class="table-badge d-flex align-items-center gap-2">
@@ -214,7 +216,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-sm btn-warning text-dark font-weight-bold rounded-pill px-3" onclick="callWaiter()"><i class="fa-solid fa-bell me-1"></i> Call Waiter</button>
+                    <button class="btn btn-sm btn-warning text-dark font-weight-bold rounded-pill px-3" onclick="callWaiter()"><i class="fa-solid fa-bell me-1"></i> <span id="callWaiterBtnText">Call Waiter</span></button>
                     <button class="mode-switch-btn active" id="btnGuestView" onclick="setAppMode('guest')"><i class="fa-solid fa-mobile-screen me-1"></i> Table View</button>
                     <button class="mode-switch-btn" id="btnStaffView" onclick="setAppMode('staff')"><i class="fa-solid fa-user-shield me-1"></i> Staff Workspace</button>
                 </div>
@@ -224,6 +226,15 @@ INDEX_HTML = """<!DOCTYPE html>
 
     <!-- GUEST TABLE VIEW CONTAINER -->
     <main id="guestViewSection" class="container my-4">
+        <!-- Guest Welcome Subtitle Banner -->
+        <div class="p-3 bg-white rounded-3 border shadow-sm mb-3 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-heart text-danger fs-5"></i>
+                <span class="fw-semibold text-dark" id="guestWelcomeMsgText">Welcome! Tap dishes below to order directly from Table #1</span>
+            </div>
+            <span class="badge bg-success bg-opacity-25 text-success border border-success"><i class="fa-solid fa-bolt me-1"></i> Fast Digital Service</span>
+        </div>
+
         <div id="waiterAlertBanner" class="alert alert-success alert-dismissible fade show d-none shadow-sm rounded-3" role="alert">
             <i class="fa-solid fa-circle-check me-2"></i><strong>Server Notified!</strong> A staff member is on their way to Table #<span id="alertTableNum">1</span>.
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -416,6 +427,9 @@ INDEX_HTML = """<!DOCTYPE html>
                 <button class="nav-link active" id="kds-tab" data-bs-toggle="tab" data-bs-target="#kds" type="button" onclick="loadKDS()"><i class="fa-solid fa-fire-burner me-1"></i> Kitchen KDS</button>
             </li>
             <li class="nav-item">
+                <button class="nav-link" id="branding-tab" data-bs-toggle="tab" data-bs-target="#branding" type="button" onclick="loadBrandConfig()"><i class="fa-solid fa-palette me-1"></i> Brand & Theme</button>
+            </li>
+            <li class="nav-item">
                 <button class="nav-link" id="bookings-tab" data-bs-toggle="tab" data-bs-target="#bookings" type="button" onclick="loadBookings()"><i class="fa-solid fa-calendar-check me-1"></i> Reservations</button>
             </li>
             <li class="nav-item">
@@ -453,7 +467,6 @@ INDEX_HTML = """<!DOCTYPE html>
                     <button class="btn btn-sm btn-outline-primary fw-bold" onclick="loadKDS()"><i class="fa-solid fa-rotate me-1"></i> Refresh Orders</button>
                 </div>
 
-                <!-- Kitchen Station Routing & Audio Chime Filter Bar -->
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-3 bg-white rounded-3 border shadow-sm" id="kdsStationFilterGroup">
                     <span class="small fw-bold text-muted me-1"><i class="fa-solid fa-filter text-primary me-1"></i>Station Filter:</span>
                     <button class="btn btn-sm btn-dark active rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('ALL', this)">All Stations <span class="badge bg-secondary ms-1" id="stBadgeALL">0</span></button>
@@ -461,7 +474,7 @@ INDEX_HTML = """<!DOCTYPE html>
                     <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('FRYER', this)">🍟 Fryer & Sides <span class="badge bg-secondary ms-1" id="stBadgeFRYER">0</span></button>
                     <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('BAR', this)">🍺 Bar & Drinks <span class="badge bg-secondary ms-1" id="stBadgeBAR">0</span></button>
                     <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('LARDER', this)">🍰 Dessert & Pantry <span class="badge bg-secondary ms-1" id="stBadgeLARDER">0</span></button>
-                    <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('HOT_LINE', this)">🛎️ Hot Line Pass <span class="badge bg-secondary ms-1" id="stBadgeHOT_LINE">0</span></button>
+                    <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('HOT_LINE', this)">HOT Line Pass <span class="badge bg-secondary ms-1" id="stBadgeHOT_LINE">0</span></button>
                     
                     <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold ms-auto" id="chimeToggleBtn" onclick="toggleOrderChime()"><i class="fa-solid fa-volume-high me-1"></i> Audio Chime On</button>
                 </div>
@@ -471,7 +484,75 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 2: Bookings -->
+            <!-- TAB 2: White-Label Brand & Theme Customizer -->
+            <div class="tab-pane fade" id="branding" role="tabpanel">
+                <div class="card card-custom p-4 bg-white shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-palette text-primary me-2"></i>White-Label Brand & Theme Customizer</h4>
+                            <p class="text-muted small mb-0">Customize restaurant name, brand colors, typography, and guest welcome messaging in real-time.</p>
+                        </div>
+                        <button class="btn btn-sm btn-success fw-bold px-3 py-2" onclick="saveBrandConfig()"><i class="fa-solid fa-floppy-disk me-1"></i> Save & Publish Brand Theme</button>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <form id="brandForm">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Restaurant / Brand Name</label>
+                                    <input type="text" id="cfgBrandName" class="form-control" value="The Waiter" oninput="previewBrandTheme()">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Store Subheading</label>
+                                    <input type="text" id="cfgStoreSubheading" class="form-control" value="Covent Garden Flagship (UK)" oninput="previewBrandTheme()">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Guest Welcome Message</label>
+                                    <input type="text" id="cfgGuestWelcomeMsg" class="form-control" value="Welcome! Tap dishes below to order directly from Table #" oninput="previewBrandTheme()">
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold text-muted">Primary Brand Color</label>
+                                        <input type="color" id="cfgPrimaryColor" class="form-control form-control-color w-100" value="#0f172a" oninput="previewBrandTheme()">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold text-muted">Accent Color</label>
+                                        <input type="color" id="cfgAccentColor" class="form-control form-control-color w-100" value="#0284c7" oninput="previewBrandTheme()">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Typography Font Family</label>
+                                    <select id="cfgFontFamily" class="form-select" onchange="previewBrandTheme()">
+                                        <option value="Plus Jakarta Sans">Plus Jakarta Sans (Modern Clean)</option>
+                                        <option value="Inter">Inter (Enterprise Slate)</option>
+                                        <option value="Outfit">Outfit (High Luxury)</option>
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded-3 bg-light h-100">
+                                <h6 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-eye text-info me-2"></i>Live Theme Preview</h6>
+                                <div class="p-3 rounded-3 text-white mb-3" id="prevHeader" style="background: #0f172a;">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5 class="fw-bold mb-0" id="prevBrandName">The Waiter</h5>
+                                        <span class="badge bg-info text-dark fw-bold">Table #5</span>
+                                    </div>
+                                    <small class="opacity-75" id="prevSubheading">Covent Garden Flagship (UK)</small>
+                                </div>
+                                <div class="p-3 bg-white rounded-3 border mb-3">
+                                    <small class="text-muted d-block mb-1">Guest Welcome Subtitle:</small>
+                                    <strong class="text-dark" id="prevWelcomeMsg">Welcome! Tap dishes below to order directly from Table #5</strong>
+                                </div>
+                                <button class="btn btn-sm w-100 text-white fw-bold py-2" id="prevBtn" style="background-color: #0284c7;">Sample Add-to-Cart Button</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Bookings -->
             <div class="tab-pane fade" id="bookings" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-calendar-check text-success me-2"></i>Guest Reservations</h4>
@@ -499,7 +580,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 3: Inventory Stock & Automated POs -->
+            <!-- TAB 4: Inventory Stock & Automated POs -->
             <div class="tab-pane fade" id="inventory" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-boxes-stacked text-primary me-2"></i>Stock & Purchase Orders</h4>
@@ -516,7 +597,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 4: Kitchen Waste Tracker -->
+            <!-- TAB 5: Kitchen Waste Tracker -->
             <div class="tab-pane fade" id="waste" role="tabpanel">
                 <div class="row g-4">
                     <div class="col-md-5">
@@ -586,7 +667,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 5: MTD VAT & Transfers -->
+            <!-- TAB 6: MTD VAT & Transfers -->
             <div class="tab-pane fade" id="tax" role="tabpanel">
                 <div class="row g-4">
                     <div class="col-md-6">
@@ -641,7 +722,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 6: Guest NPS & Private Feedback -->
+            <!-- TAB 7: Guest NPS & Private Feedback -->
             <div class="tab-pane fade" id="feedback" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-star text-warning me-2"></i>Guest Sentiment & NPS</h4>
@@ -674,7 +755,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 7: AI Demand Forecasting -->
+            <!-- TAB 8: AI Demand Forecasting -->
             <div class="tab-pane fade" id="forecasting" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-brain text-info me-2"></i>AI Demand Forecasting</h4>
@@ -708,7 +789,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 8: Staff Clock & Tronc -->
+            <!-- TAB 9: Staff Clock & Tronc -->
             <div class="tab-pane fade" id="staff" role="tabpanel">
                 <div class="row g-4">
                     <div class="col-md-5">
@@ -746,7 +827,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 9: Reports Hub -->
+            <!-- TAB 10: Reports Hub -->
             <div class="tab-pane fade" id="reports" role="tabpanel">
                 <div class="card card-custom p-4 bg-white shadow-sm">
                     <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-file-csv text-success me-2"></i>Download CSV Business Reports</h4>
@@ -783,7 +864,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 10: Strategy Blueprint -->
+            <!-- TAB 11: Strategy Blueprint -->
             <div class="tab-pane fade" id="strategy" role="tabpanel">
                 <div class="card card-custom p-4 bg-white shadow-sm">
                     <h3 class="fw-bold mb-3 text-dark">UK Market Strategy Blueprint</h3>
@@ -1191,6 +1272,89 @@ INDEX_HTML = """<!DOCTYPE html>
             }
         }
 
+        // --- White-Label Brand & Live Theme Customizer ---
+        async function loadBrandConfig() {
+            try {
+                const res = await fetch('/api/brand/config');
+                const cfg = await res.json();
+                
+                document.getElementById('cfgBrandName').value = cfg.brand_name || 'The Waiter';
+                document.getElementById('cfgStoreSubheading').value = cfg.store_subheading || 'Covent Garden Flagship (UK)';
+                document.getElementById('cfgGuestWelcomeMsg').value = cfg.guest_welcome_message || 'Welcome! Tap dishes below to order directly from Table #';
+                document.getElementById('cfgPrimaryColor').value = cfg.primary_color || '#0f172a';
+                document.getElementById('cfgAccentColor').value = cfg.accent_color || '#0284c7';
+                document.getElementById('cfgFontFamily').value = cfg.font_family || 'Plus Jakarta Sans';
+
+                applyBrandTheme(cfg);
+            } catch(e) { console.error(e); }
+        }
+
+        function previewBrandTheme() {
+            const cfg = {
+                brand_name: document.getElementById('cfgBrandName').value.trim() || 'The Waiter',
+                store_subheading: document.getElementById('cfgStoreSubheading').value.trim() || 'Covent Garden Flagship (UK)',
+                guest_welcome_message: document.getElementById('cfgGuestWelcomeMsg').value.trim() || 'Welcome! Tap dishes below to order directly from Table #',
+                primary_color: document.getElementById('cfgPrimaryColor').value,
+                accent_color: document.getElementById('cfgAccentColor').value,
+                font_family: document.getElementById('cfgFontFamily').value
+            };
+
+            document.getElementById('prevBrandName').innerText = cfg.brand_name;
+            document.getElementById('prevSubheading').innerText = cfg.store_subheading;
+            document.getElementById('prevWelcomeMsg').innerText = cfg.guest_welcome_message + '5';
+            document.getElementById('prevHeader').style.background = cfg.primary_color;
+            document.getElementById('prevBtn').style.backgroundColor = cfg.accent_color;
+
+            applyBrandTheme(cfg);
+        }
+
+        function applyBrandTheme(cfg) {
+            document.getElementById('brandNameLabel').innerText = cfg.brand_name || 'The Waiter';
+            document.getElementById('activeStoreLabel').innerText = cfg.store_subheading || 'Covent Garden Flagship';
+            document.getElementById('guestWelcomeMsgText').innerText = (cfg.guest_welcome_message || 'Welcome! Tap dishes below to order directly from Table #') + activeTable;
+            
+            document.body.style.fontFamily = `'${cfg.font_family || 'Plus Jakarta Sans'}', system-ui, sans-serif`;
+
+            const styleEl = document.getElementById('dynamicBrandTheme');
+            if(styleEl) {
+                styleEl.innerHTML = `
+                    :root {
+                        --primary-bg: ${cfg.primary_color || '#0f172a'};
+                        --header-bg: ${cfg.primary_color || '#0f172a'};
+                        --accent-blue: ${cfg.accent_color || '#0284c7'};
+                        --accent-green: #10b981;
+                        --card-bg: #ffffff;
+                        --text-main: #0f172a;
+                        --text-muted: #64748b;
+                    }
+                    body { font-family: '${cfg.font_family || 'Plus Jakarta Sans'}', system-ui, sans-serif; background-color: #f8fafc; color: #0f172a; padding-bottom: 80px; }
+                    .app-header { background: ${cfg.primary_color || '#0f172a'}; }
+                    .dish-price { color: ${cfg.accent_color || '#0284c7'}; }
+                    .btn-primary { background-color: ${cfg.accent_color || '#0284c7'}; border-color: ${cfg.accent_color || '#0284c7'}; }
+                `;
+            }
+        }
+
+        async function saveBrandConfig() {
+            const cfg = {
+                brand_name: document.getElementById('cfgBrandName').value.trim(),
+                store_subheading: document.getElementById('cfgStoreSubheading').value.trim(),
+                guest_welcome_message: document.getElementById('cfgGuestWelcomeMsg').value.trim(),
+                primary_color: document.getElementById('cfgPrimaryColor').value,
+                accent_color: document.getElementById('cfgAccentColor').value,
+                font_family: document.getElementById('cfgFontFamily').value
+            };
+
+            const res = await fetch('/api/brand/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cfg)
+            });
+            const data = await res.json();
+            alert(`Brand theme published! Restaurant Name: "${data.brand_name}"`);
+            applyBrandTheme(data);
+        }
+
         // --- Station KDS & Audio Chime System ---
         function filterKdsStation(station, btn) {
             currentKdsStation = station;
@@ -1255,13 +1419,11 @@ INDEX_HTML = """<!DOCTYPE html>
             const orders = data.orders || (Array.isArray(data) ? data : []);
             const counts = data.station_counts || {};
 
-            // Update station badge counters
             ['ALL', 'GRILL', 'FRYER', 'BAR', 'LARDER', 'HOT_LINE'].forEach(st => {
                 const el = document.getElementById('stBadge' + st);
                 if(el && counts[st] !== undefined) el.innerText = counts[st];
             });
 
-            // Trigger audio chime if new order arrived
             if (counts.ALL !== undefined && counts.ALL > prevOrderCount) {
                 if(prevOrderCount > 0) playOrderChime();
             }
@@ -1377,7 +1539,6 @@ INDEX_HTML = """<!DOCTYPE html>
                     </option>
                 `).join('');
                 document.getElementById('activeVenueName').innerText = `${data.active_venue.name} (${data.active_venue.market})`;
-                document.getElementById('activeStoreLabel').innerText = `${data.active_venue.name}`;
             } catch(e) { console.error(e); }
         }
 
@@ -1391,7 +1552,6 @@ INDEX_HTML = """<!DOCTYPE html>
                 const data = await res.json();
                 if(data.success) {
                     document.getElementById('activeVenueName').innerText = `${data.active_venue.name} (${data.active_venue.market})`;
-                    document.getElementById('activeStoreLabel').innerText = `${data.active_venue.name}`;
                     alert(`Switched active venue to: ${data.active_venue.name}`);
                 }
             } catch(e) { console.error(e); }
@@ -1401,6 +1561,7 @@ INDEX_HTML = """<!DOCTYPE html>
         updateTableDisplays();
         loadVenues();
         loadMenu();
+        loadBrandConfig();
 
         // SSE Real-Time Listener
         if ('EventSource' in window) {
@@ -2487,6 +2648,17 @@ def download_ai_forecasting_pdf_report():
         mimetype="application/pdf",
         headers={"Content-Disposition": f"inline; filename=AI_Demand_Forecast_Report_{curr}.pdf"}
     )
+
+# --- 19. White-Label Brand & Theme Customizer Endpoints ---
+@app.route("/api/brand/config", methods=["GET"])
+def get_brand_config():
+    return jsonify(brand_customizer_service.get_config())
+
+@app.route("/api/brand/config", methods=["POST"])
+def update_brand_config():
+    data = request.json or {}
+    updated = brand_customizer_service.update_config(data)
+    return jsonify(updated)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))

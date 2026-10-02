@@ -12,6 +12,7 @@ class DatabaseStore:
     def __init__(self, db_path: str = DB_FILE):
         self.db_path = os.path.abspath(db_path)
         self._lock = threading.Lock()
+        self.custom_settings = {}
         self.init_db()
 
     @contextmanager

@@ -609,6 +609,24 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIsNotNone(pdf_bytes)
         self.assertTrue(pdf_bytes.startswith(b"%PDF"))
 
+    def test_white_label_brand_customizer(self):
+        from src.modules.brand_customizer import brand_customizer_service
+
+        config = brand_customizer_service.get_config()
+        self.assertIn("brand_name", config)
+        self.assertIn("primary_color", config)
+
+        updated = brand_customizer_service.update_config({
+            "brand_name": "Royal Bistro UK",
+            "accent_color": "#10b981",
+            "guest_welcome_message": "Welcome to Royal Bistro!"
+        })
+        self.assertEqual(updated["brand_name"], "Royal Bistro UK")
+        self.assertEqual(updated["accent_color"], "#10b981")
+
+        new_config = brand_customizer_service.get_config()
+        self.assertEqual(new_config["brand_name"], "Royal Bistro UK")
+
 if __name__ == "__main__":
     unittest.main()
 
