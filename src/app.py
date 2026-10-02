@@ -54,7 +54,7 @@ INDEX_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Waiter | White-Label Brand & Station KDS OS</title>
+    <title>The Waiter | Table QR Studio & Enterprise OS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
@@ -196,6 +196,15 @@ INDEX_HTML = """<!DOCTYPE html>
         .station-badge-BAR { background-color: #0284c7; color: #fff; }
         .station-badge-LARDER { background-color: #8b5cf6; color: #fff; }
         .station-badge-HOT_LINE { background-color: #64748b; color: #fff; }
+
+        .qr-tent-mockup {
+            border: 3px solid #0f172a;
+            border-radius: 16px;
+            background: #ffffff;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
     </style>
 </head>
 <body>
@@ -226,7 +235,6 @@ INDEX_HTML = """<!DOCTYPE html>
 
     <!-- GUEST TABLE VIEW CONTAINER -->
     <main id="guestViewSection" class="container my-4">
-        <!-- Guest Welcome Subtitle Banner -->
         <div class="p-3 bg-white rounded-3 border shadow-sm mb-3 d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center gap-2">
                 <i class="fa-solid fa-heart text-danger fs-5"></i>
@@ -360,7 +368,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- STAFF & MANAGER WORKSPACE CONTAINER -->
     <main id="staffViewSection" class="container my-4 d-none">
@@ -427,6 +435,9 @@ INDEX_HTML = """<!DOCTYPE html>
                 <button class="nav-link active" id="kds-tab" data-bs-toggle="tab" data-bs-target="#kds" type="button" onclick="loadKDS()"><i class="fa-solid fa-fire-burner me-1"></i> Kitchen KDS</button>
             </li>
             <li class="nav-item">
+                <button class="nav-link" id="qrstudio-tab" data-bs-toggle="tab" data-bs-target="#qrstudio" type="button" onclick="loadQrStudio()"><i class="fa-solid fa-qrcode me-1"></i> Table QR Studio</button>
+            </li>
+            <li class="nav-item">
                 <button class="nav-link" id="branding-tab" data-bs-toggle="tab" data-bs-target="#branding" type="button" onclick="loadBrandConfig()"><i class="fa-solid fa-palette me-1"></i> Brand & Theme</button>
             </li>
             <li class="nav-item">
@@ -484,7 +495,63 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 2: White-Label Brand & Theme Customizer -->
+            <!-- TAB 2: Interactive Table QR Generator Studio -->
+            <div class="tab-pane fade" id="qrstudio" role="tabpanel">
+                <div class="card card-custom p-4 bg-white shadow-sm mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-qrcode text-primary me-2"></i>Interactive Table QR Studio</h4>
+                            <p class="text-muted small mb-0">Generate, preview, and download custom table QR cards for instant guest scanning.</p>
+                        </div>
+                        <a href="/api/qr/cards/pdf?tables=12" target="_blank" class="btn btn-sm btn-danger fw-bold"><i class="fa-solid fa-file-pdf me-1"></i> Download PDF Table Tents (1-12)</a>
+                    </div>
+
+                    <div class="row g-4">
+                        <!-- Table Selection Controls -->
+                        <div class="col-md-5">
+                            <div class="p-3 border rounded-3 bg-light">
+                                <label class="form-label fw-bold text-dark mb-1">Select Table Number</label>
+                                <div class="input-group mb-3">
+                                    <span class="input-group-text fw-bold">Table #</span>
+                                    <input type="number" id="qrStudioTableNum" class="form-control form-control-lg fw-bold" value="1" min="1" max="100" oninput="updateQrStudioPreview()">
+                                </div>
+
+                                <label class="form-label small fw-bold text-muted mb-1">Quick Select Slider (1 to 50)</label>
+                                <input type="range" class="form-range mb-4" id="qrStudioSlider" min="1" max="50" value="1" oninput="document.getElementById('qrStudioTableNum').value=this.value; updateQrStudioPreview();">
+
+                                <div class="d-grid gap-2">
+                                    <a id="btnDownloadPng" href="/api/qr/table/1" target="_blank" class="btn btn-primary fw-bold py-2"><i class="fa-solid fa-download me-1"></i> Download High-Res PNG</a>
+                                    <a id="btnOpenTableUrl" href="/?table=1" target="_blank" class="btn btn-outline-dark fw-bold"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Test Table Ordering Page</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Table Tent Card Mockup Preview -->
+                        <div class="col-md-7">
+                            <div class="qr-tent-mockup">
+                                <h3 class="fw-extrabold text-dark mb-1" id="qrTentBrandTitle">THE WAITER UK</h3>
+                                <h1 class="fw-black text-primary display-4 mb-2" id="qrTentTableLabel">TABLE #1</h1>
+                                <div class="my-3">
+                                    <img id="qrStudioPreviewImg" src="" alt="Table QR Code Preview" style="width: 200px; height: 200px;" class="border p-2 bg-white rounded">
+                                </div>
+                                <h5 class="fw-bold text-dark mb-1"><i class="fa-solid fa-camera me-1"></i> SCAN TO VIEW MENU & ORDER</h5>
+                                <p class="small text-muted mb-2">Point your smartphone camera at the QR code above.<br>No app download required.</p>
+                                <span class="badge bg-light text-dark border small"><i class="fa-solid fa-link me-1"></i> <span id="qrStudioTargetUrl">http://127.0.0.1:5050/?table=1</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Batch Table QR Grid -->
+                <div class="card card-custom p-4 bg-white shadow-sm">
+                    <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-grip me-2 text-info"></i>Quick Table QR Cards (Tables 1 to 12)</h5>
+                    <div id="batchQrGridContainer" class="row g-3">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: White-Label Brand & Theme Customizer -->
             <div class="tab-pane fade" id="branding" role="tabpanel">
                 <div class="card card-custom p-4 bg-white shadow-sm">
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -552,7 +619,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 3: Bookings -->
+            <!-- TAB 4: Bookings -->
             <div class="tab-pane fade" id="bookings" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-calendar-check text-success me-2"></i>Guest Reservations</h4>
@@ -580,7 +647,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 4: Inventory Stock & Automated POs -->
+            <!-- TAB 5: Inventory Stock & Automated POs -->
             <div class="tab-pane fade" id="inventory" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-boxes-stacked text-primary me-2"></i>Stock & Purchase Orders</h4>
@@ -597,7 +664,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 5: Kitchen Waste Tracker -->
+            <!-- TAB 6: Kitchen Waste Tracker -->
             <div class="tab-pane fade" id="waste" role="tabpanel">
                 <div class="row g-4">
                     <div class="col-md-5">
@@ -667,7 +734,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 6: MTD VAT & Transfers -->
+            <!-- TAB 7: MTD VAT & Transfers -->
             <div class="tab-pane fade" id="tax" role="tabpanel">
                 <div class="row g-4">
                     <div class="col-md-6">
@@ -722,7 +789,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 7: Guest NPS & Private Feedback -->
+            <!-- TAB 8: Guest NPS & Private Feedback -->
             <div class="tab-pane fade" id="feedback" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-star text-warning me-2"></i>Guest Sentiment & NPS</h4>
@@ -755,7 +822,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 8: AI Demand Forecasting -->
+            <!-- TAB 9: AI Demand Forecasting -->
             <div class="tab-pane fade" id="forecasting" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-brain text-info me-2"></i>AI Demand Forecasting</h4>
@@ -789,7 +856,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 9: Staff Clock & Tronc -->
+            <!-- TAB 10: Staff Clock & Tronc -->
             <div class="tab-pane fade" id="staff" role="tabpanel">
                 <div class="row g-4">
                     <div class="col-md-5">
@@ -827,7 +894,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 10: Reports Hub -->
+            <!-- TAB 11: Reports Hub -->
             <div class="tab-pane fade" id="reports" role="tabpanel">
                 <div class="card card-custom p-4 bg-white shadow-sm">
                     <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-file-csv text-success me-2"></i>Download CSV Business Reports</h4>
@@ -864,7 +931,7 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- TAB 11: Strategy Blueprint -->
+            <!-- TAB 12: Strategy Blueprint -->
             <div class="tab-pane fade" id="strategy" role="tabpanel">
                 <div class="card card-custom p-4 bg-white shadow-sm">
                     <h3 class="fw-bold mb-3 text-dark">UK Market Strategy Blueprint</h3>
@@ -1270,6 +1337,41 @@ INDEX_HTML = """<!DOCTYPE html>
             } else {
                 container.innerHTML = `<div class="text-danger small">${data.error || 'Failed to split order.'}</div>`;
             }
+        }
+
+        // --- Table QR Studio Generator ---
+        async function loadQrStudio() {
+            updateQrStudioPreview();
+            loadBatchQrGrid();
+        }
+
+        async function updateQrStudioPreview() {
+            const tNum = parseInt(document.getElementById('qrStudioTableNum').value) || 1;
+            const res = await fetch(`/api/qr/table/${tNum}/preview`);
+            const data = await res.json();
+
+            document.getElementById('qrTentTableLabel').innerText = 'TABLE #' + data.table_number;
+            document.getElementById('qrStudioPreviewImg').src = data.qr_base64;
+            document.getElementById('qrStudioTargetUrl').innerText = data.table_url;
+            document.getElementById('btnDownloadPng').href = `/api/qr/table/${data.table_number}`;
+            document.getElementById('btnOpenTableUrl').href = data.table_url;
+        }
+
+        async function loadBatchQrGrid() {
+            const container = document.getElementById('batchQrGridContainer');
+            let html = '';
+            for(let i=1; i<=12; i++) {
+                html += `
+                    <div class="col-6 col-sm-4 col-md-3">
+                        <div class="card p-3 text-center border shadow-sm">
+                            <strong class="text-primary mb-1">Table #${i}</strong>
+                            <img src="/api/qr/table/${i}" alt="Table ${i}" class="img-fluid mx-auto mb-2 border rounded p-1" style="max-width: 120px;">
+                            <a href="/api/qr/table/${i}" target="_blank" class="btn btn-xs btn-outline-dark fw-bold"><i class="fa-solid fa-download me-1"></i> PNG</a>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
         }
 
         // --- White-Label Brand & Live Theme Customizer ---
@@ -2162,6 +2264,17 @@ def get_table_qr_png(table_num):
     base_url = request.host_url.rstrip("/")
     png_bytes = qr_generator_service.generate_table_qr_png(table_num, base_url)
     return Response(png_bytes, mimetype="image/png")
+
+@app.route("/api/qr/table/<int:table_num>/preview", methods=["GET"])
+def get_table_qr_preview(table_num):
+    base_url = request.host_url.rstrip("/")
+    table_url = f"{base_url}/?table={table_num}"
+    b64_img = qr_generator_service.generate_table_qr_base64(table_num, base_url)
+    return jsonify({
+        "table_number": table_num,
+        "table_url": table_url,
+        "qr_base64": b64_img
+    })
 
 @app.route("/api/qr/cards/pdf", methods=["GET"])
 def get_table_tents_pdf():

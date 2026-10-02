@@ -31,6 +31,13 @@ class QRGeneratorModule:
         buffer.seek(0)
         return buffer.getvalue()
 
+    def generate_table_qr_base64(self, table_number: int, base_url: str = "http://127.0.0.1:5050") -> str:
+        """Generates a Base64 data URI string for embedding directly in <img> tags."""
+        import base64
+        png_bytes = self.generate_table_qr_png(table_number, base_url)
+        b64_str = base64.b64encode(png_bytes).decode("utf-8")
+        return f"data:image/png;base64,{b64_str}"
+
     def generate_pdf_table_tents(self, total_tables: int = 12, base_url: str = "http://127.0.0.1:5050") -> bytes:
         """
         Generates a printable PDF containing foldable Table Tent Cards for tables 1 to total_tables.
