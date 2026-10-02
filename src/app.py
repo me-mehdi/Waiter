@@ -53,7 +53,7 @@ INDEX_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Waiter | Table Guest Menu & Enterprise OS</title>
+    <title>The Waiter | Station KDS & Hospitality OS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -70,10 +70,9 @@ INDEX_HTML = """<!DOCTYPE html>
             font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
             background-color: #f8fafc;
             color: var(--text-main);
-            padding-bottom: 80px; /* space for mobile sticky cart */
+            padding-bottom: 80px;
         }
 
-        /* Top Header Bar */
         .app-header {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: white;
@@ -90,7 +89,6 @@ INDEX_HTML = """<!DOCTYPE html>
             font-size: 0.95rem;
         }
 
-        /* Mode Switcher Pill */
         .mode-switch-btn {
             background: rgba(255,255,255,0.12);
             border: 1px solid rgba(255,255,255,0.25);
@@ -106,7 +104,6 @@ INDEX_HTML = """<!DOCTYPE html>
             color: #0f172a;
         }
 
-        /* Cards & Buttons */
         .card-custom {
             border-radius: 16px;
             border: 1px solid #e2e8f0;
@@ -118,7 +115,6 @@ INDEX_HTML = """<!DOCTYPE html>
             .card-custom:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
         }
 
-        /* Dish Card Styling */
         .dish-card {
             border-radius: 16px;
             border: 1px solid #e2e8f0;
@@ -140,7 +136,6 @@ INDEX_HTML = """<!DOCTYPE html>
             padding: 8px 16px;
         }
 
-        /* Floating Sticky Mobile Bottom Cart Bar */
         .mobile-cart-bar {
             position: fixed;
             bottom: 0;
@@ -154,7 +149,6 @@ INDEX_HTML = """<!DOCTYPE html>
             box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
         }
 
-        /* Nav Pills */
         .nav-pills .nav-link {
             color: #475569;
             font-weight: 600;
@@ -169,7 +163,6 @@ INDEX_HTML = """<!DOCTYPE html>
             box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
         }
 
-        /* Live status progress bar */
         .order-step {
             flex: 1;
             text-align: center;
@@ -195,6 +188,12 @@ INDEX_HTML = """<!DOCTYPE html>
             background: #0284c7;
             color: white;
         }
+
+        .station-badge-GRILL { background-color: #f59e0b; color: #000; }
+        .station-badge-FRYER { background-color: #ef4444; color: #fff; }
+        .station-badge-BAR { background-color: #0284c7; color: #fff; }
+        .station-badge-LARDER { background-color: #8b5cf6; color: #fff; }
+        .station-badge-HOT_LINE { background-color: #64748b; color: #fff; }
     </style>
 </head>
 <body>
@@ -203,7 +202,6 @@ INDEX_HTML = """<!DOCTYPE html>
     <header class="app-header">
         <div class="container-fluid px-md-4">
             <div class="d-flex justify-content-between align-items-center">
-                <!-- Branding & Active Table -->
                 <div class="d-flex align-items-center gap-3">
                     <div class="lh-1">
                         <h4 class="fw-bold mb-0 text-white"><i class="fa-solid fa-utensils me-2 text-info"></i>The Waiter</h4>
@@ -215,7 +213,6 @@ INDEX_HTML = """<!DOCTYPE html>
                     </div>
                 </div>
 
-                <!-- Call Waiter & Mode Switcher Controls -->
                 <div class="d-flex align-items-center gap-2">
                     <button class="btn btn-sm btn-warning text-dark font-weight-bold rounded-pill px-3" onclick="callWaiter()"><i class="fa-solid fa-bell me-1"></i> Call Waiter</button>
                     <button class="mode-switch-btn active" id="btnGuestView" onclick="setAppMode('guest')"><i class="fa-solid fa-mobile-screen me-1"></i> Table View</button>
@@ -225,15 +222,13 @@ INDEX_HTML = """<!DOCTYPE html>
         </div>
     </header>
 
-    <!-- GUEST TABLE VIEW CONTAINER (Default Guest View - Clean & Focused) -->
+    <!-- GUEST TABLE VIEW CONTAINER -->
     <main id="guestViewSection" class="container my-4">
-        <!-- Call Waiter Alert Banner -->
         <div id="waiterAlertBanner" class="alert alert-success alert-dismissible fade show d-none shadow-sm rounded-3" role="alert">
             <i class="fa-solid fa-circle-check me-2"></i><strong>Server Notified!</strong> A staff member is on their way to Table #<span id="alertTableNum">1</span>.
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
 
-        <!-- Live Order Progress Bar for Table -->
         <div id="tableLiveOrderCard" class="card card-custom p-3 bg-white shadow-sm mb-4 d-none">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>Live Order Status (Table #<span id="liveTableNum">1</span>)</h6>
@@ -256,9 +251,7 @@ INDEX_HTML = """<!DOCTYPE html>
         </div>
 
         <div class="row g-4">
-            <!-- Digital Menu Main Area -->
             <div class="col-lg-8">
-                <!-- Header Toolbar: Language, Currency, Filter -->
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                     <h4 class="fw-bold mb-0 text-dark">Digital Menu</h4>
                     <div class="d-flex align-items-center gap-2">
@@ -275,7 +268,6 @@ INDEX_HTML = """<!DOCTYPE html>
                     </div>
                 </div>
 
-                <!-- Dietary & Allergen Exclusion Chips -->
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-3 bg-white rounded-3 border shadow-sm">
                     <span class="small fw-bold text-muted me-1"><i class="fa-solid fa-filter me-1 text-primary"></i>Dietary Filters:</span>
                     <button class="btn btn-sm btn-outline-success active rounded-pill px-3 py-1 fw-bold" onclick="filterMenuDiet('all', this)">All Dishes</button>
@@ -285,13 +277,11 @@ INDEX_HTML = """<!DOCTYPE html>
                     <button class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold ms-auto" onclick="toggleExclusion('gluten', this)">🌾 Exclude Gluten</button>
                 </div>
 
-                <!-- Dishes Grid -->
                 <div id="menuContainer" class="row g-3">
                     <!-- Dynamically populated -->
                 </div>
             </div>
 
-            <!-- Cart & Table Quick Tools Sidebar (Desktop view) -->
             <div class="col-lg-4 d-none d-lg-block">
                 <div class="card card-custom p-4 bg-white sticky-top" style="top: 20px;">
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -301,7 +291,6 @@ INDEX_HTML = """<!DOCTYPE html>
                     <hr class="my-2">
                     <div id="cartItems" class="mb-3 text-muted small py-2">Cart is empty. Select dishes from menu.</div>
                     
-                    <!-- Smart Upsell Box -->
                     <div id="upsellBox" class="upsell-box mb-3 d-none">
                         <strong class="small text-dark"><i class="fa-solid fa-lightbulb text-warning me-1"></i>Recommended Add-on:</strong>
                         <div id="upsellContent" class="mt-1"></div>
@@ -324,7 +313,7 @@ INDEX_HTML = """<!DOCTYPE html>
         </div>
     </main>
 
-    <!-- FLOATING STICKY MOBILE BOTTOM CART BAR (Mobile < 992px) -->
+    <!-- FLOATING STICKY MOBILE BOTTOM CART BAR -->
     <div class="mobile-cart-bar d-lg-none" id="mobileCartBar">
         <div class="d-flex justify-content-between align-items-center">
             <div>
@@ -337,7 +326,7 @@ INDEX_HTML = """<!DOCTYPE html>
         </div>
     </div>
 
-    <!-- MOBILE CART MODAL (Full sheet drawer on small screens) -->
+    <!-- MOBILE CART MODAL -->
     <div class="modal fade" id="mobileCartModal" tabindex="-1" aria-labelledby="mobileCartModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -362,10 +351,8 @@ INDEX_HTML = """<!DOCTYPE html>
         </div>
     </div>
 
-
-    <!-- STAFF & MANAGER WORKSPACE CONTAINER (Hidden from table guests by default) -->
+    <!-- STAFF & MANAGER WORKSPACE CONTAINER -->
     <main id="staffViewSection" class="container my-4 d-none">
-        <!-- Store Location Switcher Bar -->
         <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-white border rounded-3 shadow-sm">
             <div class="d-flex align-items-center gap-3">
                 <div class="p-2 bg-primary bg-opacity-10 text-primary rounded-3 fs-4"><i class="fa-solid fa-store"></i></div>
@@ -382,7 +369,6 @@ INDEX_HTML = """<!DOCTYPE html>
             </div>
         </div>
 
-        <!-- Executive Real-time Live KPIs Summary Row -->
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-3">
                 <div class="card card-custom p-3 shadow-sm">
@@ -414,7 +400,6 @@ INDEX_HTML = """<!DOCTYPE html>
             </div>
         </div>
 
-        <!-- PDF Quick Action Badges Bar -->
         <div class="d-flex flex-wrap gap-2 mb-4 p-2 bg-white rounded-3 border shadow-sm">
             <span class="small fw-bold text-muted me-2 align-self-center"><i class="fa-solid fa-file-pdf text-danger me-1"></i>Quick PDF Exports:</span>
             <a href="/api/qr/cards/pdf" target="_blank" class="badge bg-danger text-white text-decoration-none p-2"><i class="fa-solid fa-qrcode me-1"></i> Table QR Tents</a>
@@ -426,7 +411,6 @@ INDEX_HTML = """<!DOCTYPE html>
             <a href="/api/forecasting/report/pdf" target="_blank" class="badge bg-secondary text-white text-decoration-none p-2"><i class="fa-solid fa-brain me-1"></i> AI Forecast</a>
         </div>
 
-        <!-- Staff Navigation Tabs Bar -->
         <ul class="nav nav-pills mb-4 justify-content-start justify-content-md-center flex-nowrap overflow-auto py-1" id="staffTabs" role="tablist">
             <li class="nav-item">
                 <button class="nav-link active" id="kds-tab" data-bs-toggle="tab" data-bs-target="#kds" type="button" onclick="loadKDS()"><i class="fa-solid fa-fire-burner me-1"></i> Kitchen KDS</button>
@@ -462,12 +446,26 @@ INDEX_HTML = """<!DOCTYPE html>
 
         <div class="tab-content" id="staffTabContent">
 
-            <!-- TAB 1: KDS -->
+            <!-- TAB 1: KDS with Station Routing & Sound Generator -->
             <div class="tab-pane fade show active" id="kds" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-fire-burner text-warning me-2"></i>Kitchen Display System (KDS)</h4>
-                    <button class="btn btn-sm btn-outline-primary fw-bold" onclick="loadKDS()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
+                    <button class="btn btn-sm btn-outline-primary fw-bold" onclick="loadKDS()"><i class="fa-solid fa-rotate me-1"></i> Refresh Orders</button>
                 </div>
+
+                <!-- Kitchen Station Routing & Audio Chime Filter Bar -->
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-3 bg-white rounded-3 border shadow-sm" id="kdsStationFilterGroup">
+                    <span class="small fw-bold text-muted me-1"><i class="fa-solid fa-filter text-primary me-1"></i>Station Filter:</span>
+                    <button class="btn btn-sm btn-dark active rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('ALL', this)">All Stations <span class="badge bg-secondary ms-1" id="stBadgeALL">0</span></button>
+                    <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('GRILL', this)">🔥 Grill <span class="badge bg-secondary ms-1" id="stBadgeGRILL">0</span></button>
+                    <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('FRYER', this)">🍟 Fryer & Sides <span class="badge bg-secondary ms-1" id="stBadgeFRYER">0</span></button>
+                    <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('BAR', this)">🍺 Bar & Drinks <span class="badge bg-secondary ms-1" id="stBadgeBAR">0</span></button>
+                    <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('LARDER', this)">🍰 Dessert & Pantry <span class="badge bg-secondary ms-1" id="stBadgeLARDER">0</span></button>
+                    <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('HOT_LINE', this)">🛎️ Hot Line Pass <span class="badge bg-secondary ms-1" id="stBadgeHOT_LINE">0</span></button>
+                    
+                    <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold ms-auto" id="chimeToggleBtn" onclick="toggleOrderChime()"><i class="fa-solid fa-volume-high me-1"></i> Audio Chime On</button>
+                </div>
+
                 <div id="kdsContainer" class="row g-3">
                     <!-- Loaded dynamically -->
                 </div>
@@ -761,7 +759,7 @@ INDEX_HTML = """<!DOCTYPE html>
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="card card p-3 border text-center h-100">
+                            <div class="card p-3 border text-center h-100">
                                 <i class="fa-solid fa-boxes-stacked fs-1 text-success mb-2"></i>
                                 <h6 class="fw-bold">Inventory CSV</h6>
                                 <a href="/api/export/inventory/csv" target="_blank" class="btn btn-success btn-sm mt-auto"><i class="fa-solid fa-download me-1"></i> Download</a>
@@ -868,8 +866,10 @@ INDEX_HTML = """<!DOCTYPE html>
         let isAdminUnlocked = false;
         let currSymbols = { 'GBP': '£', 'EUR': '€', 'USD': '$' };
         let activeOrderForTable = null;
+        let currentKdsStation = 'ALL';
+        let isChimeEnabled = true;
+        let prevOrderCount = 0;
 
-        // URL Parameters detection
         const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.has('table')) {
             activeTable = parseInt(urlParams.get('table')) || 1;
@@ -1122,6 +1122,7 @@ INDEX_HTML = """<!DOCTYPE html>
             document.getElementById('upsellBox').classList.add('d-none');
             loadMenu();
             loadTableLiveOrderStatus();
+            playOrderChime();
             
             const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
             reviewModal.show();
@@ -1130,7 +1131,8 @@ INDEX_HTML = """<!DOCTYPE html>
         async function loadTableLiveOrderStatus() {
             try {
                 const res = await fetch('/api/kds/active');
-                const orders = await res.json();
+                const data = await res.json();
+                const orders = Array.isArray(data) ? data : (data.orders || []);
                 const tableOrders = orders.filter(o => o.table_number === activeTable);
                 const liveCard = document.getElementById('tableLiveOrderCard');
 
@@ -1189,25 +1191,101 @@ INDEX_HTML = """<!DOCTYPE html>
             }
         }
 
+        // --- Station KDS & Audio Chime System ---
+        function filterKdsStation(station, btn) {
+            currentKdsStation = station;
+            document.querySelectorAll('#kdsStationFilterGroup .btn').forEach(b => {
+                b.classList.remove('active', 'btn-dark');
+                b.classList.add('btn-outline-dark');
+            });
+            btn.classList.remove('btn-outline-dark');
+            btn.classList.add('active', 'btn-dark');
+            loadKDS();
+        }
+
+        function toggleOrderChime() {
+            isChimeEnabled = !isChimeEnabled;
+            const btn = document.getElementById('chimeToggleBtn');
+            if(isChimeEnabled) {
+                btn.className = 'btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold ms-auto';
+                btn.innerHTML = '<i class="fa-solid fa-volume-high me-1"></i> Audio Chime On';
+                playOrderChime();
+            } else {
+                btn.className = 'btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fw-bold ms-auto';
+                btn.innerHTML = '<i class="fa-solid fa-volume-xmark me-1"></i> Audio Muted';
+            }
+        }
+
+        function playOrderChime() {
+            if (!isChimeEnabled) return;
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Note 1: High "Ding" (E5 = 659.25Hz)
+                const osc1 = audioCtx.createOscillator();
+                const gain1 = audioCtx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(659.25, audioCtx.currentTime);
+                gain1.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                osc1.connect(gain1);
+                gain1.connect(audioCtx.destination);
+                osc1.start(audioCtx.currentTime);
+                osc1.stop(audioCtx.currentTime + 0.4);
+                
+                // Note 2: Lower "Dong" (C5 = 523.25Hz)
+                setTimeout(() => {
+                    const osc2 = audioCtx.createOscillator();
+                    const gain2 = audioCtx.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                    gain2.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+                    osc2.connect(gain2);
+                    gain2.connect(audioCtx.destination);
+                    osc2.start(audioCtx.currentTime);
+                    osc2.stop(audioCtx.currentTime + 0.6);
+                }, 150);
+            } catch(e) { console.error(e); }
+        }
+
         async function loadKDS() {
-            const res = await fetch('/api/kds/active');
-            const orders = await res.json();
+            const res = await fetch('/api/kds/active?station=' + currentKdsStation);
+            const data = await res.json();
+            const orders = data.orders || (Array.isArray(data) ? data : []);
+            const counts = data.station_counts || {};
+
+            // Update station badge counters
+            ['ALL', 'GRILL', 'FRYER', 'BAR', 'LARDER', 'HOT_LINE'].forEach(st => {
+                const el = document.getElementById('stBadge' + st);
+                if(el && counts[st] !== undefined) el.innerText = counts[st];
+            });
+
+            // Trigger audio chime if new order arrived
+            if (counts.ALL !== undefined && counts.ALL > prevOrderCount) {
+                if(prevOrderCount > 0) playOrderChime();
+            }
+            prevOrderCount = counts.ALL || orders.length;
+
             const container = document.getElementById('kdsContainer');
 
             if(orders.length === 0) {
-                container.innerHTML = '<div class="col-12 text-muted text-center py-4">No active kitchen orders.</div>';
+                container.innerHTML = `<div class="col-12 text-muted text-center py-4"><i class="fa-solid fa-circle-check text-success me-2 fs-5"></i>No active orders for station: <strong>${currentKdsStation}</strong></div>`;
                 return;
             }
 
             container.innerHTML = orders.map(order => `
                 <div class="col-md-4">
-                    <div class="card card-custom p-3 bg-white shadow-sm">
+                    <div class="card card-custom p-3 bg-white shadow-sm border-top border-4 border-primary">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="fw-bold mb-0 text-dark">${order.id} (Table #${order.table_number})</h6>
                             <span class="badge bg-secondary">${order.status}</span>
                         </div>
                         <ul class="small text-dark mb-3 ps-3">
-                            ${order.items.map(i => `<li><strong>${i.name}</strong></li>`).join('')}
+                            ${order.items.map(i => {
+                                const stBadge = i.station ? `<span class="badge station-badge-${i.station} ms-1">${i.station}</span>` : '';
+                                return `<li><strong>${i.name}</strong> ${stBadge}</li>`;
+                            }).join('')}
                         </ul>
                         <div class="d-flex flex-wrap gap-1 align-items-center">
                             <button class="btn btn-sm btn-success fw-bold" onclick="advanceKDS('${order.id}')">Advance Status</button>
@@ -1272,7 +1350,8 @@ INDEX_HTML = """<!DOCTYPE html>
                 document.getElementById('kpiTotalOrdersCount').innerText = `${data.total_orders} orders today`;
 
                 const resKds = await fetch('/api/kds/active');
-                const kdsOrders = await resKds.json();
+                const kdsData = await resKds.json();
+                const kdsOrders = Array.isArray(kdsData) ? kdsData : (kdsData.orders || []);
                 document.getElementById('kpiActiveKds').innerText = kdsOrders.length;
 
                 const resLabor = await fetch('/api/staff/labor-summary?currency=' + currentCurr);
@@ -1962,7 +2041,14 @@ def cancel_order(order_id):
 # --- 6. KDS Endpoints ---
 @app.route("/api/kds/active", methods=["GET"])
 def kds_active():
-    return jsonify(kds_service.get_active_kitchen_orders())
+    st = request.args.get("station")
+    orders = kds_service.get_active_kitchen_orders(station=st)
+    counts = kds_service.get_station_counts()
+    return jsonify({
+        "station": st or "ALL",
+        "orders": orders,
+        "station_counts": counts
+    })
 
 @app.route("/api/kds/tv", methods=["GET"])
 def kds_tv():

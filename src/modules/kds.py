@@ -3,11 +3,13 @@ import threading
 import json
 from typing import List, Dict, Optional
 from src.core.db import db
+from src.modules.prep_routing import prep_routing_service
 
 class KDSModule:
     """
     Kitchen Display System (KDS) & Guest TV Display Module with SSE Event Broadcasting
     Digitalizes production workflows: New -> Preparing -> Ready -> Served.
+    Supports station-specific routing (GRILL, FRYER, BAR, LARDER, HOT_LINE).
     """
     VALID_STATUSES = ["New", "Preparing", "Ready", "Served"]
 
@@ -20,7 +22,6 @@ class KDSModule:
         with self._lock:
             self._listeners.append(q)
         return q
-
 
     def unsubscribe(self, q: queue.Queue):
         with self._lock:
@@ -40,14 +41,44 @@ class KDSModule:
                 if q in self._listeners:
                     self._listeners.remove(q)
 
-    def get_active_kitchen_orders(self) -> List[dict]:
-        """Returns all orders currently in kitchen (New, Preparing, Ready)."""
+    def get_active_kitchen_orders(self, station: Optional[str] = None) -> List[dict]:
+        """Returns all orders currently in kitchen (New, Preparing, Ready), optionally filtered by prep station."""
         active_orders = [
-            order for order in db.orders.values()
+            dict(order) for order in db.orders.values()
             if order["status"] in ["New", "Preparing", "Ready"]
         ]
+        
         # Sort by creation time (FIFO)
-        return sorted(active_orders, key=lambda x: x["created_at"])
+        sorted_orders = sorted(active_orders, key=lambda x: x["created_at"])
+
+        if not station or station.upper() == "ALL":
+            return sorted_orders
+
+        # Filter items matching station
+        filtered = []
+        for o in sorted_orders:
+            station_items = []
+            for item in o["items"]:
+                item_id = item.get("item_id")
+                routing = prep_routing_service.get_item_routing(item_id)
+                if routing["station"].upper() == station.upper():
+                    item_copy = dict(item)
+                    item_copy["station"] = routing["station"]
+                    item_copy["prep_mins"] = routing["prep_mins"]
+                    station_items.append(item_copy)
+            if station_items:
+                o_copy = dict(o)
+                o_copy["items"] = station_items
+                filtered.append(o_copy)
+
+        return filtered
+
+    def get_station_counts(self) -> Dict[str, int]:
+        all_orders = self.get_active_kitchen_orders(station=None)
+        counts = {"ALL": len(all_orders), "GRILL": 0, "FRYER": 0, "BAR": 0, "LARDER": 0, "HOT_LINE": 0}
+        for st in ["GRILL", "FRYER", "BAR", "LARDER", "HOT_LINE"]:
+            counts[st] = len(self.get_active_kitchen_orders(station=st))
+        return counts
 
     def get_tv_display_status(self) -> dict:
         """Returns orders categorized for guest-facing TV screens."""
@@ -78,4 +109,3 @@ class KDSModule:
         return order
 
 kds_service = KDSModule()
-
