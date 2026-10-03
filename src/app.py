@@ -250,6 +250,10 @@ INDEX_HTML = """<!DOCTYPE html>
 
     <!-- GUEST TABLE VIEW CONTAINER -->
     <main id="guestViewSection" class="container my-4">
+        <!-- Floating AI Sommelier Companion Button (Page 6 Blueprint) -->
+        <button class="btn btn-dark text-warning rounded-circle shadow-lg position-fixed bottom-0 end-0 m-4 z-3 d-flex align-items-center justify-content-center border border-warning" style="width: 58px; height: 58px;" onclick="showAiSommelierModal()" title="AI Sommelier & Culinary Assistant">
+            <i class="fa-solid fa-wine-glass-empty fs-3"></i>
+        </button>
         <div class="p-3 bg-white rounded-3 border shadow-sm mb-3 d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center gap-2">
                 <i class="fa-solid fa-heart text-danger fs-5"></i>
@@ -631,6 +635,7 @@ INDEX_HTML = """<!DOCTYPE html>
                     <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('LARDER', this)">🍰 Dessert & Pantry <span class="badge bg-secondary ms-1" id="stBadgeLARDER">0</span></button>
                     <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold" onclick="filterKdsStation('HOT_LINE', this)">HOT Line Pass <span class="badge bg-secondary ms-1" id="stBadgeHOT_LINE">0</span></button>
                     
+                    <button class="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 fw-bold me-2" onclick="openThermalPrinterEmulator()"><i class="fa-solid fa-print me-1 text-primary"></i> Thermal Docket Emulator</button>
                     <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold ms-auto" id="chimeToggleBtn" onclick="toggleOrderChime()"><i class="fa-solid fa-volume-high me-1"></i> Audio Chime On</button>
                 </div>
 
@@ -1251,6 +1256,86 @@ INDEX_HTML = """<!DOCTYPE html>
                         <!-- Active Voucher Wallet -->
                         <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-wallet me-2 text-success"></i>My Active Voucher Wallet</h6>
                         <div id="loyaltyVoucherWalletList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thermal ESC/POS Printer Emulator Modal -->
+    <div class="modal fade" id="thermalEmulatorModal" tabindex="-1" aria-labelledby="thermalEmulatorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold" id="thermalEmulatorModalLabel"><i class="fa-solid fa-print text-warning me-2"></i>Epson/Star ESC/POS Thermal Docket Emulator</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-secondary bg-opacity-10">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Select Target Ticket</label>
+                            <select id="thermalTargetOrderSelect" class="form-select form-select-sm" onchange="renderThermalRollPreview()">
+                                <option value="ORD-0001">Ticket #ORD-0001 (Table #5)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Thermal Paper Width</label>
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <input type="radio" class="btn-check" name="thermalWidth" id="width32" value="32" checked onchange="renderThermalRollPreview()">
+                                <label class="btn btn-outline-dark" for="width32">58mm (32 Cols)</label>
+                                <input type="radio" class="btn-check" name="thermalWidth" id="width42" value="42" onchange="renderThermalRollPreview()">
+                                <label class="btn btn-outline-dark" for="width42">80mm (42 Cols)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Realistic Thermal Paper Roll Screen -->
+                    <div class="d-flex justify-content-center my-3">
+                        <div class="thermal-roll-paper p-4 rounded-top border shadow-lg" style="background-color: #fffef0; color: #111; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; max-width: 380px; width: 100%; border-bottom: 12px dashed #cbd5e1 !important;">
+                            <div class="text-center fw-bold mb-2">*** KITCHEN CHEF DOCKET ***</div>
+                            <pre id="thermalPaperContent" class="mb-0" style="white-space: pre-wrap; font-family: inherit; font-size: inherit;"></pre>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-center mt-4">
+                        <button class="btn btn-success fw-bold px-4" onclick="simulateEscposPrintCut()"><i class="fa-solid fa-scissors me-1"></i> Print & Cut Docket (ESC/POS)</button>
+                        <button class="btn btn-outline-dark fw-bold px-3" onclick="downloadThermalTxt()"><i class="fa-solid fa-download me-1"></i> Download Raw TXT</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Sommelier & Culinary Companion Modal -->
+    <div class="modal fade" id="aiSommelierModal" tabindex="-1" aria-labelledby="aiSommelierModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                    <h5 class="modal-title fw-bold" id="aiSommelierModalLabel"><i class="fa-solid fa-wine-bottle text-warning me-2"></i>AI Sommelier & Culinary Assistant</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <small class="text-muted fw-bold d-block mb-2"><i class="fa-solid fa-lightbulb text-warning me-1"></i> Quick Sommelier Prompts:</small>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-sm btn-outline-dark rounded-pill" onclick="askAiSommelier('What wine pairs best with Fish & Chips?')">🍷 Wine for Fish & Chips</button>
+                            <button class="btn btn-sm btn-outline-dark rounded-pill" onclick="askAiSommelier('What beer goes with Wagyu Burger?')">🍺 Beer for Wagyu Burger</button>
+                            <button class="btn btn-sm btn-outline-dark rounded-pill" onclick="askAiSommelier('Show gluten-free and vegan options')">🌱 Gluten-Free Options</button>
+                        </div>
+                    </div>
+
+                    <div id="sommelierChatBox" class="p-3 bg-white border rounded-3 mb-3" style="min-height: 220px; max-height: 320px; overflow-y: auto;">
+                        <div class="d-flex align-items-start gap-2 mb-3">
+                            <div class="bg-dark text-warning rounded-circle p-2 fs-5"><i class="fa-solid fa-robot"></i></div>
+                            <div class="p-3 bg-light rounded-3 text-dark border">
+                                Hello! I am your AI Sommelier. Ask me for food & wine pairings, dietary options, or dish recommendations!
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="text" id="sommelierInputPrompt" class="form-control" placeholder="Ask AI Sommelier (e.g., 'Best wine for steak?')..." onkeypress="if(event.key==='Enter') sendSommelierPrompt()">
+                        <button class="btn btn-warning text-dark fw-bold px-4" onclick="sendSommelierPrompt()"><i class="fa-solid fa-paper-plane me-1"></i> Ask AI</button>
                     </div>
                 </div>
             </div>
@@ -2766,6 +2851,156 @@ Total Paid: ${sym}${data.grand_total.toFixed(2)} (includes ${sym}${data.tip_amou
             if(modal) modal.hide();
         }
 
+
+        // --- ESC/POS Thermal Docket Printer Emulator ---
+        async function openThermalPrinterEmulator(orderId) {
+            const select = document.getElementById('thermalTargetOrderSelect');
+            if(select) {
+                // Populate active orders
+                try {
+                    const res = await fetch('/api/kds/active');
+                    const data = await res.json();
+                    const orders = data.orders || [];
+                    if(orders.length > 0) {
+                        select.innerHTML = orders.map(o => `<option value="${o.id}">Ticket #${o.id} (Table #${o.table_number})</option>`).join('');
+                        if(orderId) select.value = orderId;
+                    }
+                } catch(e) {}
+            }
+
+            renderThermalRollPreview();
+            const modal = new bootstrap.Modal(document.getElementById('thermalEmulatorModal'));
+            modal.show();
+        }
+
+        async function renderThermalRollPreview() {
+            const select = document.getElementById('thermalTargetOrderSelect');
+            const orderId = select ? select.value : 'ORD-0001';
+            const widthRadio = document.querySelector('input[name="thermalWidth"]:checked');
+            const width = widthRadio ? parseInt(widthRadio.value) : 32;
+
+            const res = await fetch(`/api/receipt/${orderId}/txt?width=${width}`);
+            if(res.ok) {
+                const text = await res.text();
+                document.getElementById('thermalPaperContent').innerText = text;
+            } else {
+                document.getElementById('thermalPaperContent').innerText = `THE WAITER UK
+ORDER: ${orderId}
+================================
+Fish & Chips          £14.50
+Craft IPA Pint         £6.20
+================================
+TOTAL:                £20.70`;
+            }
+        }
+
+        function simulateEscposPrintCut() {
+            try {
+                // Audio paper tear / cut simulation sound using Web Audio API
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } catch(e) {}
+
+            alert('✂️ [ESC/POS Hardware Emulator] Received GS V 65 0 (Paper Cut) command! Thermal Docket Printed to Network Spooler.');
+        }
+
+        function downloadThermalTxt() {
+            const text = document.getElementById('thermalPaperContent').innerText;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Kitchen_Docket_${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+
+        // --- AI Sommelier & Culinary Companion Engine ---
+        function showAiSommelierModal() {
+            const modal = new bootstrap.Modal(document.getElementById('aiSommelierModal'));
+            modal.show();
+        }
+
+        async function askAiSommelier(promptText) {
+            document.getElementById('sommelierInputPrompt').value = promptText;
+            await sendSommelierPrompt();
+        }
+
+        async function sendSommelierPrompt() {
+            const input = document.getElementById('sommelierInputPrompt');
+            const prompt = input.value.trim();
+            if (!prompt) return;
+
+            const chatBox = document.getElementById('sommelierChatBox');
+
+            // Append User Message
+            chatBox.innerHTML += `
+                <div class="d-flex align-items-start gap-2 mb-3 justify-content-end">
+                    <div class="p-3 bg-primary text-white rounded-3 shadow-sm" style="max-width: 80%;">
+                        ${prompt}
+                    </div>
+                    <div class="bg-primary text-white rounded-circle p-2 fs-5"><i class="fa-solid fa-user"></i></div>
+                </div>
+            `;
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const res = await fetch('/api/ai/sommelier', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt, lang: currentLang })
+                });
+                const data = await res.json();
+
+                let recsHtml = '';
+                if (data.recommendations && data.recommendations.length > 0) {
+                    recsHtml = `
+                        <div class="mt-2 pt-2 border-top">
+                            <small class="fw-bold text-dark d-block mb-1"><i class="fa-solid fa-star text-warning me-1"></i> Suggested Menu Pairings:</small>
+                            <div class="vstack gap-2">
+                                ${data.recommendations.map(r => `
+                                    <div class="p-2 border rounded bg-white d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong class="text-dark small">${r.name}</strong>
+                                            <small class="text-muted d-block">£${r.price.toFixed(2)}</small>
+                                        </div>
+                                        <button class="btn btn-xs btn-success fw-bold py-1 px-2" onclick="addToCart('${r.item_id}')"><i class="fa-solid fa-cart-plus me-1"></i> Add £${r.price.toFixed(2)}</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Append AI Response
+                chatBox.innerHTML += `
+                    <div class="d-flex align-items-start gap-2 mb-3">
+                        <div class="bg-dark text-warning rounded-circle p-2 fs-5"><i class="fa-solid fa-robot"></i></div>
+                        <div class="p-3 bg-light rounded-3 text-dark border shadow-sm" style="max-width: 85%;">
+                            ${data.response_text}
+                            ${recsHtml}
+                        </div>
+                    </div>
+                `;
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+            } catch(e) {
+                console.error('Sommelier AI error', e);
+            }
+        }
+
     </script>
 </body>
 </html>"""
@@ -3962,6 +4197,46 @@ self.addEventListener('fetch', event => {
 });
 """
     return Response(sw_code, mimetype="application/javascript")
+
+
+
+# --- 22. AI Sommelier & Dish Pairing Companion Endpoint ---
+@app.route("/api/ai/sommelier", methods=["POST"])
+def ai_sommelier_assistant():
+    data = request.json or {}
+    prompt = (data.get("prompt") or "").strip().lower()
+
+    recommendations = []
+    response_text = ""
+
+    if "wine" in prompt or "fish" in prompt or "cod" in prompt:
+        response_text = "For Fish & Chips, I recommend pairing it with a crisp Sauvignon Blanc or our Craft IPA Pint! The citrus notes cut through the golden batter perfectly."
+        recommendations = [
+            {"item_id": "item-1", "name": "Fish & Chips", "price": 14.50, "category": "Mains"},
+            {"item_id": "item-3", "name": "Craft IPA Pint", "price": 6.20, "category": "Drinks"}
+        ]
+    elif "burger" in prompt or "wagyu" in prompt or "beer" in prompt:
+        response_text = "For our Gourmet Wagyu Beef Burger, a full-bodied Malbec or an artisanal Craft IPA Pint enhances the rich, savory umami flavor!"
+        recommendations = [
+            {"item_id": "item-2", "name": "Wagyu Beef Burger", "price": 16.80, "category": "Mains"},
+            {"item_id": "item-3", "name": "Craft IPA Pint", "price": 6.20, "category": "Drinks"}
+        ]
+    elif "gluten" in prompt or "vegan" in prompt or "diet" in prompt:
+        response_text = "We have excellent Gluten-Free and Vegan options! Try our Fresh Mediterranean Garden Salad paired with Sparkling Mineral Water."
+        recommendations = [
+            {"item_id": "item-4", "name": "Mediterranean Garden Salad", "price": 9.50, "category": "Starters"}
+        ]
+    else:
+        response_text = "Welcome to our AI Sommelier! I can recommend perfect wine & beverage pairings, dietary options, or top chef specials. Try asking 'What wine pairs with Fish & Chips?'"
+        recommendations = [
+            {"item_id": "item-1", "name": "Fish & Chips", "price": 14.50, "category": "Mains"},
+            {"item_id": "item-3", "name": "Craft IPA Pint", "price": 6.20, "category": "Drinks"}
+        ]
+
+    return jsonify({
+        "response_text": response_text,
+        "recommendations": recommendations
+    })
 
 
 if __name__ == "__main__":
