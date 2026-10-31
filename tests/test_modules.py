@@ -756,6 +756,36 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIn("staffServiceCallsCard", html)
         self.assertIn("zReportInteractiveContainer", html)
 
+    def test_blueprint_pdf_all_six_remaining_modules(self):
+        from src.app import app
+        client = app.test_client()
+
+        # 1. Test Page 11 UK Consultation & 7-Day Free Trial Booking Endpoint
+        res_consult = client.post("/api/blueprint/consultation", json={
+            "venue_name": "The Crown & Anchor Covent Garden",
+            "contact": "owner@crownanchor.co.uk"
+        })
+        self.assertEqual(res_consult.status_code, 201)
+        data = res_consult.get_json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["lead"]["trial_days"], 7)
+        self.assertEqual(data["lead"]["setup_minutes"], 3)
+        self.assertEqual(data["lead"]["uk_team_phone"], "+44 7594 560831")
+        self.assertEqual(data["lead"]["uk_team_email"], "nidaazzielmehdi@gmail.com")
+        self.assertEqual(data["lead"]["website"], "waiter.com")
+
+        # 2. Verify all 6 Blueprint PDF visual & functional modules in GET /
+        res_index = client.get("/")
+        html = res_index.get_data(as_text=True)
+        self.assertIn("barStoolsBlueprintRow", html)              # Page 1: 5 Bar Stools & Kitchen Pass
+        self.assertIn("bpReservationsToday", html)                # Page 1: 4 Blueprint KPIs (120 Reservations, 18 Staff)
+        self.assertIn("dishPhotos", html)                         # Page 6: Rich Dish Photography & Inline Allergen Badges
+        self.assertIn("liveBlueprintInvoiceCard", html)           # Page 8: Auto-Generated Invoice #001024 & Horizon Toggle
+        self.assertIn("The Waiter Cloud Sync — 6-Device Hub", html) # Page 9: 6-Device Zero Hardware Lock-In Hub
+        self.assertIn("The Old Way vs. The Waiter Blueprint", html) # Pages 2, 3, 10: Operational Shift & ROI Calculator
+        self.assertIn("nidaazzielmehdi@gmail.com", html)          # Page 11: UK Team Contact & 7-Day Free Trial
+        self.assertIn("+44 7594 560831", html)
+
 if __name__ == "__main__":
     unittest.main()
 
