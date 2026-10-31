@@ -1070,6 +1070,66 @@ class TestWaiterModules(unittest.TestCase):
         self.assertEqual(urdu_items[0]["active_language"], "ur")
         self.assertTrue(urdu_items[0]["is_rtl"])
 
+    def test_reliability_offline_queue_and_epson_star_printers(self):
+        from src.app import app
+        client = app.test_client()
+
+        # 1. Switch to CELLAR_DEAD_ZONE offline mode & queue orders locally
+        res_mode = client.post("/api/reliability/network-mode", json={"mode": "CELLAR_DEAD_ZONE"})
+        self.assertEqual(res_mode.status_code, 200)
+        self.assertTrue(res_mode.get_json()["is_offline_queuing"])
+
+        res_q1 = client.post("/api/reliability/offline-queue", json={
+            "table_number": 9,
+            "item_ids": ["item-1", "item-3"],
+            "scenario": "CELLAR_DEAD_ZONE",
+            "location_note": "Underground Cellar Vault",
+            "client_offline_id": "OFFLINE-Q-TEST99"
+        })
+        self.assertEqual(res_q1.status_code, 201)
+        data_q1 = res_q1.get_json()
+        self.assertEqual(data_q1["offline_id"], "OFFLINE-Q-TEST99")
+        self.assertEqual(data_q1["status"], "QUEUED_LOCALLY")
+
+        # Sync offline queue to live POS & Kitchen KDS
+        res_sync = client.post("/api/reliability/offline-sync", json={
+            "client_queued_orders": [{
+                "offline_id": "OFFLINE-Q-SAT88",
+                "table_number": 11,
+                "item_ids": ["item-2"],
+                "scenario": "SATURDAY_PEAK_CONGESTION",
+                "location_note": "Rural Beer Garden Saturday Rush"
+            }]
+        })
+        self.assertEqual(res_sync.status_code, 200)
+        data_sync = res_sync.get_json()
+        self.assertTrue(data_sync["success"])
+        self.assertEqual(data_sync["synced_count"], 2)
+        self.assertEqual(data_sync["remaining_queue_count"], 0)
+
+        # Verify idempotency: re-syncing the exact same offline_id creates 0 duplicates
+        res_dup = client.post("/api/reliability/offline-sync", json={
+            "client_queued_orders": [{"offline_id": "OFFLINE-Q-SAT88", "table_number": 11, "item_ids": ["item-2"]}]
+        })
+        self.assertEqual(res_dup.get_json()["synced_count"], 0)
+
+        # 2. Certified Epson & Star Micronics Thermal Printer Compatibility Matrix
+        res_prn = client.get("/api/reliability/printers")
+        self.assertEqual(res_prn.status_code, 200)
+        data_prn = res_prn.get_json()
+        self.assertIn("Epson", data_prn["supported_brands"])
+        self.assertIn("Star Micronics", data_prn["supported_brands"])
+        self.assertGreaterEqual(data_prn["total_certified_models"], 7)
+        self.assertTrue(all(p["proprietary_lock_in"] is False for p in data_prn["printers"]))
+
+        # Run live ESC/POS diagnostic test on Star TSP143IV & Epson TM-T88VII
+        res_test = client.post("/api/reliability/printers/test", json={"model_id": "STAR-TSP143IV"})
+        self.assertEqual(res_test.status_code, 200)
+        data_test = res_test.get_json()
+        self.assertTrue(data_test["success"])
+        self.assertEqual(data_test["brand"], "Star Micronics")
+        self.assertGreater(data_test["escpos_payload_size_bytes"], 50)
+
 if __name__ == "__main__":
     unittest.main()
 

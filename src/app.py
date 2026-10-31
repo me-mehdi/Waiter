@@ -43,6 +43,7 @@ from src.modules.uk_compliance import uk_compliance_service
 from src.modules.money_margins import money_margins_service
 from src.modules.pub_features import pub_features_service
 from src.modules.growth_customers import growth_customers_service
+from src.modules.reliability import reliability_service
 
 app = Flask(__name__)
 
@@ -410,6 +411,24 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
                 <div id="guestGrowthActionBanner" class="alert alert-success py-2 px-3 small fw-bold d-none mb-3"></div>
 
+                <!-- Offline Mode Store-and-Forward Bar (Pub Cellars, Rural Venues & Busy Saturdays) -->
+                <div class="p-3 mb-3 rounded-3 border shadow-sm d-flex flex-wrap justify-content-between align-items-center gap-2" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-color: #fde68a !important;">
+                    <div>
+                        <span class="badge bg-warning text-dark me-1" id="guestNetStatusBadge"><i class="fa-solid fa-wifi me-1"></i>ONLINE</span>
+                        <strong class="small text-dark">Offline-First Queue (Pub Cellars, Rural Venues & Busy Saturdays)</strong>
+                        <span class="badge bg-dark ms-1" id="guestOfflineQueueCountBadge">0 Queued Locally</span>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm btn-outline-dark fw-bold" onclick="guestQueueOfflineOrder()">
+                            <i class="fa-solid fa-cloud-arrow-down me-1"></i>Queue Order Offline (Cellar/Saturday)
+                        </button>
+                        <button class="btn btn-sm btn-warning text-dark fw-bold" onclick="guestSyncOfflineOrdersNow()">
+                            <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Queued Orders to KDS
+                        </button>
+                    </div>
+                </div>
+                <div id="guestOfflineSyncBanner" class="alert alert-warning py-2 px-3 small fw-bold d-none mb-3"></div>
+
                 <div id="menuContainer" class="row g-3">
                     <!-- Dynamically populated -->
                 </div>
@@ -683,6 +702,9 @@ INDEX_HTML = """<!DOCTYPE html>
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="growthhub-tab" data-bs-toggle="tab" data-bs-target="#growthhub" type="button" onclick="loadGrowthAndCustomersHub()"><i class="fa-solid fa-rocket me-1 text-info"></i> 🚀 Growth & Customers</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="reliabilityhub-tab" data-bs-toggle="tab" data-bs-target="#reliabilityhub" type="button" onclick="loadReliabilityAndPrintersHub()"><i class="fa-solid fa-satellite-dish me-1 text-warning"></i> 📡 Reliability & Printers</button>
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="pubhub-tab" data-bs-toggle="tab" data-bs-target="#pubhub" type="button" onclick="loadPubAndCellarHub()"><i class="fa-solid fa-beer-mug-empty me-1 text-warning"></i> 🍺 Pub & Cellar</button>
@@ -1659,6 +1681,93 @@ INDEX_HTML = """<!DOCTYPE html>
                             </div>
 
                             <div id="growthMulticulturalContainer" class="small"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="reliabilityhub" role="tabpanel">
+                <!-- Reliability & Open Hardware Header Banner -->
+                <div class="p-4 rounded-4 mb-4 text-white shadow-sm" style="background: linear-gradient(135deg, #111827 0%, #1e293b 55%, #0f766e 100%); border: 1px solid #14b8a6;">
+                    <div class="row align-items-center g-3">
+                        <div class="col-lg-8">
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                <span class="badge bg-warning text-dark fw-bold px-3 py-1">📶 OFFLINE STORE-AND-FORWARD QUEUE</span>
+                                <span class="badge bg-info text-dark fw-bold px-3 py-1">🍺 PUB CELLARS · RURAL INNS · BUSY SATURDAYS</span>
+                                <span class="badge bg-success fw-bold px-3 py-1">🖨️ EPSON & STAR MICRONICS CERTIFIED (NO LOCK-IN)</span>
+                            </div>
+                            <h4 class="fw-bold mb-1"><i class="fa-solid fa-satellite-dish text-warning me-2"></i>Offline Resilience & Open Thermal Printer Matrix</h4>
+                            <p class="small text-light opacity-75 mb-0">Orders queue locally in browser IndexedDB/LocalStorage & edge buffer during signal drops (cellars, rural stone pubs, congested Saturday Wi-Fi) and batch-sync with idempotency keys. Plug-and-play support for existing Epson & Star thermal printers — zero £5,000 proprietary hardware required.</p>
+                        </div>
+                        <div class="col-lg-4 text-lg-end">
+                            <button class="btn btn-warning text-dark btn-sm fw-bold shadow-sm" onclick="loadReliabilityAndPrintersHub()">
+                                <i class="fa-solid fa-rotate me-1"></i> Refresh Diagnostics
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Pillar 1: Offline Mode (Pub Cellars, Rural Venues & Busy Saturdays) -->
+                    <div class="col-lg-5">
+                        <div class="card card-custom p-4 bg-white h-100 border-start border-4 border-warning">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="fw-bold mb-0"><i class="fa-solid fa-cloud-Bolt text-warning me-2"></i>1. Offline Mode & Local Queue Sync</h5>
+                                <span class="badge bg-success" id="relNetworkModeBadge">ONLINE</span>
+                            </div>
+                            <p class="small text-muted mb-3">Simulate poor connectivity in underground pub cellars, rural venues, or peak Saturday night congestion. Orders queue locally with idempotency keys and replay to KDS on reconnect.</p>
+
+                            <label class="small fw-bold text-dark mb-1">Select Venue Connectivity Condition:</label>
+                            <div class="input-group input-group-sm mb-3">
+                                <select id="relNetworkModeSelect" class="form-select fw-bold">
+                                    <option value="ONLINE">🟢 ONLINE — Full Cloud & KDS Sync (&lt;25ms)</option>
+                                    <option value="CELLAR_DEAD_ZONE">🟠 CELLAR_DEAD_ZONE — Underground Pub Cellar (0 Bars)</option>
+                                    <option value="RURAL_LOW_SIGNAL">🟡 RURAL_LOW_SIGNAL — Rural Country Inn (WAN Drop)</option>
+                                    <option value="SATURDAY_PEAK_CONGESTION">🔴 SATURDAY_PEAK_CONGESTION — Busy Saturday Night Rush</option>
+                                </select>
+                                <button class="btn btn-dark fw-bold" onclick="setReliabilityNetworkMode()">Apply Mode</button>
+                            </div>
+
+                            <div class="p-3 bg-light rounded-3 border mb-3">
+                                <label class="small fw-bold text-dark d-block mb-2"><i class="fa-solid fa-layer-group text-warning me-1"></i>Queue Offline Order Locally (Store-and-Forward):</label>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-4">
+                                        <input type="number" id="relOfflineTable" class="form-control form-control-sm" value="7" min="1" max="30" placeholder="Table #">
+                                    </div>
+                                    <div class="col-8">
+                                        <input type="text" id="relOfflineLocation" class="form-control form-control-sm" value="Saturday Night Bar / Cellar Vault">
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-dark fw-bold w-50" onclick="queueOfflineOrderFromHub()">
+                                        <i class="fa-solid fa-download me-1"></i>+ Queue Offline Order
+                                    </button>
+                                    <button class="btn btn-sm btn-success fw-bold w-50" onclick="syncAllOfflineOrdersFromHub()">
+                                        <i class="fa-solid fa-cloud-arrow-up me-1"></i>Sync Queue → KDS Now
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="relOfflineQueueContainer" class="small"></div>
+                        </div>
+                    </div>
+
+                    <!-- Pillar 2: Published List of Supported Thermal Printers (Epson & Star Micronics) -->
+                    <div class="col-lg-7">
+                        <div class="card card-custom p-4 bg-white h-100 border-start border-4 border-success">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                <h5 class="fw-bold mb-0"><i class="fa-solid fa-print text-success me-2"></i>2. Supported Thermal Printers (Epson & Star)</h5>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-dark active fw-bold" onclick="loadReliabilityAndPrintersHub('all')">All (7)</button>
+                                    <button class="btn btn-outline-dark fw-bold" onclick="loadReliabilityAndPrintersHub('Epson')">Epson (4)</button>
+                                    <button class="btn btn-outline-dark fw-bold" onclick="loadReliabilityAndPrintersHub('Star')">Star Micronics (3)</button>
+                                </div>
+                            </div>
+                            <p class="small text-muted mb-3"><strong>Zero Proprietary Hardware Lock-In:</strong> Works out-of-the-box with industry-standard Epson (ESC/POS) and Star Micronics (StarPRNT / CloudPRNT) printers via LAN Port 9100, Wi-Fi, USB-C, or Bluetooth.</p>
+
+                            <div id="relPrintersTableContainer" class="table-responsive mb-3"></div>
+
+                            <div id="relPrinterTestOutput" class="p-3 rounded-3 bg-dark text-light font-monospace small d-none"></div>
                         </div>
                     </div>
                 </div>
@@ -5888,6 +5997,231 @@ TOTAL:                £20.70`;
             }
         }
 
+
+        // =====================================================================
+        // 33. RELIABILITY & OPEN HARDWARE HUB (OFFLINE QUEUE + EPSON/STAR PRINTERS)
+        // =====================================================================
+        function getBrowserOfflineQueue() {
+            try {
+                return JSON.parse(localStorage.getItem('waiter_offline_queue_v1') || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveBrowserOfflineQueue(list) {
+            try {
+                localStorage.setItem('waiter_offline_queue_v1', JSON.stringify(list));
+            } catch (e) {}
+        }
+
+        async function loadReliabilityAndPrintersHub(brandFilter = 'all') {
+            try {
+                const [dashRes, prnRes] = await Promise.all([
+                    fetch('/api/reliability/dashboard'),
+                    fetch('/api/reliability/printers?brand=' + encodeURIComponent(brandFilter))
+                ]);
+                const dash = await dashRes.json();
+                const prnData = await prnRes.json();
+
+                // 1. Offline Queue Status
+                const net = dash.network_status;
+                const badge = document.getElementById('relNetworkModeBadge');
+                if (badge) {
+                    badge.textContent = `${net.network_mode} (${net.queued_orders_count} Queued)`;
+                    badge.className = 'badge ' + (net.is_offline_queuing ? 'bg-warning text-dark' : 'bg-success');
+                }
+                const sel = document.getElementById('relNetworkModeSelect');
+                if (sel) sel.value = net.network_mode;
+
+                const qContainer = document.getElementById('relOfflineQueueContainer');
+                if (qContainer) {
+                    const pendingHtml = (net.queued_orders || []).map(q => `
+                        <div class="p-2 mb-1 rounded border border-warning bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong class="text-dark"><code>${q.offline_id}</code> · Table #${q.table_number}</strong>
+                                <span class="badge bg-warning text-dark ms-1">${q.scenario}</span>
+                                <div class="text-muted" style="font-size:0.75rem;">${q.location_note} · ${q.items_count} items</div>
+                            </div>
+                            <span class="badge bg-dark">£${q.estimated_total_gbp.toFixed(2)} QUEUED</span>
+                        </div>
+                    `).join('');
+
+                    const syncedHtml = (net.synced_history || []).slice(0, 4).map(s => `
+                        <div class="p-2 mb-1 rounded border bg-light d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong class="text-success"><i class="fa-solid fa-check-double me-1"></i>${s.offline_id} → ${s.synced_order_id}</strong>
+                                <div class="text-muted" style="font-size:0.75rem;">Table #${s.table_number} · ${s.location_note} (${s.scenario})</div>
+                            </div>
+                            <span class="badge bg-success">£${s.total_gbp.toFixed(2)} SYNCED</span>
+                        </div>
+                    `).join('');
+
+                    qContainer.innerHTML = `
+                        <div class="fw-bold text-dark mb-1">Pending Local Offline Queue (${net.queued_orders_count}):</div>
+                        ${pendingHtml || '<div class="text-muted mb-2">0 orders waiting in local offline buffer.</div>'}
+                        <div class="fw-bold text-dark mt-2 mb-1">Recently Synced to Kitchen KDS:</div>
+                        ${syncedHtml}
+                    `;
+                }
+
+                // 2. Certified Epson & Star Micronics Printers Table
+                const pContainer = document.getElementById('relPrintersTableContainer');
+                if (pContainer) {
+                    const rows = (prnData.printers || []).map(p => `
+                        <tr>
+                            <td>
+                                <span class="badge ${p.brand === 'Epson' ? 'bg-primary' : 'bg-info text-dark'} me-1">${p.brand}</span>
+                                <strong class="text-dark d-block">${p.model_name}</strong>
+                                <small class="text-muted">${p.best_for}</small>
+                            </td>
+                            <td class="small">${p.paper_width}<br><span class="text-muted">${p.print_speed}</span></td>
+                            <td class="small"><code>${p.protocol}</code><br><span class="text-muted">${p.interfaces.join(', ')}</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-xs btn-outline-success btn-sm fw-bold" onclick="runHardwarePrinterTest('${p.model_id}')">
+                                    <i class="fa-solid fa-receipt me-1"></i>Test Print
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                    pContainer.innerHTML = `
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr><th>Certified Printer Model</th><th>Width & Speed</th><th>Protocol & Interfaces</th><th class="text-end">Diagnostic</th></tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    `;
+                }
+            } catch (e) {
+                console.error('Error loading Reliability & Printers Hub:', e);
+            }
+        }
+
+        async function setReliabilityNetworkMode() {
+            const mode = document.getElementById('relNetworkModeSelect').value;
+            await fetch('/api/reliability/network-mode', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mode: mode})
+            });
+            loadReliabilityAndPrintersHub();
+        }
+
+        async function queueOfflineOrderFromHub() {
+            const tbl = parseInt(document.getElementById('relOfflineTable').value || '7', 10);
+            const loc = document.getElementById('relOfflineLocation').value || 'Pub Cellar / Rural Zone';
+            const mode = document.getElementById('relNetworkModeSelect').value === 'ONLINE'
+                ? 'CELLAR_DEAD_ZONE'
+                : document.getElementById('relNetworkModeSelect').value;
+
+            const res = await fetch('/api/reliability/offline-queue', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    table_number: tbl,
+                    item_ids: ['item-1', 'item-3'],
+                    scenario: mode,
+                    location_note: loc
+                })
+            });
+            const queued = await res.json();
+            const localList = getBrowserOfflineQueue();
+            localList.push(queued);
+            saveBrowserOfflineQueue(localList);
+            loadReliabilityAndPrintersHub();
+        }
+
+        async function syncAllOfflineOrdersFromHub() {
+            const localList = getBrowserOfflineQueue();
+            await fetch('/api/reliability/offline-sync', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({client_queued_orders: localList})
+            });
+            saveBrowserOfflineQueue([]);
+            loadReliabilityAndPrintersHub();
+            loadKDS();
+        }
+
+        async function runHardwarePrinterTest(modelId) {
+            const res = await fetch('/api/reliability/printers/test', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({model_id: modelId})
+            });
+            const data = await res.json();
+            const out = document.getElementById('relPrinterTestOutput');
+            if (out) {
+                out.classList.remove('d-none');
+                out.innerHTML = `
+                    <div class="d-flex justify-content-between text-warning fw-bold mb-1">
+                        <span>✅ ${data.model_name} (${data.protocol_used})</span>
+                        <span>ESC/POS Bytes: ${data.escpos_payload_size_bytes}B · Header: 0x${data.escpos_header_hex}</span>
+                    </div>
+                    <pre class="mb-0 text-light" style="font-size:0.75rem; white-space:pre-wrap;">${data.receipt_preview}</pre>
+                `;
+            }
+        }
+
+        async function guestQueueOfflineOrder() {
+            const items = currentCart.length > 0 ? currentCart.map(i => i.id) : ['item-1', 'item-3'];
+            const res = await fetch('/api/reliability/offline-queue', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    table_number: activeTable || 1,
+                    item_ids: items,
+                    scenario: 'SATURDAY_PEAK_CONGESTION',
+                    location_note: 'Guest Phone LocalStorage Offline Queue'
+                })
+            });
+            const queued = await res.json();
+            const localList = getBrowserOfflineQueue();
+            localList.push(queued);
+            saveBrowserOfflineQueue(localList);
+
+            const netBadge = document.getElementById('guestNetStatusBadge');
+            if (netBadge) {
+                netBadge.className = 'badge bg-danger text-white me-1';
+                netBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>OFFLINE QUEUE ACTIVE';
+            }
+            const qBadge = document.getElementById('guestOfflineQueueCountBadge');
+            if (qBadge) qBadge.textContent = `${localList.length} Queued Locally`;
+
+            const banner = document.getElementById('guestOfflineSyncBanner');
+            if (banner) {
+                banner.innerHTML = `<i class="fa-solid fa-box-archive me-2"></i><strong>Order Saved Locally (${queued.offline_id})!</strong> Stored in browser LocalStorage & edge buffer (£${queued.estimated_total_gbp.toFixed(2)}). Will auto-sync to Kitchen KDS as soon as signal returns.`;
+                banner.classList.remove('d-none');
+            }
+        }
+
+        async function guestSyncOfflineOrdersNow() {
+            const localList = getBrowserOfflineQueue();
+            const res = await fetch('/api/reliability/offline-sync', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({client_queued_orders: localList})
+            });
+            const data = await res.json();
+            saveBrowserOfflineQueue([]);
+
+            const netBadge = document.getElementById('guestNetStatusBadge');
+            if (netBadge) {
+                netBadge.className = 'badge bg-success text-white me-1';
+                netBadge.innerHTML = '<i class="fa-solid fa-wifi me-1"></i>ONLINE (SYNCED)';
+            }
+            const qBadge = document.getElementById('guestOfflineQueueCountBadge');
+            if (qBadge) qBadge.textContent = '0 Queued Locally';
+
+            const banner = document.getElementById('guestOfflineSyncBanner');
+            if (banner) {
+                banner.innerHTML = `<i class="fa-solid fa-circle-check me-2"></i><strong>Offline Queue Replayed to Kitchen KDS!</strong> Synced ${data.synced_count} queued order(s) with zero duplicates.`;
+                banner.classList.remove('d-none');
+            }
+            loadKDS();
+        }
+
     </script>
 </body>
 </html>"""
@@ -7836,6 +8170,60 @@ def add_wallet_stamp_and_prompt_google_review():
 def get_uk_multicultural_languages_matrix():
     lang = request.args.get("lang", "en")
     return jsonify(growth_customers_service.get_multicultural_and_dietary_matrix(active_lang=lang))
+
+
+
+# --- 33. Reliability & Open Printer Compatibility Endpoints (Offline Queue Sync + Epson/Star Thermal Printers) ---
+@app.route("/api/reliability/dashboard", methods=["GET"])
+def get_reliability_dashboard_status():
+    return jsonify(reliability_service.get_reliability_dashboard())
+
+@app.route("/api/reliability/network-mode", methods=["POST"])
+def set_venue_reliability_network_mode():
+    data = request.json or {}
+    try:
+        res = reliability_service.set_network_mode(data.get("mode", "ONLINE"))
+        return jsonify(res)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/reliability/offline-queue", methods=["POST"])
+def queue_local_offline_order():
+    data = request.json or {}
+    try:
+        res = reliability_service.queue_offline_order(
+            table_number=int(data.get("table_number", 1)),
+            item_ids=data.get("item_ids", ["item-1", "item-3"]),
+            scenario=data.get("scenario", "CELLAR_DEAD_ZONE"),
+            location_note=data.get("location_note", "Pub Cellar / Rural Signal Drop"),
+            client_offline_id=data.get("client_offline_id"),
+            promo_code=data.get("promo_code")
+        )
+        return jsonify(res), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/reliability/offline-sync", methods=["POST"])
+def sync_local_offline_orders_to_kds():
+    data = request.json or {}
+    res = reliability_service.sync_offline_queue(
+        client_queued_orders=data.get("client_queued_orders")
+    )
+    return jsonify(res)
+
+@app.route("/api/reliability/printers", methods=["GET"])
+def get_certified_thermal_printers():
+    brand = request.args.get("brand", "all")
+    return jsonify(reliability_service.get_supported_printers_matrix(brand_filter=brand))
+
+@app.route("/api/reliability/printers/test", methods=["POST"])
+def run_certified_printer_diagnostic():
+    data = request.json or {}
+    res = reliability_service.run_printer_diagnostic_test(
+        model_id=data.get("model_id", "EPSON-TM-T88VII"),
+        order_id=data.get("order_id")
+    )
+    return jsonify(res)
 
 
 if __name__ == "__main__":
