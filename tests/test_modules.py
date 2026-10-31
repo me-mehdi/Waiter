@@ -717,6 +717,45 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIn("chefRecipeModal", html)
         self.assertIn("salesHeatmapGrid", html)
 
+    def test_service_calls_and_dynamic_promo_studio_endpoints(self):
+        from src.app import app
+        client = app.test_client()
+
+        # 1. Test Smart Table Service Call Bell & Staff Dispatch Queue
+        res_call = client.post("/api/service-calls", json={
+            "table_number": 5,
+            "request_type": "WATER",
+            "label": "💧 Free Tap Water"
+        })
+        self.assertEqual(res_call.status_code, 201)
+        call_obj = res_call.get_json()
+        self.assertEqual(call_obj["table_number"], 5)
+        self.assertEqual(call_obj["status"], "PENDING")
+
+        res_list = client.get("/api/service-calls")
+        self.assertEqual(res_list.status_code, 200)
+        self.assertGreaterEqual(res_list.get_json()["count"], 1)
+
+        res_resolve = client.post(f"/api/service-calls/{call_obj['id']}/resolve")
+        self.assertEqual(res_resolve.status_code, 200)
+        self.assertEqual(res_resolve.get_json()["status"], "RESOLVED")
+
+        # 2. Test Dynamic Happy Hour & Promo Code Campaign Studio
+        res_promo = client.post("/api/promos", json={"code": "HAPPYHOUR25", "discount_pct": 25})
+        self.assertEqual(res_promo.status_code, 201)
+        self.assertEqual(res_promo.get_json()["discount_rate"], 0.25)
+
+        res_del = client.delete("/api/promos/HAPPYHOUR25")
+        self.assertEqual(res_del.status_code, 200)
+        self.assertEqual(res_del.get_json()["deleted"], "HAPPYHOUR25")
+
+        # 3. Verify UI contains Concierge Bar, Promo Flash Banner & Z-Report Interactive Ledger
+        res_index = client.get("/")
+        html = res_index.get_data(as_text=True)
+        self.assertIn("guestPromoFlashBanner", html)
+        self.assertIn("staffServiceCallsCard", html)
+        self.assertIn("zReportInteractiveContainer", html)
+
 if __name__ == "__main__":
     unittest.main()
 
