@@ -870,6 +870,65 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIn("London Region (eu-west-2", data_gdpr["data_residency"])
         self.assertIn("Cyber Essentials", data_gdpr["cyber_security_certification"])
 
+    def test_money_and_margins_all_five_pillars(self):
+        from src.app import app
+        from src.modules.qr_ordering import qr_ordering_service
+        from src.modules.payments import payments_service
+        client = app.test_client()
+
+        # 1. Payment Options: Pay-by-Bank (0.2% Fee) & Split Bill by Percentage
+        order = qr_ordering_service.submit_order(table_number=8, item_ids=["item-1", "item-2"])
+        pay_res = payments_service.process_checkout(order["id"], payment_method="PAY_BY_BANK", tip_percentage=10.0)
+        self.assertEqual(pay_res["processing_fee_pct"], 0.2)
+        self.assertGreater(pay_res["fee_saved_vs_card_gbp"], 0.0)
+
+        res_pct = client.post(f"/api/orders/{order['id']}/split/percentage", json={
+            "percentages": [50, 25, 25],
+            "include_service_charge": True
+        })
+        self.assertEqual(res_pct.status_code, 200)
+        data_pct = res_pct.get_json()
+        self.assertEqual(len(data_pct["shares"]), 3)
+        self.assertEqual(data_pct["shares"][0]["percentage"], 50.0)
+
+        # 2. UK Accounting Integrations (Xero, QuickBooks, Sage, FreeAgent — MTD Ready)
+        for provider in ["XERO", "QUICKBOOKS", "SAGE", "FREEAGENT"]:
+            res_sync = client.post(f"/api/margins/accounting/sync/{provider}")
+            self.assertEqual(res_sync.status_code, 200)
+            self.assertTrue(res_sync.get_json()["success"])
+
+        # 3. Live Recipe Costing & Dish GP%
+        res_gp = client.get("/api/margins/recipe-gp")
+        self.assertEqual(res_gp.status_code, 200)
+        data_gp = res_gp.get_json()
+        self.assertGreater(data_gp["average_menu_gp_pct"], 60.0)
+        self.assertEqual(len(data_gp["dishes_gp_matrix"]), 5)
+
+        # 4. UK Wholesale Suppliers (Booker, Bidfood, Brakes) & AI Supplier Invoice Scanner
+        for sup in ["BOOKER", "BIDFOOD", "BRAKES"]:
+            res_po = client.post(f"/api/margins/suppliers/order/{sup}")
+            self.assertEqual(res_po.status_code, 201)
+            self.assertTrue(res_po.get_json()["success"])
+
+        res_scan = client.post("/api/margins/suppliers/scan-invoice", json={
+            "supplier_code": "BRAKES",
+            "invoice_ref": "BRK-INV-2026-900",
+            "cod_unit_cost_gbp": 2.80
+        })
+        self.assertEqual(res_scan.status_code, 201)
+        self.assertIn("OCR Price Alert", res_scan.get_json()["price_variance_alerts"][0])
+
+        # 5. Live Labour Cost % vs Sales, UK Statutory Holiday Accrual (12.07%) & Payroll CSV Export
+        res_lab = client.get("/api/margins/labour-payroll")
+        self.assertEqual(res_lab.status_code, 200)
+        data_lab = res_lab.get_json()
+        self.assertIn("12.07%", data_lab["uk_holiday_accrual_formula"])
+        self.assertGreater(data_lab["total_holiday_accrual_gbp"], 0.0)
+
+        res_csv = client.get("/api/margins/payroll/export/csv")
+        self.assertEqual(res_csv.status_code, 200)
+        self.assertIn("Holiday Hours Accrued (12.07%)", res_csv.get_data(as_text=True))
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -9,9 +9,10 @@ class PaymentsModule:
     Handles Apple Pay, Google Pay, and Stripe Card Checkout with digital tipping presets (10%, 12.5%, 15%, 20%).
     """
     SUPPORTED_METHODS = [
-        {"id": "APPLE_PAY", "name": "Apple Pay", "icon": "fa-brands fa-apple"},
-        {"id": "GOOGLE_PAY", "name": "Google Pay", "icon": "fa-brands fa-google-pay"},
-        {"id": "CARD_STRIPE", "name": "Debit / Credit Card (Stripe)", "icon": "fa-solid fa-credit-card"}
+        {"id": "PAY_BY_BANK", "name": "Pay by Bank (UK Open Banking • 0.2% Fee)", "icon": "fa-solid fa-building-columns", "fee_pct": 0.2},
+        {"id": "APPLE_PAY", "name": "Apple Pay", "icon": "fa-brands fa-apple", "fee_pct": 1.4},
+        {"id": "GOOGLE_PAY", "name": "Google Pay", "icon": "fa-brands fa-google-pay", "fee_pct": 1.4},
+        {"id": "CARD_STRIPE", "name": "Debit / Credit Card (Stripe)", "icon": "fa-solid fa-credit-card", "fee_pct": 1.5}
     ]
 
     TIP_PRESETS = [0.0, 10.0, 12.5, 15.0, 20.0]
@@ -41,6 +42,12 @@ class PaymentsModule:
         transaction_ref = f"TXN-{payment_method[:4]}-{uuid.uuid4().hex[:8].upper()}"
         now_iso = datetime.now(timezone.utc).isoformat()
 
+        fee_map = {m["id"]: m["fee_pct"] for m in self.SUPPORTED_METHODS}
+        fee_pct = fee_map.get(payment_method, 1.5)
+        processing_fee = round(grand_total * (fee_pct / 100.0), 2)
+        baseline_card_fee = round(grand_total * 0.015, 2)
+        fee_saved = round(max(0.0, baseline_card_fee - processing_fee), 2)
+
         payment_record = {
             "transaction_ref": transaction_ref,
             "order_id": order_id,
@@ -51,6 +58,9 @@ class PaymentsModule:
             "grand_total": grand_total,
             "currency": currency,
             "payment_method": payment_method,
+            "processing_fee_pct": fee_pct,
+            "processing_fee_gbp": processing_fee,
+            "fee_saved_vs_card_gbp": fee_saved,
             "status": "COMPLETED",
             "timestamp": now_iso
         }
