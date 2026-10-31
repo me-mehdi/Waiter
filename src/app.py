@@ -44,6 +44,7 @@ from src.modules.money_margins import money_margins_service
 from src.modules.pub_features import pub_features_service
 from src.modules.growth_customers import growth_customers_service
 from src.modules.reliability import reliability_service
+from src.modules.navy_brass_ui import NAVY_BRASS_SUITE_HTML
 
 app = Flask(__name__)
 
@@ -220,6 +221,898 @@ INDEX_HTML = """<!DOCTYPE html>
 </head>
 <body>
 
+<!-- Google Fonts: Fraunces (Serif Display) & Inter (Clean Sans Body) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    :root {
+        --nb-navy-bg: #0f1520;
+        --nb-navy-card: #141c28;
+        --nb-navy-ticket: #182232;
+        --nb-navy-border: #243044;
+        --nb-brass: #c8a86b;
+        --nb-brass-border: #6b5b3e;
+        --nb-cream: #f3ebd8;
+        --nb-white: #f8fafc;
+        --nb-muted: #94a3b8;
+        --nb-blue: #8ab4f8;
+        --nb-amber: #e2b049;
+        --nb-green: #78cfa0;
+        --nb-coral: #f28b82;
+        --nb-crimson: #7f1d1d;
+    }
+
+    #navyBrassShowcaseRoot {
+        background-color: var(--nb-navy-bg);
+        color: var(--nb-white);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.5;
+        padding-bottom: 64px;
+    }
+
+    #navyBrassShowcaseRoot h1,
+    #navyBrassShowcaseRoot h2,
+    #navyBrassShowcaseRoot h3,
+    #navyBrassShowcaseRoot .nb-serif {
+        font-family: 'Fraunces', Georgia, serif;
+        letter-spacing: -0.02em;
+    }
+
+    /* Control Ribbon */
+    .nb-switcher-bar {
+        background-color: #0b1018;
+        border-bottom: 1px solid var(--nb-navy-border);
+        padding: 12px 24px;
+        position: sticky;
+        top: 0;
+        z-index: 1040;
+    }
+
+    .nb-switcher-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .nb-nav-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    /* Minimum 44px accessible tap targets, zero gradients */
+    .nb-btn {
+        min-height: 44px;
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid transparent;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        transition: opacity 0.15s ease;
+    }
+
+    .nb-btn-brass {
+        background-color: var(--nb-brass);
+        color: var(--nb-navy-bg);
+        border-color: var(--nb-brass);
+    }
+
+    .nb-btn-outline-brass {
+        background-color: transparent;
+        color: var(--nb-brass);
+        border-color: var(--nb-brass-border);
+    }
+
+    .nb-btn-outline-brass.active {
+        background-color: var(--nb-brass);
+        color: var(--nb-navy-bg);
+        border-color: var(--nb-brass);
+    }
+
+    .nb-btn-navy {
+        background-color: var(--nb-navy-card);
+        color: var(--nb-white);
+        border-color: var(--nb-navy-border);
+    }
+
+    .nb-btn-navy.active {
+        border-color: var(--nb-brass);
+        color: var(--nb-brass);
+    }
+
+    .nb-container {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 40px 24px;
+    }
+
+    .nb-screen-divider {
+        border-top: 1px solid var(--nb-navy-border);
+        margin: 56px 0;
+    }
+
+    .nb-eyebrow {
+        color: var(--nb-brass);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 10px;
+        display: block;
+    }
+
+    .nb-card {
+        background-color: var(--nb-navy-card);
+        border: 1px solid var(--nb-navy-border);
+        border-radius: 8px;
+        padding: 24px;
+    }
+
+    .nb-card-highlight {
+        background-color: var(--nb-navy-card);
+        border: 1px solid var(--nb-brass-border);
+        border-radius: 8px;
+        padding: 24px;
+    }
+
+    .nb-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+    }
+
+    .nb-grid-4 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+    }
+
+    .nb-grid-2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 16px;
+    }
+
+    /* Guest QR Phone Frame (390x844) */
+    .nb-phone-wrapper {
+        display: flex;
+        justify-content: center;
+        padding: 16px 0;
+    }
+
+    .nb-phone-frame {
+        width: 100%;
+        max-width: 390px;
+        min-height: 844px;
+        background-color: var(--nb-cream);
+        color: #141c28;
+        border: 2px solid var(--nb-navy-border);
+        border-radius: 16px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .nb-phone-header {
+        background-color: #141c28;
+        color: var(--nb-white);
+        padding: 28px 20px 22px 20px;
+    }
+
+    .nb-lang-btn {
+        min-height: 44px;
+        min-width: 56px;
+        padding: 8px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--nb-brass);
+        background-color: transparent;
+        color: var(--nb-brass);
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .nb-lang-btn.active {
+        background-color: var(--nb-brass);
+        color: #141c28;
+    }
+
+    .nb-phone-body {
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .nb-cat-chip {
+        min-height: 44px;
+        padding: 8px 18px;
+        border-radius: 999px;
+        border: 1px solid #141c28;
+        background-color: transparent;
+        color: #141c28;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .nb-cat-chip.active {
+        background-color: #141c28;
+        color: #ffffff;
+    }
+
+    .nb-dish-card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .nb-add-btn {
+        min-height: 44px;
+        min-width: 64px;
+        padding: 8px 16px;
+        background-color: #141c28;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .nb-sticky-order-btn {
+        margin-top: auto;
+        width: 100%;
+        min-height: 52px;
+        background-color: var(--nb-brass);
+        color: #141c28;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    /* Kitchen Display (KDS) Tickets */
+    .nb-kds-ticket {
+        background-color: var(--nb-navy-ticket);
+        border: 1px solid #28364d;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+    }
+
+    .nb-kds-new {
+        border-top: 5px solid var(--nb-blue);
+    }
+
+    .nb-kds-prep {
+        border-top: 5px solid var(--nb-amber);
+    }
+
+    .nb-kds-ready {
+        border-top: 5px solid var(--nb-green);
+    }
+
+    /* Owner Dashboard Floor Plan Tiles */
+    .nb-table-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+
+    .nb-table-tile {
+        min-height: 74px;
+        border-radius: 8px;
+        padding: 12px 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: none;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .nb-table-free {
+        background-color: #232f42;
+        color: var(--nb-white);
+    }
+
+    .nb-table-seated {
+        background-color: var(--nb-brass);
+        color: #141c28;
+    }
+
+    .nb-table-ordered {
+        background-color: var(--nb-blue);
+        color: #141c28;
+    }
+
+    .nb-table-paying {
+        background-color: var(--nb-green);
+        color: #141c28;
+    }
+
+    /* Sales By Hour Flat Bar Chart */
+    .nb-bars-row {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 14px;
+        align-items: end;
+        height: 150px;
+        padding-top: 20px;
+    }
+
+    .nb-bar-col {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        height: 100%;
+    }
+
+    .nb-bar-fill {
+        background-color: var(--nb-brass);
+        width: 100%;
+        border-radius: 2px;
+    }
+</style>
+
+<section id="navyBrassShowcaseRoot" aria-label="The Waiter UK Navy and Brass Design System">
+    <!-- Top Screen Switcher & Placeholder/Live Toggle Bar -->
+    <div class="nb-switcher-bar">
+        <div class="nb-switcher-inner">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span class="nb-serif" style="font-size:18px; font-weight:700; color:#f8fafc;">The Waiter</span>
+                <span style="font-size:12px; color:#c8a86b; border:1px solid #6b5b3e; padding:2px 8px; border-radius:4px;">NAVY &amp; BRASS EDITION</span>
+            </div>
+            <div class="nb-nav-pills" role="navigation" aria-label="Screen selector">
+                <button type="button" class="nb-btn nb-btn-outline-brass active" onclick="showNbScreen('all', this)">All 4 Core Screens</button>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="showNbScreen('landing', this)">1. Landing Page</button>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="showNbScreen('guest', this)">2. Guest QR (390×844)</button>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="showNbScreen('kitchen', this)">3. Kitchen KDS</button>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="showNbScreen('owner', this)">4. Owner Today</button>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="showNbScreen('boh', this)">5. Till, Bookings, Stock, Rota &amp; Settings</button>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" id="nbDataModeBtn" class="nb-btn nb-btn-navy" onclick="toggleNbPlaceholderMode()">Mode: Placeholders ([X] / £[PRICE])</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="toggleLegacyEnterpriseSuite()">Full 35-Module Console</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 1: LANDING PAGE (RESPONSIVE)                                -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-landing">
+        <!-- Top Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:56px;">
+            <div class="nb-serif" style="font-size:22px; font-weight:700; color:#f8fafc;">The Waiter</div>
+            <button type="button" class="nb-btn nb-btn-brass" onclick="document.getElementById('nb-pricing-block').scrollIntoView({behavior:'smooth'})">Book a demo</button>
+        </div>
+
+        <!-- Hero Block -->
+        <div style="max-width:680px; margin-bottom:48px;">
+            <span class="nb-eyebrow">BUILT FOR UK PUBS, CAFES AND RESTAURANTS</span>
+            <h1 style="font-size:clamp(2.5rem, 5vw, 4rem); font-weight:800; line-height:1.06; margin:0 0 20px 0; color:#f8fafc;">
+                One system for every table, ticket and till.
+            </h1>
+            <p style="font-size:18px; color:#94a3b8; margin:0 0 28px 0;">
+                QR ordering, kitchen display, billing and live reports on the phones, tablets and printers you already own.
+            </p>
+            <div style="display:flex; flex-wrap:wrap; gap:12px;">
+                <button type="button" class="nb-btn nb-btn-brass" onclick="showNbScreen('guest', document.querySelectorAll('.nb-nav-pills .nb-btn')[2])">Try free for 7 days</button>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="document.getElementById('nb-uk-trades-grid').scrollIntoView({behavior:'smooth'})">See UK features</button>
+            </div>
+        </div>
+
+        <!-- 1 · ORDER -> 2 · PREPARE -> 3 · SETTLE Flow -->
+        <div class="nb-grid-3" style="margin-bottom:64px;">
+            <div class="nb-card">
+                <span class="nb-eyebrow">1 · ORDER</span>
+                <h3 style="font-size:20px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Scan, browse, order</h3>
+                <p style="font-size:15px; color:#94a3b8; margin:0;">Guests order from a QR stand in their language.</p>
+            </div>
+            <div class="nb-card">
+                <span class="nb-eyebrow">2 · PREPARE</span>
+                <h3 style="font-size:20px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Tickets hit the kitchen</h3>
+                <p style="font-size:15px; color:#94a3b8; margin:0;">Any TV becomes a live kitchen display.</p>
+            </div>
+            <div class="nb-card">
+                <span class="nb-eyebrow">3 · SETTLE</span>
+                <h3 style="font-size:20px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Bill and report</h3>
+                <p style="font-size:15px; color:#94a3b8; margin:0;">Payments, invoices and sales update as they happen.</p>
+            </div>
+        </div>
+
+        <!-- Made for how the UK trades -->
+        <div id="nb-uk-trades-grid" style="margin-bottom:56px;">
+            <h2 style="font-size:32px; font-weight:700; margin:0 0 24px 0; color:#f8fafc;">Made for how the UK trades</h2>
+            <div class="nb-grid-4">
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Allergen engine</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">The 14 UK allergens tagged from ingredients, with compliant labels.</p>
+                </div>
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Tips and tronc</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">Fair tip splits, a staff payout log and a written policy export.</p>
+                </div>
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Challenge 25</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">Alcohol orders prompt an ID check before serving.</p>
+                </div>
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Accounting sync</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">Xero, QuickBooks, Sage and FreeAgent.</p>
+                </div>
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Offline mode</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">Orders queue in the cellar or garden and sync later.</p>
+                </div>
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Delivery in one KDS</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">Deliveroo, Uber Eats and Just Eat tickets beside dine-in.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- The Old Way vs The Waiter -->
+        <div class="nb-grid-2" style="margin-bottom:56px;">
+            <div class="nb-card">
+                <span class="nb-eyebrow">THE OLD WAY</span>
+                <p style="font-size:16px; color:#cbd5e1; margin:0;">Several separate subscriptions, proprietary tills, paper dockets, scattered data.</p>
+            </div>
+            <div class="nb-card-highlight">
+                <span class="nb-eyebrow">THE WAITER</span>
+                <p style="font-size:16px; color:#f8fafc; margin:0;">One platform, your existing devices, a digital kitchen display, one live dashboard.</p>
+            </div>
+        </div>
+
+        <!-- Pricing / Contact Block -->
+        <div id="nb-pricing-block" class="nb-card" style="text-align:center; padding:48px 24px;">
+            <h2 class="nb-serif" id="nbLandingPriceText" style="font-size:32px; font-weight:800; margin:0 0 10px 0; color:#f8fafc;">[£ PRICE] a month. No contract.</h2>
+            <p style="font-size:15px; color:#94a3b8; margin:0 0 24px 0;">Set up in minutes. Try it free for 7 days.</p>
+            <div style="margin-bottom:24px;">
+                <button type="button" class="nb-btn nb-btn-brass" onclick="bookNbDemoPrompt()">Book a demo</button>
+            </div>
+            <div id="nbLandingContactText" style="font-size:13px; color:#94a3b8; letter-spacing:0.04em;">
+                [YOUR .CO.UK DOMAIN] · [PHONE] · [EMAIL]
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 2: GUEST QR MENU (PHONE 390×844)                            -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-guest">
+        <div class="nb-phone-wrapper">
+            <div class="nb-phone-frame" role="region" aria-label="Guest QR Menu 390 by 844">
+                <!-- Navy Phone Header -->
+                <div class="nb-phone-header">
+                    <span class="nb-eyebrow" style="margin-bottom:4px;">TABLE 12</span>
+                    <h2 class="nb-serif" id="nbPhoneVenueName" style="font-size:28px; font-weight:800; margin:0 0 16px 0; color:#f8fafc;">[VENUE NAME]</h2>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px;" role="group" aria-label="Menu Language">
+                        <button type="button" class="nb-lang-btn active" onclick="setNbPhoneLang('en', this)">EN</button>
+                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('fr', this)">FR</button>
+                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('ar', this)">AR</button>
+                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('pl', this)">PL</button>
+                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('ur', this)">UR</button>
+                    </div>
+                </div>
+
+                <!-- Cream Phone Body -->
+                <div class="nb-phone-body">
+                    <!-- Category Chips -->
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px;" role="group" aria-label="Menu Categories">
+                        <button type="button" class="nb-cat-chip active" onclick="filterNbPhoneCategory('all', this)">Mains</button>
+                        <button type="button" class="nb-cat-chip" onclick="filterNbPhoneCategory('roast', this)">Sunday roast</button>
+                        <button type="button" class="nb-cat-chip" onclick="filterNbPhoneCategory('drinks', this)">Drinks</button>
+                    </div>
+
+                    <!-- Menu Items List -->
+                    <div id="nbPhoneMenuItemsList">
+                        <!-- Dish 1: Sunday Roast -->
+                        <div class="nb-dish-card" data-cat="roast">
+                            <div>
+                                <div style="font-weight:700; font-size:18px; color:#141c28; margin-bottom:2px;" class="nb-dish-title" data-en="Sunday Roast" data-fr="Rôti du Dimanche" data-ar="روست الأحد البريطاني" data-pl="Niedzielna Pieczeń" data-ur="سنڈے روسٹ">Sunday Roast</div>
+                                <div style="font-size:14px; color:#475569; margin-bottom:8px;">Gluten · Milk · Celery</div>
+                                <div style="font-weight:700; font-size:18px; color:#141c28;" class="nb-dish-price" data-live="£18.50">£[PRICE]</div>
+                            </div>
+                            <button type="button" class="nb-add-btn" onclick="addNbPhoneOrderItem('Sunday Roast')">Add</button>
+                        </div>
+
+                        <!-- Dish 2: Fish and Chips -->
+                        <div class="nb-dish-card" data-cat="mains">
+                            <div>
+                                <div style="font-weight:700; font-size:18px; color:#141c28; margin-bottom:2px;" class="nb-dish-title" data-en="Fish and Chips" data-fr="Poisson et Frites" data-ar="سمك وبطاطس مقرمشة" data-pl="Ryba z Frytkami" data-ur="فش اینڈ چپس">Fish and Chips</div>
+                                <div style="font-size:14px; color:#475569; margin-bottom:8px;">Gluten · Fish · Eggs</div>
+                                <div style="font-weight:700; font-size:18px; color:#141c28;" class="nb-dish-price" data-live="£14.50">£[PRICE]</div>
+                            </div>
+                            <button type="button" class="nb-add-btn" onclick="addNbPhoneOrderItem('Fish and Chips')">Add</button>
+                        </div>
+
+                        <!-- Dish 3: Pint of Lager (Challenge 25) -->
+                        <div class="nb-dish-card" data-cat="drinks">
+                            <div>
+                                <div style="font-weight:700; font-size:18px; color:#141c28; margin-bottom:2px;" class="nb-dish-title" data-en="Pint of Lager" data-fr="Pinte de Bière Blonde" data-ar="بيرة لاجر بريطانية" data-pl="Pinta Jasnego Lagera" data-ur="پائنٹ آف لاگر">Pint of Lager</div>
+                                <div style="font-size:14px; color:#7f1d1d; font-weight:500; margin-bottom:8px;">Challenge 25: ID may be checked</div>
+                                <div style="font-weight:700; font-size:18px; color:#141c28;" class="nb-dish-price" data-live="£6.20">£[PRICE]</div>
+                            </div>
+                            <button type="button" class="nb-add-btn" onclick="addNbPhoneOrderItem('Pint of Lager')">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- Sticky Bottom View Order Button -->
+                    <button type="button" id="nbStickyViewOrderBtn" class="nb-sticky-order-btn" onclick="submitNbPhoneOrderToKds()">
+                        View order · 2 items
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 3: KITCHEN DISPLAY (RESPONSIVE)                             -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-kitchen">
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px; margin-bottom:28px;">
+            <h2 class="nb-serif" style="font-size:30px; font-weight:700; margin:0; color:#f8fafc;">Kitchen</h2>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;" role="group" aria-label="Order Sources">
+                <button type="button" class="nb-btn nb-btn-navy active" onclick="filterNbKdsSource('all', this)">Dine-in</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="filterNbKdsSource('deliveroo', this)">Deliveroo</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="filterNbKdsSource('ubereats', this)">Uber Eats</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="filterNbKdsSource('justeat', this)">Just Eat</button>
+            </div>
+        </div>
+
+        <div class="nb-grid-3" id="nbKdsBoard">
+            <!-- NEW Column -->
+            <div>
+                <div style="color:#8ab4f8; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:10px;">NEW</div>
+                <div class="nb-kds-ticket nb-kds-new" id="nbTicket1026">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+                        <strong style="font-size:20px; color:#f8fafc;">#1026 · Table 12</strong>
+                        <span style="font-size:20px; color:#f8fafc; font-variant-numeric:tabular-nums;">00:42</span>
+                    </div>
+                    <div style="font-size:18px; color:#e2e8f0; margin-bottom:6px;">2× Sunday Roast</div>
+                    <div style="font-size:18px; color:#e2e8f0; margin-bottom:14px;">1× Fish and Chips</div>
+                    <div style="font-size:15px; font-weight:700; color:#f28b82;">Allergy: no gluten</div>
+                </div>
+            </div>
+
+            <!-- PREPARING Column -->
+            <div>
+                <div style="color:#e2b049; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:10px;">PREPARING</div>
+                <div class="nb-kds-ticket nb-kds-prep" id="nbTicket1024">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+                        <strong style="font-size:20px; color:#f8fafc;">#1024 · Delivery</strong>
+                        <span style="font-size:20px; color:#f8fafc; font-variant-numeric:tabular-nums;">06:10</span>
+                    </div>
+                    <div style="font-size:18px; color:#e2e8f0; margin-bottom:6px;">1× Burger</div>
+                    <div style="font-size:18px; color:#e2e8f0;">2× Chips</div>
+                </div>
+            </div>
+
+            <!-- READY Column -->
+            <div>
+                <div style="color:#78cfa0; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:10px;">READY</div>
+                <div class="nb-kds-ticket nb-kds-ready" id="nbTicket1025">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+                        <strong style="font-size:20px; color:#f8fafc;">#1025 · Table 4</strong>
+                        <span style="font-size:20px; color:#f8fafc;">Ready</span>
+                    </div>
+                    <div style="font-size:18px; color:#e2e8f0; margin-bottom:6px;">3× Pizza</div>
+                    <div style="font-size:18px; color:#e2e8f0;">3× Soft drink</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 4: OWNER DASHBOARD ("TODAY", RESPONSIVE)                    -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-owner">
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px; margin-bottom:28px;">
+            <h2 class="nb-serif" style="font-size:30px; font-weight:700; margin:0; color:#f8fafc;">Today</h2>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="showNbScreen('boh', document.querySelectorAll('.nb-nav-pills .nb-btn')[5])">Tables</button>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="showNbScreen('boh', document.querySelectorAll('.nb-nav-pills .nb-btn')[5])">Reports</button>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="showNbScreen('boh', document.querySelectorAll('.nb-nav-pills .nb-btn')[5])">Compliance</button>
+            </div>
+        </div>
+
+        <!-- 4 KPI Tiles -->
+        <div class="nb-grid-4" style="margin-bottom:20px;">
+            <div class="nb-card">
+                <span class="nb-eyebrow">SALES TODAY</span>
+                <div class="nb-serif" id="nbKpiSales" style="font-size:30px; font-weight:800; color:#f8fafc;">£[X]</div>
+            </div>
+            <div class="nb-card">
+                <span class="nb-eyebrow">LABOUR %</span>
+                <div class="nb-serif" id="nbKpiLabour" style="font-size:30px; font-weight:800; color:#f8fafc;">[X]%</div>
+            </div>
+            <div class="nb-card">
+                <span class="nb-eyebrow">AVG TABLE TURN</span>
+                <div class="nb-serif" id="nbKpiTurn" style="font-size:30px; font-weight:800; color:#f8fafc;">[X] min</div>
+            </div>
+            <div class="nb-card">
+                <span class="nb-eyebrow">OPEN ORDERS</span>
+                <div class="nb-serif" id="nbKpiOrders" style="font-size:30px; font-weight:800; color:#f8fafc;">[X]</div>
+            </div>
+        </div>
+
+        <!-- Floor Plan & Compliance Panel -->
+        <div class="nb-grid-2" style="margin-bottom:20px;">
+            <div class="nb-card">
+                <h3 class="nb-serif" style="font-size:19px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Floor plan</h3>
+                <div class="nb-table-grid">
+                    <button type="button" class="nb-table-tile nb-table-free" onclick="cycleNbTableState(this)">
+                        <strong style="font-size:16px;">T1</strong>
+                        <span class="nb-table-state-label" style="font-size:13px; margin-top:2px;">Free</span>
+                    </button>
+                    <button type="button" class="nb-table-tile nb-table-seated" onclick="cycleNbTableState(this)">
+                        <strong style="font-size:16px;">T2</strong>
+                        <span class="nb-table-state-label" style="font-size:13px; margin-top:2px;">Seated</span>
+                    </button>
+                    <button type="button" class="nb-table-tile nb-table-ordered" onclick="cycleNbTableState(this)">
+                        <strong style="font-size:16px;">T3</strong>
+                        <span class="nb-table-state-label" style="font-size:13px; margin-top:2px;">Ordered</span>
+                    </button>
+                    <button type="button" class="nb-table-tile nb-table-paying" onclick="cycleNbTableState(this)">
+                        <strong style="font-size:16px;">T4</strong>
+                        <span class="nb-table-state-label" style="font-size:13px; margin-top:2px;">Paying</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="nb-card">
+                <h3 class="nb-serif" style="font-size:19px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Compliance</h3>
+                <div style="font-size:15px; color:#f8fafc; line-height:1.9;">
+                    <div>Allergen labels: up to date</div>
+                    <div>Tip split: ready to review</div>
+                    <div id="nbCompFridge">Fridge temperature log: [X] checks due</div>
+                    <div id="nbCompC25">Challenge 25 prompts: [X] today</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sales by hour -->
+        <div class="nb-card">
+            <h3 class="nb-serif" style="font-size:19px; font-weight:700; margin:0 0 12px 0; color:#f8fafc;">Sales by hour</h3>
+            <div class="nb-bars-row" role="img" aria-label="Sales by hour bar chart">
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:28%;" title="12:00"></div></div>
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:48%;" title="14:00"></div></div>
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:72%;" title="16:00"></div></div>
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:92%;" title="18:00"></div></div>
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:64%;" title="20:00"></div></div>
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:42%;" title="22:00"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 5: TILL/POS, RESERVATIONS, STOCK, STAFF ROTA & SETTINGS     -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-boh">
+        <span class="nb-eyebrow">COMPLETE BACK-OF-HOUSE PAGES IN NAVY &amp; BRASS</span>
+        <h2 class="nb-serif" style="font-size:28px; font-weight:700; margin:0 0 24px 0; color:#f8fafc;">Till / POS, Reservations, Stock, Staff Rota &amp; Settings</h2>
+
+        <div class="nb-grid-2" style="margin-bottom:20px;">
+            <!-- Till / POS & Bar Tabs -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">TILL / POS &amp; BAR TABS</span>
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; margin:0 0 12px 0; color:#f8fafc;">Counter Till &amp; Pre-Auth Tabs</h3>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8; margin-bottom:16px;">
+                    <div>Open Bar Tabs (Card Pre-Auth): <strong style="color:#f8fafc;" class="nb-dyn-val" data-placeholder="[X] active" data-live="3 active (£175 held)">[X] active</strong></div>
+                    <div>Pay by Bank (0.2% Fee) &amp; Apple/Google Pay: <strong style="color:#78cfa0;">Enabled</strong></div>
+                    <div>Split Bill: <strong style="color:#f8fafc;">By item, equal share or percentage</strong></div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="nb-btn nb-btn-brass" onclick="alert('Same Again round sent to Bar & KDS.')">Same again · 1 tap</button>
+                    <button type="button" class="nb-btn nb-btn-outline-brass" onclick="toggleLegacyEnterpriseSuite()">Open Full Till</button>
+                </div>
+            </div>
+
+            <!-- Reservations & No-Show Deposits -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">RESERVATIONS &amp; DEPOSITS</span>
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; margin:0 0 12px 0; color:#f8fafc;">Bookings &amp; Google Business Link</h3>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8; margin-bottom:16px;">
+                    <div>Tonight's Bookings: <strong style="color:#f8fafc;" class="nb-dyn-val" data-placeholder="[X] covers" data-live="48 covers (12 tables)">[X] covers</strong></div>
+                    <div>Card Pre-Auth Deposit Hold: <strong style="color:#f8fafc;" class="nb-dyn-val" data-placeholder="£[PRICE] / guest" data-live="£10.00 / guest">£[PRICE] / guest</strong></div>
+                    <div>Google Business Profile: <strong style="color:#78cfa0;">Reserve with Google Active</strong></div>
+                </div>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="toggleLegacyEnterpriseSuite()">Manage Bookings</button>
+            </div>
+        </div>
+
+        <div class="nb-grid-3">
+            <!-- Stock, Cellar & Suppliers -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">STOCK &amp; CELLAR</span>
+                <h3 class="nb-serif" style="font-size:19px; font-weight:700; margin:0 0 10px 0; color:#f8fafc;">GP%, Kegs &amp; Suppliers</h3>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8;">
+                    <div>Live Dish GP% Target: <strong style="color:#f8fafc;" class="nb-dyn-val" data-placeholder="[X]%" data-live="73.2%">[X]%</strong></div>
+                    <div>Wholesalers: <strong style="color:#f8fafc;">Booker · Bidfood · Brakes</strong></div>
+                    <div>Cellar Line Clean: <strong style="color:#78cfa0;">Compliant (7-day cycle)</strong></div>
+                </div>
+            </div>
+
+            <!-- Staff Rota & Tronc -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">STAFF ROTA &amp; TRONC</span>
+                <h3 class="nb-serif" style="font-size:19px; font-weight:700; margin:0 0 10px 0; color:#f8fafc;">Rota, Tips Act &amp; Payroll</h3>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8;">
+                    <div>Staff Clocked In: <strong style="color:#f8fafc;" class="nb-dyn-val" data-placeholder="[X] on shift" data-live="6 on shift">[X] on shift</strong></div>
+                    <div>Tips Act (Oct 2024): <strong style="color:#78cfa0;">100% passed to staff</strong></div>
+                    <div>Holiday Accrual: <strong style="color:#f8fafc;">12.07% UK statutory</strong></div>
+                </div>
+            </div>
+
+            <!-- Settings, Offline & Certified Printers -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">SETTINGS &amp; PRINTERS</span>
+                <h3 class="nb-serif" style="font-size:19px; font-weight:700; margin:0 0 10px 0; color:#f8fafc;">Offline &amp; Open Hardware</h3>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8;">
+                    <div>Printers: <strong style="color:#f8fafc;">Epson TM-T88 / Star TSP143</strong></div>
+                    <div>Offline Queue: <strong style="color:#78cfa0;">Store-and-forward active</strong></div>
+                    <div>Hosting: <strong style="color:#f8fafc;">UK London (GDPR &amp; Cyber Essentials)</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    let nbPlaceholderMode = true;
+    let nbPhoneCartCount = 2;
+
+    function showNbScreen(screenKey, btn) {
+        document.querySelectorAll('.nb-nav-pills .nb-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+
+        const map = {
+            landing: ['nb-screen-landing'],
+            guest: ['nb-screen-guest'],
+            kitchen: ['nb-screen-kitchen'],
+            owner: ['nb-screen-owner'],
+            boh: ['nb-screen-boh'],
+            all: ['nb-screen-landing', 'nb-screen-guest', 'nb-screen-kitchen', 'nb-screen-owner', 'nb-screen-boh']
+        };
+        const visibleIds = map[screenKey] || map.all;
+        document.querySelectorAll('.nb-screen-section').forEach(sec => {
+            sec.style.display = visibleIds.includes(sec.id) ? 'block' : 'none';
+        });
+    }
+
+    function toggleNbPlaceholderMode() {
+        nbPlaceholderMode = !nbPlaceholderMode;
+        const btn = document.getElementById('nbDataModeBtn');
+        if (btn) {
+            btn.textContent = nbPlaceholderMode
+                ? 'Mode: Placeholders ([X] / £[PRICE])'
+                : 'Mode: Live UK Venue Data';
+        }
+        document.getElementById('nbPhoneVenueName').textContent = nbPlaceholderMode ? '[VENUE NAME]' : 'The Crown & Anchor';
+        document.getElementById('nbLandingPriceText').textContent = nbPlaceholderMode ? '[£ PRICE] a month. No contract.' : '£79 a month. No contract.';
+        document.getElementById('nbLandingContactText').textContent = nbPlaceholderMode
+            ? '[YOUR .CO.UK DOMAIN] · [PHONE] · [EMAIL]'
+            : 'waiter.co.uk · +44 7594 560831 · nidaazzielmehdi@gmail.com';
+
+        document.querySelectorAll('.nb-dish-price').forEach(el => {
+            el.textContent = nbPlaceholderMode ? '£[PRICE]' : el.getAttribute('data-live');
+        });
+
+        document.getElementById('nbKpiSales').textContent = nbPlaceholderMode ? '£[X]' : '£4,280';
+        document.getElementById('nbKpiLabour').textContent = nbPlaceholderMode ? '[X]%' : '26.4%';
+        document.getElementById('nbKpiTurn').textContent = nbPlaceholderMode ? '[X] min' : '52 min';
+        document.getElementById('nbKpiOrders').textContent = nbPlaceholderMode ? '[X]' : '9';
+        document.getElementById('nbCompFridge').textContent = nbPlaceholderMode ? 'Fridge temperature log: [X] checks due' : 'Fridge temperature log: 0 checks due (All 3.2°C)';
+        document.getElementById('nbCompC25').textContent = nbPlaceholderMode ? 'Challenge 25 prompts: [X] today' : 'Challenge 25 prompts: 14 verified today';
+
+        document.querySelectorAll('.nb-dyn-val').forEach(el => {
+            el.textContent = nbPlaceholderMode ? el.getAttribute('data-placeholder') : el.getAttribute('data-live');
+        });
+    }
+
+    function setNbPhoneLang(lang, btn) {
+        document.querySelectorAll('.nb-lang-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        document.querySelectorAll('.nb-dish-title').forEach(el => {
+            const tr = el.getAttribute('data-' + lang);
+            if (tr) el.textContent = tr;
+        });
+    }
+
+    function filterNbPhoneCategory(cat, btn) {
+        document.querySelectorAll('.nb-cat-chip').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        document.querySelectorAll('#nbPhoneMenuItemsList .nb-dish-card').forEach(card => {
+            if (cat === 'all') {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = card.getAttribute('data-cat') === cat ? 'flex' : 'none';
+            }
+        });
+    }
+
+    function addNbPhoneOrderItem(dishName) {
+        nbPhoneCartCount += 1;
+        const btn = document.getElementById('nbStickyViewOrderBtn');
+        if (btn) btn.textContent = `View order · ${nbPhoneCartCount} items`;
+    }
+
+    async function submitNbPhoneOrderToKds() {
+        try {
+            await fetch('/api/orders', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({table_number: 12, item_ids: ['item-1', 'item-3']})
+            });
+        } catch (e) {}
+        showNbScreen('kitchen', document.querySelectorAll('.nb-nav-pills .nb-btn')[3]);
+    }
+
+    function cycleNbTableState(tile) {
+        const states = [
+            {cls: 'nb-table-free', label: 'Free'},
+            {cls: 'nb-table-seated', label: 'Seated'},
+            {cls: 'nb-table-ordered', label: 'Ordered'},
+            {cls: 'nb-table-paying', label: 'Paying'}
+        ];
+        let currentIdx = states.findIndex(s => tile.classList.contains(s.cls));
+        const next = states[(currentIdx + 1) % states.length];
+        states.forEach(s => tile.classList.remove(s.cls));
+        tile.classList.add(next.cls);
+        const lbl = tile.querySelector('.nb-table-state-label');
+        if (lbl) lbl.textContent = next.label;
+    }
+
+    function filterNbKdsSource(source, btn) {
+        document.querySelectorAll('#nb-screen-kitchen .nb-btn-navy').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+    }
+
+    function bookNbDemoPrompt() {
+        const email = prompt('Enter your venue email or UK phone to start your 7-day free trial:', 'owner@venue.co.uk');
+        if (email) {
+            fetch('/api/blueprint/consultation', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({venue_name: 'UK Hospitality Venue', contact: email})
+            });
+            alert('Thank you. Your 7-day free trial request has been logged.');
+        }
+    }
+
+    function toggleLegacyEnterpriseSuite() {
+        const legacy = document.getElementById('legacyEnterpriseSuiteWrapper');
+        if (legacy) {
+            const isHidden = legacy.style.display === 'none';
+            legacy.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) legacy.scrollIntoView({behavior: 'smooth'});
+        }
+    }
+</script>
+
+    <div id="legacyEnterpriseSuiteWrapper">
     <!-- Unified Cross-Platform App Header -->
     <header class="app-header">
         <div class="container-fluid px-md-4">
@@ -6223,6 +7116,7 @@ TOTAL:                £20.70`;
         }
 
     </script>
+    </div>
 </body>
 </html>"""
 
@@ -8224,6 +9118,14 @@ def run_certified_printer_diagnostic():
         order_id=data.get("order_id")
     )
     return jsonify(res)
+
+
+
+# --- 34. Navy & Brass UK Hospitality 4-Screen + Back-of-House Suite (/uk) ---
+@app.route("/uk", methods=["GET"])
+def render_navy_and_brass_uk_suite():
+    with open(os.path.join(os.path.dirname(__file__), "..", "uk_blueprint_suite.html"), "r", encoding="utf-8") as f:
+        return Response(f.read(), mimetype="text/html")
 
 
 if __name__ == "__main__":

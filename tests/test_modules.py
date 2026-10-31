@@ -1130,6 +1130,44 @@ class TestWaiterModules(unittest.TestCase):
         self.assertEqual(data_test["brand"], "Star Micronics")
         self.assertGreater(data_test["escpos_payload_size_bytes"], 50)
 
+    def test_navy_and_brass_four_screen_uk_design_suite(self):
+        from src.app import app
+        client = app.test_client()
+
+        for route in ["/", "/uk"]:
+            res = client.get(route)
+            self.assertEqual(res.status_code, 200)
+            html = res.get_data(as_text=True)
+
+            # Design system tokens (Fraunces + Inter, Navy #0f1520 & Brass #c8a86b)
+            self.assertIn("Fraunces", html)
+            self.assertIn("#0f1520", html)
+            self.assertIn("#c8a86b", html)
+
+            # Screen 1: Landing Page
+            self.assertIn("One system for every table, ticket and till.", html)
+            self.assertIn("Made for how the UK trades", html)
+            self.assertIn("[£ PRICE] a month. No contract.", html)
+
+            # Screen 2: Guest QR Menu (390x844)
+            self.assertIn("TABLE 12", html)
+            self.assertIn("[VENUE NAME]", html)
+            self.assertIn("Gluten · Milk · Celery", html)
+            self.assertIn("Challenge 25: ID may be checked", html)
+            self.assertIn("View order · 2 items", html)
+
+            # Screen 3: Kitchen Display
+            self.assertIn("#1026 · Table 12", html)
+            self.assertIn("#1024 · Delivery", html)
+            self.assertIn("#1025 · Table 4", html)
+            self.assertIn("Allergy: no gluten", html)
+
+            # Screen 4: Owner Dashboard ("Today")
+            self.assertIn("SALES TODAY", html)
+            self.assertIn("£[X]", html)
+            self.assertIn("Allergen labels: up to date", html)
+            self.assertIn("Sales by hour", html)
+
 if __name__ == "__main__":
     unittest.main()
 
