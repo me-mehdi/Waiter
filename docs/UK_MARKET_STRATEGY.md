@@ -83,3 +83,21 @@ The transition to a digital-first operation is designed for zero friction. The W
 * **Website**: [waiter.com](https://waiter.com/)
 * **Phone**: +44 7594 560831
 * **Email**: nidaazzielmehdi@gmail.com
+
+---
+
+## 7. UK Statutory Compliance, Sovereign Data Residency & Security
+A decisive competitive differentiator for UK pub groups, cafes, bakeries, and restaurants is turnkey regulatory compliance built directly into daily operations:
+
+1. **Natasha's Law (PPDS) 14-Allergen Ingredient Engine**:
+   - Builds every dish from constituent raw ingredients, automatically tags the **14 UK FSA regulated allergens**, and generates compliant **Prepacked for Direct Sale (PPDS)** grab-and-go labels with **BOLD CAPITALS** allergen emphasis.
+2. **Employment (Allocation of Tips) Act 2023 (Effective 1 October 2024)**:
+   - Guarantees **100% fair pass-through of tips and service charges** with zero employer deductions, generates the mandatory **Written Tipping Policy**, and maintains a 3-year statutory **Staff Tip-Split Payout Log**.
+3. **Age Verification — Challenge 25 (Licensing Act 2003)**:
+   - Automatically flags alcohol items in Guest QR orders so floor and bar staff must verify photographic ID (Passport, UK Driving Licence, or PASS card) before serving, protecting the venue's Premises Licence.
+4. **Digital Food Safety, SFBB & EHO Inspection-Ready Logs**:
+   - Replaces paper binders with digital **Fridge/Freezer Temperature Logs** (`0°C–5°C` chillers, `-18°C` freezers), daily **Opening/Closing Cleaning Checklists**, **HACCP Critical Control Point (CCP)** records, and a 1-click **Environmental Health Officer (EHO) Inspection Export**.
+5. **HMRC VAT Notice 709/1 (Eat-In vs. Hot Takeaway vs. Cold Takeaway)**:
+   - Dynamically calculates UK VAT across **Eat-In (20% Standard-Rated)**, **Hot Takeaway (20% Standard-Rated)**, and **Cold Takeaway Grab-and-Go (0% Zero-Rated Food)** with VAT-ready audit reports.
+6. **UK GDPR, London Region Residency & NCSC Cyber Essentials**:
+   - Hosted exclusively in the **UK London Region (`eu-west-2` ISO 27001 Tier-4 Data Centres)** under **UK GDPR & Data Protection Act 2018**, engineered to **NCSC Cyber Essentials** standards with TLS 1.3 and AES-256 encryption.

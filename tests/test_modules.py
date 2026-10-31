@@ -786,6 +786,90 @@ class TestWaiterModules(unittest.TestCase):
         self.assertIn("nidaazzielmehdi@gmail.com", html)          # Page 11: UK Team Contact & 7-Day Free Trial
         self.assertIn("+44 7594 560831", html)
 
+    def test_uk_statutory_compliance_all_six_pillars(self):
+        from src.app import app
+        client = app.test_client()
+
+        # 1. Natasha's Law (PPDS) Ingredient-to-14-Allergen Auto-Tagger & Label Printer
+        res_nl = client.post("/api/uk-compliance/natashas-law/build", json={
+            "item_id": "custom-bakery",
+            "ingredients": ["Wheat Flour", "Pasteurised Milk Butter", "Free-Range Egg", "Dijon Mustard", "Roasted Peanuts"]
+        })
+        self.assertEqual(res_nl.status_code, 200)
+        data_nl = res_nl.get_json()
+        self.assertIn("cereals_with_gluten", data_nl["detected_14_allergens"])
+        self.assertIn("milk", data_nl["detected_14_allergens"])
+        self.assertIn("eggs", data_nl["detected_14_allergens"])
+        self.assertIn("mustard", data_nl["detected_14_allergens"])
+        self.assertIn("peanuts", data_nl["detected_14_allergens"])
+        self.assertIn("BOLD CAPITALS", data_nl["natashas_law_label_html"])
+
+        # 2. Employment (Allocation of Tips) Act 2023 (Effective Oct 2024) — 100% Fair Payout Log
+        res_tips = client.get("/api/uk-compliance/tips-act-2024")
+        self.assertEqual(res_tips.status_code, 200)
+        data_tips = res_tips.get_json()
+        self.assertTrue(data_tips["compliant_with_oct_2024_act"])
+        self.assertEqual(data_tips["written_policy"]["pass_through_pct"], 100.0)
+        self.assertEqual(data_tips["employer_deductions_gbp"], 0.0)
+
+        res_pay = client.post("/api/uk-compliance/tips-act-2024/payout", json={
+            "staff_name": "Chloe Evans",
+            "role": "FOH Server",
+            "hours_worked": 40.0,
+            "amount_gbp": 195.00
+        })
+        self.assertEqual(res_pay.status_code, 201)
+        self.assertEqual(res_pay.get_json()["employer_deduction_gbp"], 0.0)
+        self.assertEqual(res_pay.get_json()["net_payout_gbp"], 195.00)
+
+        # 3. Challenge 25 Alcohol Age Verification (Licensing Act 2003)
+        res_c25 = client.post("/api/uk-compliance/challenge25/verify", json={
+            "table_number": 6,
+            "order_id": "ORD-0001",
+            "decision": "APPROVED",
+            "id_type": "UK Photocard Driving Licence"
+        })
+        self.assertEqual(res_c25.status_code, 201)
+        self.assertTrue(res_c25.get_json()["dob_verified_18_plus"])
+
+        # 4. Food Safety Logs (Fridge Temps, HACCP & EHO Inspection PDF Export)
+        res_temp = client.post("/api/uk-compliance/food-safety/temp", json={
+            "unit_name": "Walk-In Chiller #1",
+            "unit_type": "CHILLER",
+            "recorded_temp_c": 3.1,
+            "checked_by": "Marco Rossi"
+        })
+        self.assertEqual(res_temp.status_code, 201)
+        self.assertEqual(res_temp.get_json()["status"], "COMPLIANT")
+
+        res_eho_pdf = client.get("/api/uk-compliance/eho-report/pdf")
+        self.assertEqual(res_eho_pdf.status_code, 200)
+        self.assertTrue(res_eho_pdf.data.startswith(b"%PDF"))
+
+        # 5. HMRC VAT Notice 709/1 (Eat-In 20% vs Cold Takeaway 0% Zero-Rated Food)
+        res_vat_eat = client.post("/api/uk-compliance/vat-mode", json={
+            "dining_mode": "EAT_IN",
+            "items": ["item-1", "item-3"]
+        })
+        self.assertEqual(res_vat_eat.status_code, 200)
+        self.assertEqual(res_vat_eat.get_json()["net_zero_rated_gbp"], 0.0)
+
+        res_vat_cold = client.post("/api/uk-compliance/vat-mode", json={
+            "dining_mode": "COLD_TAKEAWAY",
+            "items": ["item-1", "item-3"]
+        })
+        self.assertEqual(res_vat_cold.status_code, 200)
+        # item-1 (Food) is 0% Zero-Rated in Cold Takeaway, while item-3 (Alcohol Drink) remains 20% Standard-Rated!
+        self.assertGreater(res_vat_cold.get_json()["net_zero_rated_gbp"], 0.0)
+        self.assertGreater(res_vat_cold.get_json()["vat_20_pct_payable_gbp"], 0.0)
+
+        # 6. UK GDPR, London Region (eu-west-2) Hosting & Cyber Essentials Posture
+        res_gdpr = client.get("/api/uk-compliance/gdpr-security")
+        self.assertEqual(res_gdpr.status_code, 200)
+        data_gdpr = res_gdpr.get_json()
+        self.assertIn("London Region (eu-west-2", data_gdpr["data_residency"])
+        self.assertIn("Cyber Essentials", data_gdpr["cyber_security_certification"])
+
 if __name__ == "__main__":
     unittest.main()
 
