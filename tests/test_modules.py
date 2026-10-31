@@ -684,8 +684,42 @@ class TestWaiterModules(unittest.TestCase):
         self.assertEqual(res_sw.status_code, 200)
         self.assertIn(b"waiter-pwa-cache-v1", res_sw.data)
 
+    def test_sales_heatmap_and_kds_chef_recipes_endpoints(self):
+        from src.app import app
+        client = app.test_client()
+
+        # 1. Test Executive Peak-Hour Sales Heatmap & Table Turnover Analytics
+        res_hm = client.get("/api/analytics/heatmap")
+        self.assertEqual(res_hm.status_code, 200)
+        data_hm = res_hm.get_json()
+        self.assertEqual(len(data_hm["hourly_heatmap"]), 7)
+        self.assertEqual(len(data_hm["zone_turnover"]), 4)
+        self.assertEqual(data_hm["avg_table_turn_mins"], 55)
+        self.assertEqual(data_hm["peak_window"], "19:00 - 21:00")
+
+        # 2. Test Digital Kitchen Recipe & Natasha's Law Allergen Matrix Cards
+        res_rec = client.get("/api/kds/recipes")
+        self.assertEqual(res_rec.status_code, 200)
+        data_rec = res_rec.get_json()
+        self.assertEqual(data_rec["count"], 5)
+        self.assertEqual(len(data_rec["recipes"]), 5)
+        first_recipe = data_rec["recipes"][0]
+        self.assertIn("ingredients", first_recipe)
+        self.assertIn("plating_guide", first_recipe)
+        self.assertIn("cross_contamination_note", first_recipe)
+        self.assertIn("fish", first_recipe["allergens"])
+
+        # 3. Verify UI contains Delivery Hub tab, Heatmap, and Chef Recipe Modal
+        res_index = client.get("/")
+        self.assertEqual(res_index.status_code, 200)
+        html = res_index.get_data(as_text=True)
+        self.assertIn("deliveryChannelsGrid", html)
+        self.assertIn("chefRecipeModal", html)
+        self.assertIn("salesHeatmapGrid", html)
+
 if __name__ == "__main__":
     unittest.main()
+
 
 
 
