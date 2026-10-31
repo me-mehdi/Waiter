@@ -929,6 +929,65 @@ class TestWaiterModules(unittest.TestCase):
         self.assertEqual(res_csv.status_code, 200)
         self.assertIn("Holiday Hours Accrued (12.07%)", res_csv.get_data(as_text=True))
 
+    def test_british_pub_all_four_pillars(self):
+        from src.app import app
+        client = app.test_client()
+
+        # 1. Bar Tabs: Card Pre-Authorisation & 1-Tap "Same Again!" Round Ordering
+        res_open = client.post("/api/pub/tabs/open", json={
+            "customer_name": "Alfie & Lads",
+            "table_or_zone": "Garden Bench #G1",
+            "pre_auth_limit_gbp": 60.00
+        })
+        self.assertEqual(res_open.status_code, 201)
+        tab = res_open.get_json()
+        self.assertEqual(tab["status"], "OPEN_PRE_AUTHORISED")
+        self.assertTrue(tab["pre_auth_token"].startswith("PREAUTH-STRIPE-"))
+
+        res_same = client.post(f"/api/pub/tabs/{tab['tab_id']}/same-again")
+        self.assertEqual(res_same.status_code, 200)
+        data_same = res_same.get_json()
+        self.assertTrue(data_same["success"])
+        self.assertEqual(data_same["repeated_round_number"], 2)
+        self.assertEqual(data_same["new_tab_balance_gbp"], 24.80)
+
+        # 2. Cellar & Keg Management: Keg Tracking, Line-Cleaning Logs & Ullage Wastage
+        res_cellar = client.get("/api/pub/cellar")
+        self.assertEqual(res_cellar.status_code, 200)
+        data_cellar = res_cellar.get_json()
+        self.assertGreater(data_cellar["overall_keg_yield_pct"], 90.0)
+        self.assertEqual(len(data_cellar["taps"]), 4)
+
+        res_clean = client.post("/api/pub/cellar/clean-line/3")
+        self.assertEqual(res_clean.status_code, 200)
+        self.assertEqual(res_clean.get_json()["line_clean_status"], "CLEAN_COMPLIANT")
+
+        # 3. Pub Extras: Sunday Roast Pre-Orders with Sold-Out Counters & Quiz Ticketing
+        res_roast = client.post("/api/pub/roast/preorder", json={
+            "roast_id": "ROAST-CHICKEN",
+            "quantity": 1,
+            "guest_name": "Table #4"
+        })
+        self.assertEqual(res_roast.status_code, 201)
+        self.assertTrue(res_roast.get_json()["sold_out"])  # Had 1 left, now 0 & sold_out=True!
+
+        res_quiz = client.post("/api/pub/events/book", json={
+            "event_id": "QUIZ-WED",
+            "team_name": "Norfolk Enchants",
+            "team_size": 5
+        })
+        self.assertEqual(res_quiz.status_code, 201)
+        self.assertEqual(res_quiz.get_json()["booking"]["paid_gbp"], 15.00)
+
+        # 4. Beer Garden Zones & Weather-Triggered "Garden Open" Toggle
+        res_rain = client.post("/api/pub/garden/toggle", json={"simulate_weather": "RAIN_STORM"})
+        self.assertEqual(res_rain.status_code, 200)
+        self.assertFalse(res_rain.get_json()["garden_open"])
+
+        res_sun = client.post("/api/pub/garden/toggle", json={"simulate_weather": "SUNNY"})
+        self.assertEqual(res_sun.status_code, 200)
+        self.assertTrue(res_sun.get_json()["garden_open"])
+
 if __name__ == "__main__":
     unittest.main()
 
