@@ -652,6 +652,38 @@ class TestWaiterModules(unittest.TestCase):
         self.assertEqual(res_custom_tip["tip_amount"], 5.00)
         self.assertEqual(res_custom_tip["grand_total"], round(order["total"] + 5.00, 2))
 
+    def test_ai_sommelier_and_review_auto_responder_endpoints(self):
+        from src.app import app
+        client = app.test_client()
+
+        # 1. Test AI Sommelier Wine & Dish Pairing
+        res_somm = client.post("/api/ai/sommelier", json={"prompt": "What wine pairs best with Fish & Chips?"})
+        self.assertEqual(res_somm.status_code, 200)
+        data_somm = res_somm.get_json()
+        self.assertIn("Sauvignon Blanc", data_somm["response_text"])
+        self.assertGreaterEqual(len(data_somm["recommendations"]), 2)
+
+        # 2. Test AI Review Auto-Responder (5-Star Booster vs Low-Star Escalation)
+        res_rev5 = client.post("/api/reviews/auto-respond", json={"rating": 5, "comment": "Amazing food!", "table_number": 4})
+        self.assertEqual(res_rev5.status_code, 200)
+        data_rev5 = res_rev5.get_json()
+        self.assertTrue(data_rev5["success"])
+        self.assertIn("5-star", data_rev5["response_draft"])
+
+        res_rev2 = client.post("/api/reviews/auto-respond", json={"rating": 2, "comment": "Long wait", "table_number": 7})
+        self.assertEqual(res_rev2.status_code, 200)
+        data_rev2 = res_rev2.get_json()
+        self.assertIn("apologize", data_rev2["response_draft"])
+
+        # 3. Test PWA Manifest & Service Worker
+        res_pwa = client.get("/manifest.json")
+        self.assertEqual(res_pwa.status_code, 200)
+        self.assertEqual(res_pwa.get_json()["short_name"], "The Waiter")
+
+        res_sw = client.get("/sw.js")
+        self.assertEqual(res_sw.status_code, 200)
+        self.assertIn(b"waiter-pwa-cache-v1", res_sw.data)
+
 if __name__ == "__main__":
     unittest.main()
 

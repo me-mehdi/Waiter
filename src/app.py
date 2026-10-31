@@ -1342,6 +1342,27 @@ INDEX_HTML = """<!DOCTYPE html>
         </div>
     </div>
 
+    <!-- Google & TripAdvisor Review Booster Modal -->
+    <div class="modal fade" id="reviewBoosterModal" tabindex="-1" aria-labelledby="reviewBoosterModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold" id="reviewBoosterModalLabel"><i class="fa-solid fa-star text-warning me-2"></i>Thank You for 5 Stars! 🎉</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <h6 class="fw-bold text-dark mb-2">Help others discover The Waiter!</h6>
+                    <p class="small text-muted mb-4">Would you mind sharing your 5-star experience on Google Reviews or TripAdvisor? It takes less than 30 seconds!</p>
+                    <div class="d-grid gap-2 mb-3">
+                        <a href="https://maps.google.com" target="_blank" class="btn btn-outline-danger fw-bold py-2"><i class="fa-brands fa-google me-2"></i> Post on Google Reviews</a>
+                        <a href="https://tripadvisor.com" target="_blank" class="btn btn-outline-success fw-bold py-2"><i class="fa-solid fa-owl me-2"></i> Post on TripAdvisor</a>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link text-muted" data-bs-dismiss="modal">Done / Skip</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS & Interactivity Script -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -1924,14 +1945,19 @@ Total Paid: ${sym}${data.grand_total.toFixed(2)} (includes ${sym}${data.tip_amou
         }
 
         async function payShareAmount(orderId, splitTarget, amount) {
-            const splitModalEl = document.getElementById('splitModal');
-            const splitModal = bootstrap.Modal.getInstance(splitModalEl);
-            if(splitModal) splitModal.hide();
-
-            // Open payment modal pre-loaded with split target & amount
-            showPaymentModal();
-            document.getElementById('checkoutSubtotalLabel').innerText = '£' + amount.toFixed(2);
-            updatePaymentTotals();
+            const res = await fetch(`/api/orders/${orderId}/pay-share`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ split_id_or_index: splitTarget, payment_method: selectedPaymentMethod || 'APPLE_PAY' })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                alert(`✅ Guest Share Paid (£${amount.toFixed(2)}) via ${selectedPaymentMethod || 'APPLE_PAY'}! Remaining table balance: £${(data.remaining_balance || 0).toFixed(2)}`);
+                await refreshSplitStatus();
+                await calculateTableSplit();
+            } else {
+                alert(data.error || 'Failed to pay guest share.');
+            }
         }
 
         // --- Table QR Studio Generator ---
@@ -2180,7 +2206,7 @@ Total Paid: ${sym}${data.grand_total.toFixed(2)} (includes ${sym}${data.tip_amou
         }
 
         async function submitGuestReview() {
-            const rating = parseInt(document.getElementById('selectedRating').value);
+            const rating = parseInt(document.getElementById('selectedRating').value) || 5;
             const comment = document.getElementById('reviewComment').value.trim();
 
             await fetch('/api/reviews', {
@@ -2193,11 +2219,17 @@ Total Paid: ${sym}${data.grand_total.toFixed(2)} (includes ${sym}${data.tip_amou
                 })
             });
 
-            alert('Thank you! Your feedback has been sent to management.');
             const modalEl = document.getElementById('reviewModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
             document.getElementById('reviewComment').value = '';
+
+            if (rating >= 4) {
+                const boosterModal = new bootstrap.Modal(document.getElementById('reviewBoosterModal'));
+                boosterModal.show();
+            } else {
+                alert('Thank you! Your feedback has been sent directly to our General Manager.');
+            }
         }
 
         async function loadExecutiveKPIs() {
@@ -2398,11 +2430,10 @@ Total Paid: ${sym}${data.grand_total.toFixed(2)} (includes ${sym}${data.tip_amou
         }
 
         function applyPromoCodeDirect(code) {
-            const promoInput = document.getElementById('cartPromoInput');
-            if(promoInput) {
-                promoInput.value = code;
-                applyPromoCode();
-            }
+            const pDesktop = document.getElementById('promoInput');
+            const pMobile = document.getElementById('mobilePromoInput');
+            if(pDesktop) pDesktop.value = code;
+            if(pMobile) pMobile.value = code;
             const modalEl = document.getElementById('loyaltyModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if(modal) modal.hide();
@@ -2642,7 +2673,7 @@ Total Paid: ${sym}${data.grand_total.toFixed(2)} (includes ${sym}${data.tip_amou
                 setKdsFilter('ALL');
                 speakVoiceFeedback("Showing all kitchen stations");
             } else if (cmd.includes('bump order') || cmd.includes('ready order') || cmd.includes('order ready')) {
-                const match = cmd.match(/\d+/);
+                const match = cmd.match(/\\d+/);
                 if (match) {
                     const orderNum = match[0];
                     const targetId = 'ORD-' + orderNum.padStart(4, '0');
@@ -2771,16 +2802,18 @@ Total Paid: ${sym}${data.grand_total.toFixed(2)} (includes ${sym}${data.tip_amou
 
             const res = await fetch('/api/floorplan/tables');
             const data = await res.json();
-            const tables = data.tables || [];
+            const tables = Array.isArray(data) ? data : (data.tables || []);
 
             let html = '';
             tables.forEach(t => {
+                const tNum = t.table_number || t.number;
+                const st = (t.status || 'AVAILABLE').toUpperCase();
                 let statusColor = 'border-success bg-success bg-opacity-10';
                 let badgeBg = 'bg-success';
-                if(t.status === 'Occupied') {
+                if(st === 'OCCUPIED') {
                     statusColor = 'border-danger bg-danger bg-opacity-10';
                     badgeBg = 'bg-danger';
-                } else if(t.status === 'Reserved') {
+                } else if(st === 'RESERVED') {
                     statusColor = 'border-warning bg-warning bg-opacity-10';
                     badgeBg = 'bg-warning text-dark';
                 }
@@ -2789,19 +2822,35 @@ Total Paid: ${sym}${data.grand_total.toFixed(2)} (includes ${sym}${data.tip_amou
                     <div class="col-6 col-sm-4 col-md-3">
                         <div class="card p-3 text-white border-2 ${statusColor} rounded-3 shadow-sm text-center position-relative">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <strong class="fs-5 text-white">Table #${t.number}</strong>
-                                <span class="badge ${badgeBg} rounded-pill">${t.status}</span>
+                                <strong class="fs-5 text-white">Table #${tNum}</strong>
+                                <span class="badge ${badgeBg} rounded-pill">${st}</span>
                             </div>
                             <div class="my-2">
                                 <i class="fa-solid fa-chair fs-3 opacity-75"></i>
-                                <div class="small text-light opacity-75 mt-1">${t.capacity} Seats (${t.shape || 'Booth'})</div>
+                                <div class="small text-light opacity-75 mt-1">${t.capacity} Seats (${t.shape || 'Booth'} - ${t.zone || 'Main'})</div>
                             </div>
-                            <small class="text-warning fw-bold"><i class="fa-solid fa-clock me-1"></i> ${t.status === 'Occupied' ? 'Turn: 35m' : 'Ready'}</small>
+                            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-secondary">
+                                <small class="text-warning fw-bold"><i class="fa-solid fa-clock me-1"></i> ${st === 'OCCUPIED' ? 'Turn: 35m' : 'Ready'}</small>
+                                ${st === 'AVAILABLE'
+                                    ? `<button class="btn btn-xs btn-outline-warning py-0 px-2" onclick="quickToggleTableStatus(${tNum}, 'reserve')">Reserve</button>`
+                                    : `<button class="btn btn-xs btn-outline-success py-0 px-2" onclick="quickToggleTableStatus(${tNum}, 'release')">Release</button>`
+                                }
+                            </div>
                         </div>
                     </div>
                 `;
             });
             container.innerHTML = html;
+        }
+
+        async function quickToggleTableStatus(tableNum, action) {
+            const url = action === 'reserve' ? '/api/floorplan/reserve' : '/api/floorplan/release';
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table_number: tableNum, guest_name: 'Walk-In VIP', party_size: 2 })
+            });
+            loadVisualFloorplan();
         }
 
         // --- Automated Smart Upsell Recommendation Engine (Page 6 Blueprint) ---
@@ -2999,6 +3048,362 @@ TOTAL:                £20.70`;
             } catch(e) {
                 console.error('Sommelier AI error', e);
             }
+        }
+
+
+        // --- AI Customer Review Auto-Responder Engine ---
+        async function generateAiReviewResponse(rating, comment, tableNum) {
+            try {
+                const res = await fetch('/api/reviews/auto-respond', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rating: rating, comment: comment, table_number: tableNum })
+                });
+                const data = await res.json();
+                if (data.response_draft) {
+                    prompt('AI Generated Staff Response Draft (Copy & Send):', data.response_draft);
+                }
+            } catch(e) {
+                console.error('AI Auto-responder error', e);
+            }
+        }
+
+
+        // --- Complete Staff Workspace Tab Loaders & AI Review Auto-Responder ---
+        async function loadBookings() {
+            const tbody = document.getElementById('bookingsTableBody');
+            if(!tbody) return;
+            const res = await fetch('/api/bookings');
+            const data = await res.json();
+            const list = data.bookings || [];
+            if(list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No active reservations found.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map(b => `
+                <tr>
+                    <td><strong class="text-primary">${b.id}</strong></td>
+                    <td>${b.guest_name}<br><small class="text-muted">${b.guest_phone}</small></td>
+                    <td><span class="badge bg-dark">${b.party_size} Guests</span> (Table #${b.table_number})</td>
+                    <td>${b.booking_date} @ <strong>${b.time_slot}</strong></td>
+                    <td><small>${b.special_requests || 'None'}</small></td>
+                    <td><span class="badge ${b.status === 'CONFIRMED' || b.status === 'SEATED' ? 'bg-success' : 'bg-secondary'}">${b.status}</span></td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="/api/bookings/${b.id}/pdf" target="_blank" class="btn btn-xs btn-outline-danger py-0 px-2"><i class="fa-solid fa-file-pdf"></i> PDF</a>
+                            ${b.status === 'CONFIRMED' ? `<button class="btn btn-xs btn-success py-0 px-2" onclick="updateBookingStatus('${b.id}', 'SEATED')">Seat</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function updateBookingStatus(id, status) {
+            await fetch(`/api/bookings/${id}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: status })
+            });
+            loadBookings();
+            loadVisualFloorplan();
+        }
+
+        async function loadInventory() {
+            const invContainer = document.getElementById('inventoryContainer');
+            const poContainer = document.getElementById('purchaseOrdersContainer');
+            if(!invContainer) return;
+
+            const res = await fetch('/api/inventory');
+            const items = await res.json();
+            invContainer.innerHTML = items.map(it => {
+                const isLow = it.stock_qty <= 10;
+                const itemName = typeof it.name === 'object' ? (it.name[currentLang] || it.name.en) : it.name;
+                return `
+                    <div class="col-md-4">
+                        <div class="card p-3 border ${isLow ? 'border-danger bg-danger bg-opacity-10' : 'bg-white'} shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong class="text-dark">${itemName}</strong>
+                                <span class="badge ${isLow ? 'bg-danger' : 'bg-success'}">${it.stock_qty} in stock</span>
+                            </div>
+                            <button class="btn btn-xs btn-outline-primary fw-bold mt-1" onclick="restockInventoryItem('${it.id}', 25)">
+                                <i class="fa-solid fa-plus me-1"></i> Quick Restock (+25)
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const resPo = await fetch('/api/inventory/purchase-orders');
+            const poData = await resPo.json();
+            const pos = poData.purchase_orders || [];
+            if(pos.length === 0) {
+                poContainer.innerHTML = '<div class="col-12 text-muted small">All stock levels healthy. No automated supplier POs required.</div>';
+            } else {
+                poContainer.innerHTML = pos.map(po => `
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded-3 bg-light d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong class="text-dark d-block">${po.po_number} (${po.supplier_category})</strong>
+                                <small class="text-muted">${po.supplier_name} • Est. Total: £${(po.total_estimated_cost || po.estimated_total_cost || 0).toFixed(2)}</small>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <a href="/api/inventory/purchase-orders/${po.supplier_category}/pdf" target="_blank" class="btn btn-sm btn-danger"><i class="fa-solid fa-file-pdf me-1"></i> PO PDF</a>
+                                <a href="/api/inventory/purchase-orders/${po.supplier_category}/email" target="_blank" class="btn btn-sm btn-outline-dark">Email Draft</a>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        async function restockInventoryItem(itemId, qty) {
+            await fetch(`/api/inventory/restock/${itemId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity: qty })
+            });
+            loadInventory();
+            loadMenu();
+        }
+
+        async function loadWaste() {
+            const analyticsEl = document.getElementById('wasteAnalyticsContent');
+            const logsBody = document.getElementById('wasteLogsTableBody');
+            if(!analyticsEl) return;
+
+            const resAn = await fetch('/api/waste/analytics?currency=' + currentCurr);
+            const an = await resAn.json();
+            const sym = an.currency_symbol || '£';
+            analyticsEl.innerHTML = `
+                <div class="col-4">
+                    <small class="text-muted d-block">Total Waste Cost</small>
+                    <h4 class="fw-bold text-danger mb-0">${sym}${(an.total_financial_loss || an.total_waste_cost || 0).toFixed(2)}</h4>
+                </div>
+                <div class="col-4">
+                    <small class="text-muted d-block">Units Lost</small>
+                    <h4 class="fw-bold text-dark mb-0">${an.total_units_wasted || 0}</h4>
+                </div>
+                <div class="col-4">
+                    <small class="text-muted d-block">Incidents</small>
+                    <h4 class="fw-bold text-warning mb-0">${an.total_incidents || (an.reason_breakdown ? Object.keys(an.reason_breakdown).length : 0)}</h4>
+                </div>
+            `;
+
+            const resLogs = await fetch('/api/waste/logs');
+            const logsData = await resLogs.json();
+            const logs = logsData.waste_logs || [];
+            logsBody.innerHTML = logs.map(l => `
+                <tr>
+                    <td><small>${(l.logged_at || l.timestamp || '').slice(11, 16)}</small></td>
+                    <td><strong>${l.item_name}</strong></td>
+                    <td>${l.quantity}</td>
+                    <td><span class="badge bg-warning text-dark">${l.reason}</span></td>
+                    <td>${l.staff_name}</td>
+                    <td class="text-danger fw-bold">£${(l.financial_loss || l.cost_impact || 0).toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function submitWasteLog(e) {
+            if(e) e.preventDefault();
+            const itemId = document.getElementById('wasteItemId').value;
+            const qty = parseInt(document.getElementById('wasteQty').value) || 1;
+            const reason = document.getElementById('wasteReason').value;
+            const staff = document.getElementById('wasteStaffName').value.trim() || 'Head Chef';
+
+            const res = await fetch('/api/waste/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ item_id: itemId, quantity: qty, reason: reason, staff_name: staff })
+            });
+            if(res.ok) {
+                loadWaste();
+                loadInventory();
+            }
+        }
+
+        async function loadTax() {
+            const container = document.getElementById('vatLedgerContainer');
+            if(!container) return;
+            const res = await fetch('/api/tax/vat-ledger?currency=' + currentCurr);
+            const data = await res.json();
+            const sym = data.currency_symbol || '£';
+            const boxes = data.mtd_boxes || {};
+            container.innerHTML = `
+                <div class="row g-2 text-center mb-3">
+                    <div class="col-4">
+                        <div class="p-2 bg-light rounded border">
+                            <small class="text-muted d-block">Gross Sales</small>
+                            <strong class="text-dark">${sym}${(data.total_gross_revenue || boxes.box_6_total_value_sales_ex_vat || 0).toFixed(2)}</strong>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 bg-light rounded border">
+                            <small class="text-muted d-block">Net Revenue</small>
+                            <strong class="text-primary">${sym}${(boxes.box_6_total_value_sales_ex_vat || 0).toFixed(2)}</strong>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 bg-success bg-opacity-10 rounded border border-success">
+                            <small class="text-success fw-bold d-block">VAT Due (Box 5)</small>
+                            <strong class="text-success">${sym}${(boxes.box_5_net_vat_payable || 0).toFixed(2)}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="small text-muted"><i class="fa-solid fa-check-circle text-success me-1"></i> HMRC Making Tax Digital (MTD) Compliant Ledger</div>
+            `;
+            loadTransfers();
+        }
+
+        async function loadFeedback() {
+            const resNps = await fetch('/api/feedback/nps');
+            const nps = await resNps.json();
+            document.getElementById('npsScoreVal').innerText = (nps.nps_score >= 0 ? '+' : '') + nps.nps_score;
+            document.getElementById('npsBreakdownText').innerText = `${nps.promoters_count || 0} Promoters | ${nps.passives_count || 0} Passives | ${nps.detractors_count || 0} Detractors`;
+
+            const resSent = await fetch('/api/feedback/sentiment');
+            const sent = await resSent.json();
+            document.getElementById('sentimentDistributionContent').innerHTML = `
+                <div class="d-flex justify-content-between small mb-1"><span>😊 Positive:</span> <strong>${sent.positive_reviews_count || 0}</strong></div>
+                <div class="d-flex justify-content-between small mb-1"><span>😐 Neutral:</span> <strong>${sent.neutral_reviews_count || 0}</strong></div>
+                <div class="d-flex justify-content-between small"><span>😟 Negative:</span> <strong class="text-danger">${sent.negative_reviews_count || 0}</strong></div>
+            `;
+
+            const resAlerts = await fetch('/api/feedback/alerts');
+            const alertsData = await resAlerts.json();
+            const alerts = alertsData.manager_alerts || [];
+            document.getElementById('managerAlertsContent').innerHTML = alerts.length === 0
+                ? '<div class="text-success small"><i class="fa-solid fa-check-circle me-1"></i> Zero critical guest alerts.</div>'
+                : alerts.slice(0, 2).map(a => `<div class="small text-danger mb-1"><i class="fa-solid fa-triangle-exclamation me-1"></i> Table #${a.table_number}: "${a.comment}"</div>`).join('');
+
+            const resRev = await fetch('/api/reviews');
+            const revData = await resRev.json();
+            const reviews = revData.reviews || [];
+            const revContainer = document.getElementById('reviewsContainer');
+            if(reviews.length === 0) {
+                revContainer.innerHTML = '<div class="col-12 text-muted small">No guest reviews submitted yet.</div>';
+                return;
+            }
+            revContainer.innerHTML = reviews.map(r => {
+                const safeComment = (r.comment || '').replace(/'/g, "\'");
+                return `
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded-3 bg-light h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong class="text-dark">Table #${r.table_number}</strong>
+                                    <span class="text-warning fw-bold">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+                                </div>
+                                <p class="small text-dark mb-2">"${r.comment || 'Great experience!'}"</p>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <span class="badge ${r.rating >= 4 ? 'bg-success' : 'bg-warning text-dark'}">${r.rating >= 4 ? '5★ Booster Eligible' : 'Manager Follow-Up'}</span>
+                                <button class="btn btn-xs btn-dark fw-bold py-1 px-2" onclick="generateAiReviewResponse(${r.rating}, '${safeComment}', ${r.table_number})">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> AI Auto-Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadForecasting() {
+            const tbody = document.getElementById('aiForecastTableBody');
+            const matrixEl = document.getElementById('menuMatrixContainer');
+            if(!tbody) return;
+
+            const resPrep = await fetch('/api/forecasting/prep-demand');
+            const prepData = await resPrep.json();
+            const forecasts = prepData.prep_demand_forecasts || [];
+            tbody.innerHTML = forecasts.map(f => `
+                <tr>
+                    <td><strong>${f.item_name}</strong></td>
+                    <td>${f.baseline_daily_avg || f.historical_avg_daily || 15}</td>
+                    <td><span class="badge bg-primary fs-6">${f.predicted_prep_units || f.recommended_prep_qty} units</span></td>
+                    <td><span class="text-success fw-bold">${f.confidence_pct || f.confidence_score || 94}%</span></td>
+                </tr>
+            `).join('');
+
+            const resMat = await fetch('/api/forecasting/menu-matrix');
+            const matData = await resMat.json();
+            const mat = matData.matrix || {};
+            let matHtml = '';
+            Object.keys(mat).forEach(quad => {
+                (mat[quad] || []).forEach(it => {
+                    matHtml += `
+                        <div class="p-2 border rounded mb-2 d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong class="text-dark small d-block">${it.item_name || it.name}</strong>
+                                <small class="text-muted">Margin: £${(it.profit_margin || 0).toFixed(2)}</small>
+                            </div>
+                            <span class="badge bg-info text-dark">${quad}</span>
+                        </div>
+                    `;
+                });
+            });
+            matrixEl.innerHTML = matHtml || '<div class="text-muted small">Matrix calculated.</div>';
+        }
+
+        async function loadStaff() {
+            const resLabor = await fetch('/api/staff/labor-summary?currency=' + currentCurr);
+            const labor = await resLabor.json();
+            const sym = labor.currency_symbol || '£';
+            document.getElementById('activeStaffBadge').innerText = `${labor.active_staff_count} Active`;
+            document.getElementById('laborSummaryContent').innerHTML = `
+                <div class="col-4">
+                    <small class="text-muted d-block">Labor Cost</small>
+                    <strong class="fs-5 text-dark">${sym}${labor.total_labor_cost.toFixed(2)}</strong>
+                </div>
+                <div class="col-4">
+                    <small class="text-muted d-block">Labor % of Sales</small>
+                    <strong class="fs-5 text-primary">${labor.labor_cost_percentage}%</strong>
+                </div>
+                <div class="col-4">
+                    <small class="text-muted d-block">Total Hours</small>
+                    <strong class="fs-5 text-success">${labor.total_hours_worked}h</strong>
+                </div>
+            `;
+
+            const resTips = await fetch('/api/finance/tips');
+            const tips = await resTips.json();
+            document.getElementById('troncSummaryContainer').innerHTML = `
+                <div class="d-flex justify-content-between mb-1 small"><span>Total Service Charge Pool:</span> <strong class="text-success">£${(tips.total_tronc_pool || 0).toFixed(2)}</strong></div>
+                <div class="d-flex justify-content-between small"><span>Active Staff Share:</span> <strong>£${(tips.per_staff_share || 0).toFixed(2)} / person</strong></div>
+            `;
+
+            const resShifts = await fetch('/api/staff/shifts');
+            const shifts = await resShifts.json();
+            document.getElementById('shiftHistoryContainer').innerHTML = (shifts || []).map(s => `
+                <div class="p-2 border-bottom small d-flex justify-content-between">
+                    <span><strong>${s.name}</strong> (${s.role})</span>
+                    <span class="badge ${s.status === 'CLOCKED_IN' ? 'bg-success' : 'bg-secondary'}">${s.status}</span>
+                </div>
+            `).join('');
+        }
+
+        async function staffClockIn() {
+            const pin = document.getElementById('staffPinInput').value.trim();
+            const res = await fetch('/api/staff/clock-in', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: pin })
+            });
+            const data = await res.json();
+            alert(data.message || data.error || 'Clock-in processed.');
+            loadStaff();
+        }
+
+        async function staffClockOut() {
+            const pin = document.getElementById('staffPinInput').value.trim();
+            const res = await fetch('/api/staff/clock-out', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: pin })
+            });
+            const data = await res.json();
+            alert(data.message || data.error || 'Clock-out processed.');
+            loadStaff();
         }
 
     </script>
@@ -4236,6 +4641,29 @@ def ai_sommelier_assistant():
     return jsonify({
         "response_text": response_text,
         "recommendations": recommendations
+    })
+
+
+
+# --- 23. AI Customer Review Auto-Responder Endpoint ---
+@app.route("/api/reviews/auto-respond", methods=["POST"])
+def ai_review_auto_responder():
+    data = request.json or {}
+    rating = int(data.get("rating", 5))
+    comment = (data.get("comment") or "").strip()
+    table_num = data.get("table_number", 1)
+
+    if rating >= 4:
+        response_draft = f"Thank you so much for the fantastic {rating}-star review! We are delighted that you enjoyed your visit to Table #{table_num}. Our team looks forward to welcoming you back to Covent Garden Flagship soon!"
+    elif rating == 3:
+        response_draft = f"Thank you for sharing your feedback regarding Table #{table_num}. We appreciate your honest notes on '{comment or 'service'}' and are using your insights to deliver a 5-star experience next time!"
+    else:
+        response_draft = f"Thank you for reaching out regarding Table #{table_num}. We sincerely apologize that your visit fell short of your expectations. Please contact our General Manager directly at manager@waiter.com so we can make this right!"
+
+    return jsonify({
+        "success": True,
+        "rating": rating,
+        "response_draft": response_draft
     })
 
 
