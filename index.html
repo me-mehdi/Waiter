@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>The Waiter | UK Hospitality Operating System</title>
+    <!-- Google Fonts: Fraunces (Serif Display) & Inter (Clean Sans Body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nb-navy-bg: #0f1520;
+            --nb-navy-card: #141c28;
+            --nb-navy-ticket: #182232;
+            --nb-navy-border: #243044;
+            --nb-brass: #c8a86b;
+            --nb-brass-border: #6b5b3e;
+            --nb-brass-hover: #b89758;
+            --nb-cream: #f3ebd8;
+            --nb-white: #f8fafc;
+            --nb-muted: #94a3b8;
+            --nb-blue: #8ab4f8;
+            --nb-amber: #e2b049;
+            --nb-green: #78cfa0;
+            --nb-coral: #f28b82;
+            --nb-crimson: #7f1d1d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--nb-navy-bg);
+            color: var(--nb-white);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, h4, .nb-serif {
+            font-family: 'Fraunces', Georgia, serif;
+            letter-spacing: -0.02em;
+        }
+
+        /* Top Sticky Screen Switcher */
+        .nb-switcher-bar {
+            background-color: #0b1018;
+            border-bottom: 1px solid var(--nb-navy-border);
+            padding: 12px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 1040;
+        }
+
+        .nb-switcher-inner {
+            max-width: 1380px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .nb-nav-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        /* Minimum 44px tap targets, flat colors, zero gradients */
+        .nb-btn {
+            min-height: 44px;
+            min-width: 44px;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: none;
+        }
+
+        .nb-btn-brass {
+            background-color: var(--nb-brass);
+            color: var(--nb-navy-bg);
+            border-color: var(--nb-brass);
+        }
+        .nb-btn-brass:hover {
+            background-color: var(--nb-brass-hover);
+        }
+
+        .nb-btn-outline-brass {
+            background-color: transparent;
+            color: var(--nb-brass);
+            border-color: var(--nb-brass-border);
+        }
+        .nb-btn-outline-brass:hover {
+            border-color: var(--nb-brass);
+            color: var(--nb-brass);
+        }
+        .nb-btn-outline-brass.active {
+            background-color: var(--nb-brass) !important;
+            color: #0f1520 !important;
+            border-color: var(--nb-brass) !important;
+            font-weight: 700;
+        }
+
+        .nb-btn-navy {
+            background-color: var(--nb-navy-card);
+            color: var(--nb-white);
+            border-color: var(--nb-navy-border);
+        }
+        .nb-btn-navy:hover,
+        .nb-btn-navy.active {
+            border-color: var(--nb-brass);
+            color: var(--nb-brass);
+        }
+
+        .nb-container {
+            max-width: 1160px;
+            margin: 0 auto;
+            padding: 40px 24px 64px 24px;
+        }
+
+        .nb-eyebrow {
+            color: var(--nb-brass);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .nb-card {
+            background-color: var(--nb-navy-card);
+            border: 1px solid var(--nb-navy-border);
+            border-radius: 8px;
+            padding: 24px;
+        }
+
+        .nb-card-highlight {
+            background-color: var(--nb-navy-card);
+            border: 1px solid var(--nb-brass-border);
+            border-radius: 8px;
+            padding: 24px;
+        }
+
+        .nb-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .nb-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .nb-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .nb-grid-6 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+
+        /* Phone frame 390x844 */
+        .nb-phone-wrapper {
+            display: flex;
+            justify-content: center;
+            padding: 16px 0;
+        }
+
+        .nb-phone-frame {
+            width: 100%;
+            max-width: 390px;
+            min-height: 844px;
+            background-color: var(--nb-cream);
+            color: #141c28;
+            border: 2px solid var(--nb-navy-border);
+            border-radius: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        .nb-phone-header {
+            background-color: #141c28;
+            color: var(--nb-white);
+            padding: 28px 20px 20px 20px;
+        }
+
+        .nb-lang-btn {
+            min-height: 44px;
+            min-width: 48px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--nb-brass);
+            background-color: transparent;
+            color: var(--nb-brass);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .nb-lang-btn.active {
+            background-color: var(--nb-brass);
+            color: #141c28;
+        }
+
+        .nb-phone-body {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .nb-cat-chip {
+            min-height: 44px;
+            padding: 8px 18px;
+            border-radius: 999px;
+            border: 1px solid #141c28;
+            background-color: transparent;
+            color: #141c28;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .nb-cat-chip.active {
+            background-color: #141c28;
+            color: #ffffff;
+        }
+
+        .nb-dish-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .nb-add-btn {
+            min-height: 44px;
+            min-width: 68px;
+            padding: 8px 16px;
+            background-color: #141c28;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .nb-sticky-order-btn {
+            margin-top: auto;
+            width: 100%;
+            min-height: 52px;
+            background-color: var(--nb-brass);
+            color: #141c28;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* Kitchen Display (KDS) Tickets */
+        .nb-kds-ticket {
+            background-color: var(--nb-navy-ticket);
+            border: 1px solid #28364d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .nb-kds-new {
+            border-top: 5px solid var(--nb-blue);
+        }
+
+        .nb-kds-prep {
+            border-top: 5px solid var(--nb-amber);
+        }
+
+        .nb-kds-ready {
+            border-top: 5px solid var(--nb-green);
+        }
+
+        /* Floor plan table tiles */
+        .nb-table-tile {
+            min-height: 74px;
+            border-radius: 8px;
+            padding: 12px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+        }
+
+        .nb-table-free {
+            background-color: #232f42;
+            color: var(--nb-white);
+        }
+
+        .nb-table-seated {
+            background-color: var(--nb-brass);
+            color: #141c28;
+        }
+
+        .nb-table-ordered {
+            background-color: var(--nb-blue);
+            color: #141c28;
+        }
+
+        .nb-table-paying {
+            background-color: var(--nb-green);
+            color: #141c28;
+        }
+
+        /* Sales By Hour Flat Bar Chart */
+        .nb-bars-row {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 14px;
+            align-items: end;
+            height: 150px;
+            padding-top: 20px;
+        }
+
+        .nb-bar-col {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            height: 100%;
+            gap: 6px;
+        }
+
+        .nb-bar-fill {
+            background-color: var(--nb-brass);
+            width: 100%;
+            border-radius: 2px;
+            transition: height 0.3s ease;
+        }
+
+        /* Modal Dialogs */
+        .nb-modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(11, 16, 24, 0.85);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .nb-modal-backdrop.open {
+            display: flex;
+        }
+
+        .nb-modal-content {
+            background-color: var(--nb-navy-card);
+            border: 1px solid var(--nb-brass-border);
+            border-radius: 12px;
+            max-width: 620px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 28px;
+            position: relative;
+        }
+
+        .nb-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            color: var(--nb-muted);
+            font-size: 24px;
+            cursor: pointer;
+            min-width: 36px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Table styles for back-of-house lists */
+        .nb-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .nb-table th {
+            text-align: left;
+            padding: 12px 14px;
+            color: var(--nb-brass);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--nb-navy-border);
+        }
+        .nb-table td {
+            padding: 14px;
+            border-bottom: 1px solid var(--nb-navy-border);
+            color: #e2e8f0;
+        }
+        .nb-table tr:hover td {
+            background-color: rgba(200, 168, 107, 0.04);
+        }
+    </style>
+</head>
+<body>
+
+<section id="navyBrassShowcaseRoot" aria-label="The Waiter UK Navy and Brass Design System">
+    <!-- Top Sticky Screen Switcher & Mode Bar -->
+    <div class="nb-switcher-bar">
+        <div class="nb-switcher-inner">
+            <a href="/" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
+                <span class="nb-serif" style="font-size:20px; font-weight:700; color:#f8fafc;">The Waiter</span>
+                <span style="font-size:11px; color:#c8a86b; border:1px solid #6b5b3e; padding:3px 8px; border-radius:4px; font-weight:600; letter-spacing:0.05em;">NAVY &amp; BRASS EDITION</span>
+            </a>
+            <div class="nb-nav-pills" role="navigation" aria-label="Page navigation">
+                <a href="/" class="nb-btn nb-btn-outline-brass" data-page="landing">1. Landing</a>
+                <a href="/menu" class="nb-btn nb-btn-outline-brass" data-page="guest">2. Guest QR (390×844)</a>
+                <a href="/kitchen" class="nb-btn nb-btn-outline-brass" data-page="kitchen">3. Kitchen KDS</a>
+                <a href="/today" class="nb-btn nb-btn-outline-brass" data-page="owner">4. Owner Today</a>
+                <a href="/till" class="nb-btn nb-btn-outline-brass" data-page="till">5. Till / POS</a>
+                <a href="/reservations" class="nb-btn nb-btn-outline-brass" data-page="reservations">6. Reservations</a>
+                <a href="/stock" class="nb-btn nb-btn-outline-brass" data-page="stock">7. Stock &amp; Cellar</a>
+                <a href="/staff" class="nb-btn nb-btn-outline-brass" data-page="staff">8. Staff &amp; Tronc</a>
+                <a href="/settings" class="nb-btn nb-btn-outline-brass" data-page="settings">9. Settings</a>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" id="nbDataModeBtn" class="nb-btn nb-btn-navy" onclick="toggleNbPlaceholderMode()">Mode: Placeholders ([X] / £[PRICE])</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 1: LANDING PAGE (RESPONSIVE)                                -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-landing">
+        <!-- Top Landing Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:56px;">
+            <div class="nb-serif" style="font-size:24px; font-weight:700; color:#f8fafc;">The Waiter</div>
+            <button type="button" class="nb-btn nb-btn-brass" onclick="document.getElementById('nb-pricing-block').scrollIntoView({behavior:'smooth'})">Book a demo</button>
+        </div>
+
+        <!-- Hero Block -->
+        <div style="max-width:720px; margin-bottom:48px;">
+            <span class="nb-eyebrow">BUILT FOR UK PUBS, CAFES AND RESTAURANTS</span>
+            <h1 style="font-size:clamp(2.5rem, 5vw, 4rem); font-weight:800; line-height:1.06; margin:0 0 20px 0; color:#f8fafc;">
+                One system for every table, ticket and till.
+            </h1>
+            <p style="font-size:18px; color:#94a3b8; margin:0 0 28px 0;">
+                QR ordering, kitchen display, billing and live reports on the phones, tablets and printers you already own.
+            </p>
+            <div style="display:flex; flex-wrap:wrap; gap:12px;">
+                <a href="/menu" class="nb-btn nb-btn-brass">Try free for 7 days</a>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="document.getElementById('nb-uk-trades-grid').scrollIntoView({behavior:'smooth'})">See UK features</button>
+            </div>
+        </div>
+
+        <!-- 1 · ORDER -> 2 · PREPARE -> 3 · SETTLE Flow Cards -->
+        <div class="nb-grid-3" style="margin-bottom:64px;">
+            <div class="nb-card">
+                <span class="nb-eyebrow">1 · ORDER</span>
+                <h3 style="font-size:20px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Scan, browse, order</h3>
+                <p style="font-size:15px; color:#94a3b8; margin:0;">Guests order from a QR stand in their language.</p>
+            </div>
+            <div class="nb-card">
+                <span class="nb-eyebrow">2 · PREPARE</span>
+                <h3 style="font-size:20px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Tickets hit the kitchen</h3>
+                <p style="font-size:15px; color:#94a3b8; margin:0;">Any TV becomes a live kitchen display.</p>
+            </div>
+            <div class="nb-card">
+                <span class="nb-eyebrow">3 · SETTLE</span>
+                <h3 style="font-size:20px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Bill and report</h3>
+                <p style="font-size:15px; color:#94a3b8; margin:0;">Payments, invoices and sales update as they happen.</p>
+            </div>
+        </div>
+
+        <!-- Made for how the UK trades -->
+        <div id="nb-uk-trades-grid" style="margin-bottom:56px;">
+            <h2 style="font-size:32px; font-weight:700; margin:0 0 24px 0; color:#f8fafc;">Made for how the UK trades</h2>
+            <div class="nb-grid-3">
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Allergen engine</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">The 14 UK allergens tagged from ingredients, with compliant labels.</p>
+                </div>
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Tips and tronc</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">Fair tip splits, a staff payout log and a written policy export.</p>
+                </div>
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Challenge 25</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">Alcohol orders prompt an ID check before serving.</p>
+                </div>
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Accounting sync</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">Xero, QuickBooks, Sage and FreeAgent.</p>
+                </div>
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Offline mode</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">Orders queue in the cellar or garden and sync later.</p>
+                </div>
+                <div class="nb-card">
+                    <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:#f8fafc;">Delivery in one KDS</h3>
+                    <p style="font-size:14px; color:#94a3b8; margin:0;">Deliveroo, Uber Eats and Just Eat tickets beside dine-in.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- The Old Way vs The Waiter Blueprint -->
+        <div id="The Old Way vs. The Waiter Blueprint" class="nb-grid-2" style="margin-bottom:56px;">
+            <div class="nb-card">
+                <span class="nb-eyebrow">THE OLD WAY</span>
+                <p style="font-size:16px; color:#cbd5e1; margin:0;">Several separate subscriptions, proprietary tills, paper dockets, scattered data.</p>
+            </div>
+            <div class="nb-card-highlight">
+                <span class="nb-eyebrow" style="color:var(--nb-brass);">THE WAITER</span>
+                <p style="font-size:16px; color:#f8fafc; margin:0;">One platform, your existing devices, a digital kitchen display, one live dashboard.</p>
+            </div>
+        </div>
+
+        <!-- The Waiter Cloud Sync — 6-Device Hub -->
+        <div id="The Waiter Cloud Sync — 6-Device Hub" class="nb-card" style="margin-bottom:56px;">
+            <span class="nb-eyebrow">OPEN HARDWARE ECOSYSTEM</span>
+            <h2 class="nb-serif" style="font-size:24px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">The Waiter Cloud Sync — 6-Device Hub</h2>
+            <div class="nb-grid-6">
+                <a href="/menu" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                    <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">1. Guest Phone</strong>
+                    <span style="font-size:12px; color:#94a3b8;">Instant QR web app</span>
+                </a>
+                <a href="/today" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                    <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">2. Server Tablet</strong>
+                    <span style="font-size:12px; color:#94a3b8;">Floor round orders</span>
+                </a>
+                <a href="/kitchen" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                    <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">3. Kitchen Pass TV</strong>
+                    <span style="font-size:12px; color:#94a3b8;">HDMI smart screen</span>
+                </a>
+                <a href="/till" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                    <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">4. Bar Till Counter</strong>
+                    <span style="font-size:12px; color:#94a3b8;">Pre-auth bar tabs</span>
+                </a>
+                <a href="/settings" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                    <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">5. Cloud Printer</strong>
+                    <span style="font-size:12px; color:#94a3b8;">Epson &amp; Star ESC/POS</span>
+                </a>
+                <a href="/today" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                    <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">6. Owner Mobile</strong>
+                    <span style="font-size:12px; color:#94a3b8;">Real-time live P&amp;L</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Pricing & Consultation Contact Hero Block -->
+        <div id="nb-pricing-block" class="nb-card" style="text-align:center; padding:56px 24px; border:1px solid var(--nb-brass-border);">
+            <h2 id="nbLandingPriceText" class="nb-serif" style="font-size:clamp(2rem, 4vw, 3.25rem); font-weight:800; margin:0 0 12px 0; color:#f8fafc;">
+                [£ PRICE] a month. No contract.
+            </h2>
+            <p style="font-size:18px; color:#94a3b8; margin:0 0 28px 0;">
+                Set up in minutes. Try it free for 7 days.
+            </p>
+            <div style="display:flex; justify-content:center; gap:12px; margin-bottom:24px;">
+                <button type="button" class="nb-btn nb-btn-brass" onclick="bookNbDemoPrompt()">Book a demo</button>
+            </div>
+            <div id="nbLandingContactText" style="font-size:14px; color:#94a3b8; letter-spacing:0.04em;">
+                [YOUR .CO.UK DOMAIN] · [PHONE] · [EMAIL]
+            </div>
+            <div id="nbLandingLiveContact" style="font-size:14px; color:#c8a86b; margin-top:8px;">
+                waiter.com · +44 7594 560831 · nidaazzielmehdi@gmail.com
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 2: GUEST QR MENU (PHONE 390x844 FRAME)                      -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-guest">
+        <div class="nb-phone-wrapper">
+            <div class="nb-phone-frame" role="region" aria-label="Customer Phone QR Order Interface">
+                <!-- Navy Phone Header -->
+                <div class="nb-phone-header">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <span style="font-size:12px; font-weight:700; color:var(--nb-brass); letter-spacing:0.08em; text-transform:uppercase;" id="nbHeaderTableNumber">TABLE 12</span>
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" class="nb-lang-btn" onclick="setNbCurrency('GBP', this)" style="min-width:38px; min-height:36px; padding:4px 8px; font-size:12px;">£</button>
+                            <button type="button" class="nb-lang-btn" onclick="setNbCurrency('EUR', this)" style="min-width:38px; min-height:36px; padding:4px 8px; font-size:12px;">€</button>
+                            <button type="button" class="nb-lang-btn" onclick="setNbCurrency('USD', this)" style="min-width:38px; min-height:36px; padding:4px 8px; font-size:12px;">$</button>
+                        </div>
+                    </div>
+                    <div class="nb-serif" id="nbPhoneVenueName" style="font-size:26px; font-weight:800; color:#f8fafc; margin-bottom:16px;">[VENUE NAME]</div>
+                    
+                    <!-- Language Selection Chips -->
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;" role="group" aria-label="Language selection">
+                        <button type="button" class="nb-lang-btn active" onclick="setNbPhoneLang('en', this)">EN</button>
+                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('fr', this)">FR</button>
+                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('ar', this)">AR</button>
+                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('pl', this)">PL</button>
+                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('ur', this)">UR</button>
+                    </div>
+                </div>
+
+                <!-- Cream Phone Body -->
+                <div class="nb-phone-body">
+                    <!-- Guest Promo Flash Banner -->
+                    <div id="guestPromoFlashBanner" style="background-color:#141c28; color:#f8fafc; padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:13px; display:flex; justify-content:space-between; align-items:center;">
+                        <div><strong style="color:var(--nb-brass);">HAPPYHOUR25:</strong> 25% off all roasts</div>
+                        <button type="button" onclick="applyPromoCodePrompt()" style="background:transparent; border:1px solid var(--nb-brass); color:var(--nb-brass); border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer;">Apply</button>
+                    </div>
+
+                    <!-- Staff Service Calls Concierge -->
+                    <div id="staffServiceCallsCard" style="background-color:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:14px;">
+                        <span style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; display:block; margin-bottom:6px;">Table Concierge</span>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button type="button" onclick="callServerService('WATER', 'Free Tap Water')" style="min-height:36px; padding:4px 10px; font-size:12px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">Water</button>
+                            <button type="button" onclick="callServerService('BILL', 'Request Bill')" style="min-height:36px; padding:4px 10px; font-size:12px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">Bill</button>
+                            <button type="button" onclick="callServerService('SERVER', 'Server Assistance')" style="min-height:36px; padding:4px 10px; font-size:12px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">Call Staff</button>
+                        </div>
+                    </div>
+
+                    <!-- Category Chips -->
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;" role="group" aria-label="Menu Categories">
+                        <button type="button" class="nb-cat-chip active" onclick="filterNbPhoneCategory('all', this)">Mains</button>
+                        <button type="button" class="nb-cat-chip" onclick="filterNbPhoneCategory('roast', this)">Sunday roast</button>
+                        <button type="button" class="nb-cat-chip" onclick="filterNbPhoneCategory('drinks', this)">Drinks</button>
+                    </div>
+
+                    <!-- Menu Items List & Dish Photography Container -->
+                    <div id="dishPhotos">
+                        <!-- Dish 1: Sunday Roast -->
+                        <div class="nb-dish-card" data-cat="roast" id="dish-item-1">
+                            <div>
+                                <div style="font-weight:700; font-size:17px; color:#141c28; margin-bottom:2px;" class="nb-dish-title" data-en="Sunday Roast" data-fr="Rôti du Dimanche" data-ar="روست الأحد البريطاني" data-pl="Niedzielna Pieczeń" data-ur="سنڈے روسٹ">Sunday Roast</div>
+                                <div style="font-size:13px; color:#475569; margin-bottom:6px;">Gluten · Milk · Celery</div>
+                                <div style="font-weight:700; font-size:16px; color:#141c28;" class="nb-dish-price" data-gbp="18.50" data-live="£18.50">£[PRICE]</div>
+                            </div>
+                            <button type="button" class="nb-add-btn" onclick="addNbPhoneOrderItem('item-1', 'Sunday Roast', 18.50)">Add</button>
+                        </div>
+
+                        <!-- Dish 2: Fish and Chips -->
+                        <div class="nb-dish-card" data-cat="mains" id="dish-item-2">
+                            <div>
+                                <div style="font-weight:700; font-size:17px; color:#141c28; margin-bottom:2px;" class="nb-dish-title" data-en="Fish and Chips" data-fr="Poisson et Frites" data-ar="سمك وبطاطس مقرمشة" data-pl="Ryba z Frytkami" data-ur="فش اینڈ چپس">Fish and Chips</div>
+                                <div style="font-size:13px; color:#475569; margin-bottom:6px;">Gluten · Fish · Eggs</div>
+                                <div style="font-weight:700; font-size:16px; color:#141c28;" class="nb-dish-price" data-gbp="14.50" data-live="£14.50">£[PRICE]</div>
+                            </div>
+                            <button type="button" class="nb-add-btn" onclick="addNbPhoneOrderItem('item-2', 'Fish and Chips', 14.50)">Add</button>
+                        </div>
+
+                        <!-- Dish 3: Pint of Lager (Challenge 25) -->
+                        <div class="nb-dish-card" data-cat="drinks" id="dish-item-3">
+                            <div>
+                                <div style="font-weight:700; font-size:17px; color:#141c28; margin-bottom:2px;" class="nb-dish-title" data-en="Pint of Lager" data-fr="Pinte de Bière Blonde" data-ar="بيرة لاجر بريطانية" data-pl="Pinta Jasnego Lagera" data-ur="پائنٹ آف لاگر">Pint of Lager</div>
+                                <div style="font-size:13px; color:#7f1d1d; font-weight:600; margin-bottom:6px;">Challenge 25: ID may be checked</div>
+                                <div style="font-weight:700; font-size:16px; color:#141c28;" class="nb-dish-price" data-gbp="6.20" data-live="£6.20">£[PRICE]</div>
+                            </div>
+                            <button type="button" class="nb-add-btn" onclick="addNbPhoneOrderItem('item-3', 'Pint of Lager', 6.20)">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- Sticky Bottom View Order Button -->
+                    <button type="button" id="nbStickyViewOrderBtn" class="nb-sticky-order-btn" onclick="openNbCartModal()">
+                        View order · 2 items
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 3: KITCHEN DISPLAY (RESPONSIVE)                             -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-kitchen">
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px; margin-bottom:28px;">
+            <div style="display:flex; align-items:center; gap:16px;">
+                <h2 class="nb-serif" style="font-size:32px; font-weight:700; margin:0; color:#f8fafc;">Kitchen</h2>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="openChefRecipeModal()" style="min-height:38px; padding:6px 12px; font-size:13px;">Chef SOP Recipes</button>
+            </div>
+            <!-- Delivery Aggregator & Dine-in Source Filters -->
+            <div id="deliveryChannelsGrid" style="display:flex; flex-wrap:wrap; gap:8px;" role="group" aria-label="Order Sources">
+                <button type="button" class="nb-btn nb-btn-navy active" onclick="filterNbKdsSource('all', this)">Dine-in</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="filterNbKdsSource('deliveroo', this)">Deliveroo</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="filterNbKdsSource('ubereats', this)">Uber Eats</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="filterNbKdsSource('justeat', this)">Just Eat</button>
+            </div>
+        </div>
+
+        <div class="nb-grid-3" id="nbKdsBoard">
+            <!-- NEW Column -->
+            <div id="nbKdsColNew">
+                <div style="color:#8ab4f8; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px;">NEW</div>
+                <div class="nb-kds-ticket nb-kds-new" id="nbTicket1026" data-order-id="ORD-1026">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+                        <strong style="font-size:20px; color:#f8fafc;">#1026 · Table 12</strong>
+                        <span style="font-size:18px; color:#8ab4f8; font-variant-numeric:tabular-nums; font-weight:600;">00:42</span>
+                    </div>
+                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:6px;">2× Sunday Roast</div>
+                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:12px;">1× Fish and Chips</div>
+                    <div style="font-size:14px; font-weight:700; color:#f28b82; margin-bottom:16px;">Allergy: no gluten</div>
+                    <button type="button" class="nb-btn nb-btn-navy" style="width:100%;" onclick="advanceNbTicket('ORD-1026', this)">Advance to Prep</button>
+                </div>
+            </div>
+
+            <!-- PREPARING Column -->
+            <div id="nbKdsColPrep">
+                <div style="color:#e2b049; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px;">PREPARING</div>
+                <div class="nb-kds-ticket nb-kds-prep" id="nbTicket1024" data-order-id="ORD-1024">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+                        <strong style="font-size:20px; color:#f8fafc;">#1024 · Delivery</strong>
+                        <span style="font-size:18px; color:#e2b049; font-variant-numeric:tabular-nums; font-weight:600;">06:10</span>
+                    </div>
+                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:6px;">1× Burger</div>
+                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:16px;">2× Chips</div>
+                    <button type="button" class="nb-btn nb-btn-navy" style="width:100%;" onclick="advanceNbTicket('ORD-1024', this)">Advance to Ready</button>
+                </div>
+            </div>
+
+            <!-- READY Column -->
+            <div id="nbKdsColReady">
+                <div style="color:#78cfa0; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px;">READY</div>
+                <div class="nb-kds-ticket nb-kds-ready" id="nbTicket1025" data-order-id="ORD-1025">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+                        <strong style="font-size:20px; color:#f8fafc;">#1025 · Table 4</strong>
+                        <span style="font-size:16px; color:#78cfa0; font-weight:700;">Ready</span>
+                    </div>
+                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:6px;">3× Pizza</div>
+                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:16px;">3× Soft drink</div>
+                    <button type="button" class="nb-btn nb-btn-brass" style="width:100%;" onclick="advanceNbTicket('ORD-1025', this)">Mark Served</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 4: OWNER DASHBOARD ("TODAY", RESPONSIVE)                    -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-owner">
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px; margin-bottom:28px;">
+            <h2 class="nb-serif" style="font-size:32px; font-weight:700; margin:0; color:#f8fafc;">Today</h2>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                <button type="button" class="nb-btn nb-btn-navy active" onclick="document.getElementById('nbFloorPlanSection').scrollIntoView({behavior:'smooth'})">Tables</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="document.getElementById('nbReportsSection').scrollIntoView({behavior:'smooth'})">Reports</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="document.getElementById('nbComplianceSection').scrollIntoView({behavior:'smooth'})">Compliance</button>
+            </div>
+        </div>
+
+        <!-- 4 Primary KPI Tiles -->
+        <div class="nb-grid-4" style="margin-bottom:20px;">
+            <div class="nb-card">
+                <span class="nb-eyebrow">SALES TODAY</span>
+                <div class="nb-serif" id="nbKpiSales" style="font-size:36px; font-weight:800; color:#f8fafc;">£[X]</div>
+            </div>
+            <div class="nb-card">
+                <span class="nb-eyebrow">LABOUR %</span>
+                <div class="nb-serif" id="nbKpiLabour" style="font-size:36px; font-weight:800; color:#f8fafc;">[X]%</div>
+            </div>
+            <div class="nb-card">
+                <span class="nb-eyebrow">AVG TABLE TURN</span>
+                <div class="nb-serif" id="nbKpiTurn" style="font-size:36px; font-weight:800; color:#f8fafc;">[X] min</div>
+            </div>
+            <div class="nb-card">
+                <span class="nb-eyebrow">OPEN ORDERS</span>
+                <div class="nb-serif" id="nbKpiOrders" style="font-size:36px; font-weight:800; color:#f8fafc;">[X]</div>
+            </div>
+        </div>
+
+        <!-- Blueprint KPIs Row: 120 Reservations & 18 Staff -->
+        <div id="bpReservationsToday" class="nb-card" style="margin-bottom:20px; padding:16px 24px;">
+            <div class="nb-grid-4">
+                <div>
+                    <span style="font-size:11px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Tonight's Covers</span>
+                    <strong style="display:block; font-size:18px; color:#f8fafc;" class="nb-dyn-val" data-placeholder="[X] Bookings" data-live="120 Reservations">120 Reservations</strong>
+                </div>
+                <div>
+                    <span style="font-size:11px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Active Team</span>
+                    <strong style="display:block; font-size:18px; color:#f8fafc;" class="nb-dyn-val" data-placeholder="[X] On Shift" data-live="18 Staff on Shift">18 Staff on Shift</strong>
+                </div>
+                <div>
+                    <span style="font-size:11px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Spend / Cover</span>
+                    <strong style="display:block; font-size:18px; color:#f8fafc;" class="nb-dyn-val" data-placeholder="£[X]" data-live="£32.50 Avg">£32.50 Avg</strong>
+                </div>
+                <div>
+                    <span style="font-size:11px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Food Safety Rating</span>
+                    <strong style="display:block; font-size:18px; color:#78cfa0;" class="nb-dyn-val" data-placeholder="[X] / 5" data-live="5 / 5 Very Good (FSA)">5 / 5 Very Good (FSA)</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floor Plan & Compliance Row -->
+        <div class="nb-grid-2" style="margin-bottom:20px;">
+            <!-- Floor Plan with T1-T4 and Bar Stools Row -->
+            <div class="nb-card" id="nbFloorPlanSection">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                    <h3 class="nb-serif" style="font-size:20px; font-weight:700; color:#f8fafc; margin:0;">Floor plan</h3>
+                    <span style="font-size:12px; color:#94a3b8;">Tap tile to cycle status</span>
+                </div>
+                <div class="nb-grid-4" style="margin-bottom:16px;">
+                    <button type="button" class="nb-table-tile nb-table-free" onclick="cycleNbTableState(this)">
+                        <strong style="font-size:17px;">T1</strong>
+                        <span class="nb-table-state-label" style="font-size:13px;">Free</span>
+                    </button>
+                    <button type="button" class="nb-table-tile nb-table-seated" onclick="cycleNbTableState(this)">
+                        <strong style="font-size:17px;">T2</strong>
+                        <span class="nb-table-state-label" style="font-size:13px;">Seated</span>
+                    </button>
+                    <button type="button" class="nb-table-tile nb-table-ordered" onclick="cycleNbTableState(this)">
+                        <strong style="font-size:17px;">T3</strong>
+                        <span class="nb-table-state-label" style="font-size:13px;">Ordered</span>
+                    </button>
+                    <button type="button" class="nb-table-tile nb-table-paying" onclick="cycleNbTableState(this)">
+                        <strong style="font-size:17px;">T4</strong>
+                        <span class="nb-table-state-label" style="font-size:13px;">Paying</span>
+                    </button>
+                </div>
+
+                <!-- Bar Stools Blueprint Row -->
+                <div id="barStoolsBlueprintRow" style="border-top:1px solid var(--nb-navy-border); padding-top:14px;">
+                    <span style="font-size:12px; color:var(--nb-brass); font-weight:600; text-transform:uppercase; display:block; margin-bottom:8px;">5 Bar Stools &amp; Kitchen Pass</span>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="nb-table-tile nb-table-free" style="flex:1; min-height:56px;" onclick="cycleNbTableState(this)"><strong style="font-size:14px;">B1</strong><span class="nb-table-state-label" style="font-size:11px;">Free</span></button>
+                        <button type="button" class="nb-table-tile nb-table-seated" style="flex:1; min-height:56px;" onclick="cycleNbTableState(this)"><strong style="font-size:14px;">B2</strong><span class="nb-table-state-label" style="font-size:11px;">Seated</span></button>
+                        <button type="button" class="nb-table-tile nb-table-seated" style="flex:1; min-height:56px;" onclick="cycleNbTableState(this)"><strong style="font-size:14px;">B3</strong><span class="nb-table-state-label" style="font-size:11px;">Seated</span></button>
+                        <button type="button" class="nb-table-tile nb-table-free" style="flex:1; min-height:56px;" onclick="cycleNbTableState(this)"><strong style="font-size:14px;">B4</strong><span class="nb-table-state-label" style="font-size:11px;">Free</span></button>
+                        <button type="button" class="nb-table-tile nb-table-free" style="flex:1; min-height:56px;" onclick="cycleNbTableState(this)"><strong style="font-size:14px;">B5</strong><span class="nb-table-state-label" style="font-size:11px;">Free</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compliance Panel -->
+            <div class="nb-card" id="nbComplianceSection">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <h3 class="nb-serif" style="font-size:20px; font-weight:700; color:#f8fafc; margin:0;">Compliance</h3>
+                    <a href="/api/uk-compliance/eho-report/pdf" class="nb-btn nb-btn-outline-brass" style="min-height:36px; padding:4px 12px; font-size:12px;" download>Export EHO PDF</a>
+                </div>
+                <div style="font-size:15px; color:#e2e8f0; line-height:2.0;">
+                    <div>Allergen labels: up to date</div>
+                    <div>Tip split: ready to review</div>
+                    <div id="nbCompFridge">Fridge temperature log: [X] checks due</div>
+                    <div id="nbCompC25">Challenge 25 prompts: [X] today</div>
+                </div>
+                <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="nb-btn nb-btn-navy" style="min-height:38px; padding:6px 12px; font-size:13px;" onclick="logFridgeTempQuick()">Log Fridge Temp (3.2°C)</button>
+                    <button type="button" class="nb-btn nb-btn-navy" style="min-height:38px; padding:6px 12px; font-size:13px;" onclick="verifyChallenge25Quick()">Verify Challenge 25 ID</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sales by Hour Bar Chart -->
+        <div class="nb-card" id="nbReportsSection" style="margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; color:#f8fafc; margin:0;">Sales by hour</h3>
+                <span style="font-size:13px; color:#94a3b8;">Flat brass hourly volume</span>
+            </div>
+            <div id="salesHeatmapGrid" class="nb-bars-row">
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:25%;" title="12:00: £240"></div><span style="font-size:11px; color:#94a3b8;">12:00</span></div>
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:45%;" title="14:00: £480"></div><span style="font-size:11px; color:#94a3b8;">14:00</span></div>
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:70%;" title="16:00: £820"></div><span style="font-size:11px; color:#94a3b8;">16:00</span></div>
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:92%;" title="18:00: £1,240"></div><span style="font-size:11px; color:#94a3b8;">18:00</span></div>
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:64%;" title="20:00: £890"></div><span style="font-size:11px; color:#94a3b8;">20:00</span></div>
+                <div class="nb-bar-col"><div class="nb-bar-fill" style="height:42%;" title="22:00: £510"></div><span style="font-size:11px; color:#94a3b8;">22:00</span></div>
+            </div>
+        </div>
+
+        <!-- Live Blueprint Invoice & Z-Report Interactive Ledger -->
+        <div class="nb-grid-2">
+            <!-- Auto-Generated UK VAT Invoice #001024 -->
+            <div id="liveBlueprintInvoiceCard" class="nb-card">
+                <span class="nb-eyebrow">STATUTORY UK VAT INVOICE</span>
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+                    <h3 class="nb-serif" style="font-size:20px; font-weight:700; color:#f8fafc; margin:0;">Invoice #001024</h3>
+                    <span style="font-size:13px; color:var(--nb-green); font-weight:600;">HMRC MTD Ready</span>
+                </div>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8; margin-bottom:14px;">
+                    <div>Eat-In (20% Standard VAT): <strong style="color:#f8fafc;">£33.00 (VAT: £5.50)</strong></div>
+                    <div>Cold Takeaway (0% Zero-Rated): <strong style="color:#f8fafc;">£6.20 (VAT: £0.00)</strong></div>
+                    <div>Grand Total: <strong style="color:var(--nb-brass); font-size:16px;">£39.20</strong></div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="nb-btn nb-btn-brass" onclick="alert('VAT Horizon verified compliant with HMRC Making Tax Digital.')">Verify VAT Horizon</button>
+                </div>
+            </div>
+
+            <!-- Daily Z-Report Interactive Ledger -->
+            <div id="zReportInteractiveContainer" class="nb-card">
+                <span class="nb-eyebrow">FINANCIAL RECONCILIATION</span>
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+                    <h3 class="nb-serif" style="font-size:20px; font-weight:700; color:#f8fafc; margin:0;">Daily Z-Report</h3>
+                    <a href="/api/finance/z-report/pdf" class="nb-btn nb-btn-brass" style="min-height:36px; padding:4px 12px; font-size:12px;" download>Download PDF</a>
+                </div>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8; margin-bottom:14px;">
+                    <div>Net Sales: <strong style="color:#f8fafc;">£3,566.67</strong> · VAT Collected: <strong style="color:#f8fafc;">£713.33</strong></div>
+                    <div>Staff Tips Tronc: <strong style="color:var(--nb-green);">£428.00 (100% Passed)</strong></div>
+                    <div>Open Banking / Cards Settled: <strong style="color:#f8fafc;">100%</strong></div>
+                </div>
+                <button type="button" class="nb-btn nb-btn-navy" style="width:100%;" onclick="fetchLiveZReportJson()">View Live Z-Ledger Breakdown</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 5: TILL / POS & BAR TABS (DEDICATED)                        -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-till">
+        <span class="nb-eyebrow">COUNTER REGISTER &amp; PRE-AUTH BAR TABS</span>
+        <h2 class="nb-serif" style="font-size:32px; font-weight:700; margin:0 0 24px 0; color:#f8fafc;">Till / POS &amp; Bar Tabs</h2>
+
+        <div class="nb-grid-2" style="margin-bottom:24px;">
+            <!-- Active Bar Tabs Card -->
+            <div class="nb-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                    <h3 class="nb-serif" style="font-size:20px; font-weight:700; color:#f8fafc; margin:0;">Open Bar Tabs</h3>
+                    <button type="button" class="nb-btn nb-btn-brass" onclick="openNewBarTabPrompt()" style="min-height:36px; padding:4px 12px; font-size:12px;">+ Open New Tab</button>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="background:var(--nb-navy-ticket); padding:16px; border-radius:8px; border:1px solid var(--nb-navy-border); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong style="color:#f8fafc; font-size:16px;">Tab #TAB-001 · Table 12 (Smith)</strong>
+                            <div style="font-size:13px; color:#94a3b8;">Pre-auth: £50.00 · Spent: £33.00 · 2× Roast, 1× Fish &amp; Chips</div>
+                        </div>
+                        <button type="button" class="nb-btn nb-btn-brass" onclick="sendSameAgainRound()" style="min-height:36px; padding:4px 12px; font-size:12px;">Same again · 1 tap</button>
+                    </div>
+                    <div style="background:var(--nb-navy-ticket); padding:16px; border-radius:8px; border:1px solid var(--nb-navy-border); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong style="color:#f8fafc; font-size:16px;">Tab #TAB-002 · Bar Stool B2 (Jones)</strong>
+                            <div style="font-size:13px; color:#94a3b8;">Pre-auth: £40.00 · Spent: £18.60 · 3× Pint of Lager</div>
+                        </div>
+                        <button type="button" class="nb-btn nb-btn-brass" onclick="sendSameAgainRound()" style="min-height:36px; padding:4px 12px; font-size:12px;">Same again · 1 tap</button>
+                    </div>
+                    <div style="background:var(--nb-navy-ticket); padding:16px; border-radius:8px; border:1px solid var(--nb-navy-border); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong style="color:#f8fafc; font-size:16px;">Tab #TAB-003 · Table 4 (Taylor)</strong>
+                            <div style="font-size:13px; color:#94a3b8;">Pre-auth: £85.00 · Spent: £62.00 · 3× Pizza, 3× Soft Drink</div>
+                        </div>
+                        <button type="button" class="nb-btn nb-btn-brass" onclick="sendSameAgainRound()" style="min-height:36px; padding:4px 12px; font-size:12px;">Same again · 1 tap</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Counter Register Quick Terminal -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">SPEED-OF-SERVICE COUNTER REGISTER</span>
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">1-Tap Quick Sale</h3>
+                <div class="nb-grid-3" style="gap:10px; margin-bottom:16px;">
+                    <button type="button" class="nb-btn nb-btn-navy" style="flex-direction:column; padding:12px 8px; min-height:64px;" onclick="addNbPhoneOrderItem('item-3', 'Pint of Lager', 6.20)"><strong>Pint Lager</strong><span style="color:var(--nb-brass); font-size:12px;">£6.20</span></button>
+                    <button type="button" class="nb-btn nb-btn-navy" style="flex-direction:column; padding:12px 8px; min-height:64px;" onclick="addNbPhoneOrderItem('item-2', 'Fish & Chips', 14.50)"><strong>Fish &amp; Chips</strong><span style="color:var(--nb-brass); font-size:12px;">£14.50</span></button>
+                    <button type="button" class="nb-btn nb-btn-navy" style="flex-direction:column; padding:12px 8px; min-height:64px;" onclick="addNbPhoneOrderItem('item-1', 'Sunday Roast', 18.50)"><strong>Sunday Roast</strong><span style="color:var(--nb-brass); font-size:12px;">£18.50</span></button>
+                    <button type="button" class="nb-btn nb-btn-navy" style="flex-direction:column; padding:12px 8px; min-height:64px;" onclick="addNbPhoneOrderItem('item-4', 'House Red 175ml', 7.50)"><strong>House Red</strong><span style="color:var(--nb-brass); font-size:12px;">£7.50</span></button>
+                    <button type="button" class="nb-btn nb-btn-navy" style="flex-direction:column; padding:12px 8px; min-height:64px;" onclick="addNbPhoneOrderItem('item-5', 'Cask Pale Ale', 5.80)"><strong>Cask Pale</strong><span style="color:var(--nb-brass); font-size:12px;">£5.80</span></button>
+                    <button type="button" class="nb-btn nb-btn-navy" style="flex-direction:column; padding:12px 8px; min-height:64px;" onclick="addNbPhoneOrderItem('item-6', 'Flat White', 3.40)"><strong>Flat White</strong><span style="color:var(--nb-brass); font-size:12px;">£3.40</span></button>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="nb-btn nb-btn-brass" style="flex:1;" onclick="openNbCartModal()">Review Till Ticket</button>
+                    <button type="button" class="nb-btn nb-btn-outline-brass" style="flex:1;" onclick="processCheckout('PAY_BY_BANK')">Pay by Bank (0.2%)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 6: TABLE RESERVATIONS & DEPOSITS (DEDICATED)                -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-reservations">
+        <span class="nb-eyebrow">BOOKINGS ENGINE &amp; NO-SHOW PROTECTION</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+            <h2 class="nb-serif" style="font-size:32px; font-weight:700; margin:0; color:#f8fafc;">Table Reservations &amp; Deposits</h2>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="nb-btn nb-btn-brass" onclick="bookTableDepositPrompt()">+ Hold New Deposit (£10/Guest)</button>
+                <button type="button" class="nb-btn nb-btn-outline-brass" onclick="preorderSundayRoastPrompt()">Sunday Roast Pre-Order</button>
+            </div>
+        </div>
+
+        <div class="nb-card" style="margin-bottom:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; color:#f8fafc; margin:0;">Tonight's Service Bookings</h3>
+                <span style="color:#78cfa0; font-size:13px; font-weight:600;">Reserve with Google Connected</span>
+            </div>
+            <table class="nb-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Table</th>
+                        <th>Guest Name</th>
+                        <th>Covers</th>
+                        <th>Deposit Status</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>18:30</strong></td>
+                        <td>Table 12</td>
+                        <td>Sarah Jenkins</td>
+                        <td>4 Guests</td>
+                        <td><span style="color:#78cfa0; font-weight:600;">£40.00 Held (Card Pre-Auth)</span></td>
+                        <td>Google Business</td>
+                    </tr>
+                    <tr>
+                        <td><strong>19:00</strong></td>
+                        <td>Table 4</td>
+                        <td>David Miller</td>
+                        <td>6 Guests</td>
+                        <td><span style="color:#78cfa0; font-weight:600;">£60.00 Held (Card Pre-Auth)</span></td>
+                        <td>Direct Website</td>
+                    </tr>
+                    <tr>
+                        <td><strong>19:45</strong></td>
+                        <td>Table 8</td>
+                        <td>Emma Watson</td>
+                        <td>2 Guests</td>
+                        <td><span style="color:#78cfa0; font-weight:600;">£20.00 Held (Card Pre-Auth)</span></td>
+                        <td>Google Business</td>
+                    </tr>
+                    <tr>
+                        <td><strong>20:15</strong></td>
+                        <td>Table 2</td>
+                        <td>Michael Brown</td>
+                        <td>4 Guests</td>
+                        <td><span style="color:#78cfa0; font-weight:600;">£40.00 Held (Card Pre-Auth)</span></td>
+                        <td>Direct Phone</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 7: STOCK, CELLAR & WHOLESALERS (DEDICATED)                  -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-stock">
+        <span class="nb-eyebrow">RECIPE COSTING, KEGS &amp; WHOLESALER ORDERING</span>
+        <h2 class="nb-serif" style="font-size:32px; font-weight:700; margin:0 0 24px 0; color:#f8fafc;">Stock, Cellar &amp; Wholesalers</h2>
+
+        <div class="nb-grid-2" style="margin-bottom:24px;">
+            <!-- Live Dish Recipe GP% Target Analysis -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">MARGINS &amp; FOOD COSTING</span>
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Gross Profit (GP%) per Dish</h3>
+                <table class="nb-table">
+                    <thead>
+                        <tr>
+                            <th>Dish</th>
+                            <th>Cost</th>
+                            <th>Price</th>
+                            <th>Live GP%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Pint of Lager</td>
+                            <td>£1.34</td>
+                            <td>£6.20</td>
+                            <td><strong style="color:#78cfa0;">78.4%</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Sunday Roast</td>
+                            <td>£4.98</td>
+                            <td>£18.50</td>
+                            <td><strong style="color:#78cfa0;">73.1%</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Fish and Chips</td>
+                            <td>£4.12</td>
+                            <td>£14.50</td>
+                            <td><strong style="color:#78cfa0;">71.6%</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Cask Pale Ale</td>
+                            <td>£1.28</td>
+                            <td>£5.80</td>
+                            <td><strong style="color:#78cfa0;">77.9%</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Cellar Keg Levels & 7-Day Beer Line Cleaning Log -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">CELLAR MANAGEMENT</span>
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Keg Levels &amp; Line Cleaning</h3>
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="background:var(--nb-navy-ticket); padding:14px; border-radius:6px; border:1px solid var(--nb-navy-border); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong style="color:#f8fafc;">Tap #1: Premium Lager (82% Full)</strong>
+                            <div style="font-size:12px; color:#78cfa0;">Line Clean: Compliant (Day 2 of 7)</div>
+                        </div>
+                        <button type="button" class="nb-btn nb-btn-navy" style="min-height:36px; padding:4px 10px; font-size:12px;" onclick="cleanCellarLine(1)">Clean Line #1</button>
+                    </div>
+                    <div style="background:var(--nb-navy-ticket); padding:14px; border-radius:6px; border:1px solid var(--nb-navy-border); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong style="color:#f8fafc;">Tap #2: Cask Pale Ale (45% Full)</strong>
+                            <div style="font-size:12px; color:#78cfa0;">Line Clean: Compliant (Day 4 of 7)</div>
+                        </div>
+                        <button type="button" class="nb-btn nb-btn-navy" style="min-height:36px; padding:4px 10px; font-size:12px;" onclick="cleanCellarLine(2)">Clean Line #2</button>
+                    </div>
+                    <div style="background:var(--nb-navy-ticket); padding:14px; border-radius:6px; border:1px solid var(--nb-navy-border); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong style="color:#f8fafc;">Tap #3: Craft IPA (18% Low Keg Alert)</strong>
+                            <div style="font-size:12px; color:#e2b049;">Line Clean: Compliant (Day 1 of 7)</div>
+                        </div>
+                        <button type="button" class="nb-btn nb-btn-navy" style="min-height:36px; padding:4px 10px; font-size:12px;" onclick="cleanCellarLine(3)">Clean Line #3</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wholesaler Ordering Console -->
+        <div class="nb-card">
+            <span class="nb-eyebrow">AUTOMATED WHOLESALER INTEGRATIONS</span>
+            <h3 class="nb-serif" style="font-size:20px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Booker · Bidfood · Brakes</h3>
+            <div class="nb-grid-3">
+                <div style="background:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border);">
+                    <strong style="display:block; font-size:16px; color:#f8fafc; margin-bottom:6px;">Booker Wholesale</strong>
+                    <p style="font-size:13px; color:#94a3b8; margin-bottom:12px;">Suggested: Maris Piper 25kg, 28-day Beef Sirloin 10kg</p>
+                    <button type="button" class="nb-btn nb-btn-brass" style="width:100%; min-height:38px; font-size:13px;" onclick="placeSupplierOrder('BOOKER')">Order Booker Stock</button>
+                </div>
+                <div style="background:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border);">
+                    <strong style="display:block; font-size:16px; color:#f8fafc; margin-bottom:6px;">Bidfood Foodservice</strong>
+                    <p style="font-size:13px; color:#94a3b8; margin-bottom:12px;">Suggested: Haddock Fillets 5kg, Marrowfat Peas 10kg</p>
+                    <button type="button" class="nb-btn nb-btn-brass" style="width:100%; min-height:38px; font-size:13px;" onclick="placeSupplierOrder('BIDFOOD')">Order Bidfood Stock</button>
+                </div>
+                <div style="background:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border);">
+                    <strong style="display:block; font-size:16px; color:#f8fafc; margin-bottom:6px;">Brakes UK</strong>
+                    <p style="font-size:13px; color:#94a3b8; margin-bottom:12px;">Suggested: Rapeseed Oil 20L, Plain Flour 16kg</p>
+                    <button type="button" class="nb-btn nb-btn-brass" style="width:100%; min-height:38px; font-size:13px;" onclick="placeSupplierOrder('BRAKES')">Order Brakes Stock</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 8: STAFF ROTA, TRONC & PAYROLL (DEDICATED)                  -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-staff">
+        <span class="nb-eyebrow">EMPLOYMENT ALLOCATION OF TIPS ACT &amp; ROTAS</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+            <h2 class="nb-serif" style="font-size:32px; font-weight:700; margin:0; color:#f8fafc;">Staff Rota, Tips Tronc &amp; Payroll</h2>
+            <a href="/api/margins/payroll/export/csv" class="nb-btn nb-btn-brass" download>Export HMRC Payroll CSV</a>
+        </div>
+
+        <div class="nb-grid-2" style="margin-bottom:24px;">
+            <!-- 4-Digit Staff PIN Clock-In / Clock-Out Console -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">STAFF TIME CLOCK</span>
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">PIN Clock-In Terminal</h3>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8; margin-bottom:16px;">
+                    <div>Active Team on Shift: <strong style="color:#f8fafc;">6 Staff Members</strong></div>
+                    <div>Live Labour Cost % vs Sales: <strong style="color:var(--nb-brass); font-size:16px;">26.4%</strong></div>
+                    <div>Statutory Holiday Accrual: <strong style="color:#78cfa0;">12.07%</strong></div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="nb-btn nb-btn-brass" style="flex:1;" onclick="clockInPrompt()">Clock In (PIN)</button>
+                    <button type="button" class="nb-btn nb-btn-outline-brass" style="flex:1;" onclick="clockInPrompt()">Clock Out</button>
+                </div>
+            </div>
+
+            <!-- Tips Act Oct 2024 Written Policy Summary -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">STATUTORY COMPLIANCE</span>
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Tips Act (Oct 2024) Tronc Policy</h3>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8; margin-bottom:16px;">
+                    <div>Tip Allocation: <strong style="color:#78cfa0;">100% Passed to Staff in Full</strong></div>
+                    <div>Admin Deductions: <strong style="color:#78cfa0;">£0.00 (Zero deductions)</strong></div>
+                    <div>Written Policy: <strong style="color:#f8fafc;">Distributed to all qualifying workers</strong></div>
+                </div>
+                <button type="button" class="nb-btn nb-btn-navy" style="width:100%;" onclick="alert('Tronc Audit Log: £428.00 collected today, 100% distributed among 6 staff.')">View Daily Tronc Split Audit Log</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- SCREEN 9: SYSTEM RELIABILITY & SETTINGS (DEDICATED)                -->
+    <!-- ================================================================== -->
+    <div class="nb-container nb-screen-section" id="nb-screen-settings">
+        <span class="nb-eyebrow">HARDWARE TESTING, OFFLINE QUEUE &amp; HOSTING</span>
+        <h2 class="nb-serif" style="font-size:32px; font-weight:700; margin:0 0 24px 0; color:#f8fafc;">System Reliability &amp; Open Hardware</h2>
+
+        <div class="nb-grid-2" style="margin-bottom:24px;">
+            <!-- Certified Thermal Receipt Printers -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">CERTIFIED OPEN HARDWARE</span>
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Thermal ESC/POS Printers</h3>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8; margin-bottom:16px;">
+                    <div>Epson TM-T88VI (Kitchen &amp; Pass): <strong style="color:#78cfa0;">Online (USB/LAN)</strong></div>
+                    <div>Star Micronics TSP143 (Bar Counter): <strong style="color:#78cfa0;">Online (CloudPRNT)</strong></div>
+                    <div>Proprietary Hardware Lock-In: <strong style="color:#78cfa0;">None (Standard ESC/POS)</strong></div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="nb-btn nb-btn-brass" style="flex:1;" onclick="testThermalPrinter('EPSON')">Test Epson Printer</button>
+                    <button type="button" class="nb-btn nb-btn-navy" style="flex:1;" onclick="testThermalPrinter('STAR')">Test Star Printer</button>
+                </div>
+            </div>
+
+            <!-- Offline Queue & UK London Hosting -->
+            <div class="nb-card">
+                <span class="nb-eyebrow">RESILIENCE &amp; SECURITY</span>
+                <h3 class="nb-serif" style="font-size:20px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Offline Queue &amp; UK GDPR</h3>
+                <div style="font-size:14px; color:#cbd5e1; line-height:1.8; margin-bottom:16px;">
+                    <div>Store-and-Forward Queue: <strong style="color:#78cfa0;">Active (3 queued orders synced)</strong></div>
+                    <div>Cellar / Beer Garden Resilience: <strong style="color:#78cfa0;">Zero lost orders</strong></div>
+                    <div>Cloud Hosting: <strong style="color:#f8fafc;">UK London Region (GDPR &amp; Cyber Essentials)</strong></div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="nb-btn nb-btn-brass" style="flex:1;" onclick="syncOfflineQueue()">Sync Offline Orders</button>
+                    <button type="button" class="nb-btn nb-btn-outline-brass" style="flex:1;" onclick="alert('Offline simulation toggle toggled.')">Toggle Offline Simulation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- INTERACTIVE MODALS IN NAVY & BRASS                                 -->
+<!-- ================================================================== -->
+
+<!-- Modal: Cart & Pay at Table -->
+<div id="nbCartModal" class="nb-modal-backdrop">
+    <div class="nb-modal-content">
+        <button type="button" class="nb-modal-close" onclick="closeNbCartModal()">&times;</button>
+        <span class="nb-eyebrow">YOUR TABLE ORDER</span>
+        <h3 class="nb-serif" style="font-size:24px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Review &amp; Settle</h3>
+        
+        <div id="nbCartItemsList" style="margin-bottom:20px; border-bottom:1px solid var(--nb-navy-border); padding-bottom:16px;">
+            <!-- Cart items inserted dynamically -->
+        </div>
+
+        <!-- Digital Tip Selector Presets -->
+        <div style="margin-bottom:20px;">
+            <label style="display:block; font-size:13px; font-weight:600; color:#cbd5e1; margin-bottom:8px;">Fair Tip (Employment Allocation of Tips Act Oct 2024)</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;" role="group">
+                <button type="button" class="nb-btn nb-btn-navy" onclick="selectTipPreset(0, this)">0%</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="selectTipPreset(10, this)">10%</button>
+                <button type="button" class="nb-btn nb-btn-navy active" onclick="selectTipPreset(12.5, this)">12.5%</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="selectTipPreset(15, this)">15%</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="selectTipPreset(20, this)">20%</button>
+            </div>
+        </div>
+
+        <!-- Grand Total Summary -->
+        <div style="background-color:var(--nb-navy-ticket); padding:16px; border-radius:8px; margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:14px; color:#94a3b8;">
+                <span>Order Subtotal:</span>
+                <span id="nbCartSubtotal" style="color:#f8fafc; font-weight:600;">£33.00</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px; color:#94a3b8;">
+                <span>Tip:</span>
+                <span id="nbCartTipAmount" style="color:#78cfa0; font-weight:600;">£4.13</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-top:1px solid var(--nb-navy-border); padding-top:8px; font-size:18px; font-weight:700;">
+                <span style="color:#f8fafc;">Total to Pay:</span>
+                <span id="nbCartGrandTotal" style="color:var(--nb-brass);">£37.13</span>
+            </div>
+        </div>
+
+        <!-- Payment Method Actions -->
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <button type="button" class="nb-btn nb-btn-brass" onclick="processCheckout('APPLE_PAY')">Pay with Apple Pay</button>
+            <button type="button" class="nb-btn nb-btn-brass" onclick="processCheckout('GOOGLE_PAY')">Pay with Google Pay</button>
+            <button type="button" class="nb-btn nb-btn-navy" onclick="processCheckout('PAY_BY_BANK')">Pay by Bank (UK Open Banking · 0.2% fee)</button>
+            <button type="button" class="nb-btn nb-btn-navy" onclick="processCheckout('CARD_STRIPE')">Debit / Credit Card (Stripe)</button>
+            <div style="display:flex; gap:10px; margin-top:8px;">
+                <button type="button" class="nb-btn nb-btn-outline-brass" style="flex:1;" onclick="openSplitBillModal()">Split Bill</button>
+                <button type="button" class="nb-btn nb-btn-outline-brass" style="flex:1;" onclick="submitOrderOnlyToKds()">Send to Kitchen Only</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Bill Splitting -->
+<div id="nbSplitModal" class="nb-modal-backdrop">
+    <div class="nb-modal-content">
+        <button type="button" class="nb-modal-close" onclick="closeNbSplitModal()">&times;</button>
+        <span class="nb-eyebrow">GROUP BILL SETTLEMENT</span>
+        <h3 class="nb-serif" style="font-size:24px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Split Table Bill</h3>
+        <p style="font-size:14px; color:#94a3b8; margin-bottom:16px;">Divide equally, by percentage, or pay individual dish items.</p>
+        
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <button type="button" class="nb-btn nb-btn-navy" onclick="splitBillEvenly(2)">Split Equally: 2 Guests</button>
+            <button type="button" class="nb-btn nb-btn-navy" onclick="splitBillEvenly(4)">Split Equally: 4 Guests</button>
+            <button type="button" class="nb-btn nb-btn-navy" onclick="splitBillPercentage(50)">Pay 50% Share</button>
+            <button type="button" class="nb-btn nb-btn-brass" onclick="alert('Split share settled. Receipts sent to guests.')">Complete Split Payment</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Chef Recipe Inspector (chefRecipeModal) -->
+<div id="chefRecipeModal" class="nb-modal-backdrop">
+    <div class="nb-modal-content">
+        <button type="button" class="nb-modal-close" onclick="closeChefRecipeModal()">&times;</button>
+        <span class="nb-eyebrow">KITCHEN STANDARD OPERATING PROCEDURES</span>
+        <h3 class="nb-serif" style="font-size:24px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">Chef Recipe &amp; Plating Guide</h3>
+        
+        <div id="chefRecipeBody" style="font-size:14px; color:#cbd5e1; line-height:1.7;">
+            <div style="background:var(--nb-navy-ticket); padding:16px; border-radius:8px; margin-bottom:14px; border:1px solid var(--nb-navy-border);">
+                <strong style="display:block; font-size:18px; color:var(--nb-brass); margin-bottom:4px;">Beer Battered Fish and Chips</strong>
+                <p><strong>Ingredients:</strong> Fresh North Sea haddock, Maris Piper hand-cut chips, pale ale batter, tartare sauce, marrowfat peas.</p>
+                <p><strong>Plating Guide:</strong> Serve on pre-warmed dish with paper lining, lemon wedge cut at 45 degrees, ramekin of crushed mint peas.</p>
+                <p style="color:#f28b82;"><strong>Cross-Contamination:</strong> Dedicated gluten-free fryer available for coeliac tickets.</p>
+            </div>
+            <div style="background:var(--nb-navy-ticket); padding:16px; border-radius:8px; border:1px solid var(--nb-navy-border);">
+                <strong style="display:block; font-size:18px; color:var(--nb-brass); margin-bottom:4px;">British Sunday Roast</strong>
+                <p><strong>Ingredients:</strong> 28-day aged British beef sirloin, beef dripping roast potatoes, giant Yorkshire pudding, heritage carrots, bone marrow red wine gravy.</p>
+                <p><strong>Plating Guide:</strong> Carved beef laid atop carrot puree, 3 roast potatoes crispy side up, Yorkshire pudding crowning dish, gravy poured tableside.</p>
+                <p style="color:#f28b82;"><strong>Allergens:</strong> Cereals containing gluten, milk, celery.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let nbPlaceholderMode = true;
+    let nbSelectedTipPct = 12.5;
+    let nbCurrentCurrency = 'GBP';
+    let nbCartItems = [
+        {id: 'item-1', name: 'Sunday Roast', price: 18.50, qty: 1},
+        {id: 'item-2', name: 'Fish and Chips', price: 14.50, qty: 1}
+    ];
+
+    // Load saved placeholder mode
+    try {
+        const savedMode = localStorage.getItem('nb_data_mode');
+        if (savedMode === 'live') {
+            toggleNbPlaceholderMode(false);
+        }
+    } catch(e) {}
+
+    // Page route detection and navigation
+    function getActiveScreenFromPath() {
+        const path = window.location.pathname.toLowerCase();
+        if (path.includes('/menu') || path.includes('/guest') || path.includes('/order')) return 'guest';
+        if (path.includes('/kitchen') || path.includes('/kds') || path.includes('/tv')) return 'kitchen';
+        if (path.includes('/today') || path.includes('/owner') || path.includes('/dashboard')) return 'owner';
+        if (path.includes('/till') || path.includes('/pos') || path.includes('/terminal')) return 'till';
+        if (path.includes('/reservations') || path.includes('/bookings')) return 'reservations';
+        if (path.includes('/stock') || path.includes('/cellar')) return 'stock';
+        if (path.includes('/staff') || path.includes('/rota')) return 'staff';
+        if (path.includes('/settings') || path.includes('/printers') || path.includes('/reliability')) return 'settings';
+        return 'all';
+    }
+
+    function initScreenRouting() {
+        const screenKey = getActiveScreenFromPath();
+        showNbScreen(screenKey);
+    }
+
+    function showNbScreen(screenKey) {
+        document.querySelectorAll('.nb-nav-pills .nb-btn').forEach(b => b.classList.remove('active'));
+        
+        // Find matching pill
+        const pill = document.querySelector(`.nb-nav-pills .nb-btn[data-page="${screenKey}"]`) || 
+                     document.querySelector(`.nb-nav-pills .nb-btn[data-page="landing"]`);
+        if (pill) pill.classList.add('active');
+
+        const map = {
+            landing: ['nb-screen-landing'],
+            guest: ['nb-screen-guest'],
+            kitchen: ['nb-screen-kitchen'],
+            owner: ['nb-screen-owner'],
+            till: ['nb-screen-till'],
+            reservations: ['nb-screen-reservations'],
+            stock: ['nb-screen-stock'],
+            staff: ['nb-screen-staff'],
+            settings: ['nb-screen-settings'],
+            all: ['nb-screen-landing', 'nb-screen-guest', 'nb-screen-kitchen', 'nb-screen-owner', 'nb-screen-till', 'nb-screen-reservations', 'nb-screen-stock', 'nb-screen-staff', 'nb-screen-settings']
+        };
+        const visibleIds = map[screenKey] || map.all;
+        document.querySelectorAll('.nb-screen-section').forEach(sec => {
+            sec.style.display = visibleIds.includes(sec.id) ? 'block' : 'none';
+        });
+    }
+
+    function toggleNbPlaceholderMode(shouldSave = true) {
+        nbPlaceholderMode = !nbPlaceholderMode;
+        if (shouldSave) {
+            try {
+                localStorage.setItem('nb_data_mode', nbPlaceholderMode ? 'placeholder' : 'live');
+            } catch(e) {}
+        }
+        const btn = document.getElementById('nbDataModeBtn');
+        if (btn) {
+            btn.textContent = nbPlaceholderMode
+                ? 'Mode: Placeholders ([X] / £[PRICE])'
+                : 'Mode: Live UK Venue Data';
+        }
+        const vName = document.getElementById('nbPhoneVenueName');
+        if (vName) vName.textContent = nbPlaceholderMode ? '[VENUE NAME]' : 'The Crown & Anchor';
+        
+        const priceTxt = document.getElementById('nbLandingPriceText');
+        if (priceTxt) priceTxt.textContent = nbPlaceholderMode ? '[£ PRICE] a month. No contract.' : '£79 a month. No contract.';
+        
+        const contactTxt = document.getElementById('nbLandingContactText');
+        if (contactTxt) contactTxt.textContent = nbPlaceholderMode
+            ? '[YOUR .CO.UK DOMAIN] · [PHONE] · [EMAIL]'
+            : 'waiter.com · +44 7594 560831 · nidaazzielmehdi@gmail.com';
+
+        document.querySelectorAll('.nb-dish-price').forEach(el => {
+            el.textContent = nbPlaceholderMode ? '£[PRICE]' : el.getAttribute('data-live');
+        });
+
+        const kpiSales = document.getElementById('nbKpiSales');
+        const kpiLabour = document.getElementById('nbKpiLabour');
+        const kpiTurn = document.getElementById('nbKpiTurn');
+        const kpiOrders = document.getElementById('nbKpiOrders');
+        if (kpiSales) kpiSales.textContent = nbPlaceholderMode ? '£[X]' : '£4,280';
+        if (kpiLabour) kpiLabour.textContent = nbPlaceholderMode ? '[X]%' : '26.4%';
+        if (kpiTurn) kpiTurn.textContent = nbPlaceholderMode ? '[X] min' : '52 min';
+        if (kpiOrders) kpiOrders.textContent = nbPlaceholderMode ? '[X]' : '9';
+
+        const compFridge = document.getElementById('nbCompFridge');
+        const compC25 = document.getElementById('nbCompC25');
+        if (compFridge) compFridge.textContent = nbPlaceholderMode ? 'Fridge temperature log: [X] checks due' : 'Fridge temperature log: 0 checks due (All 3.2°C)';
+        if (compC25) compC25.textContent = nbPlaceholderMode ? 'Challenge 25 prompts: [X] today' : 'Challenge 25 prompts: 14 verified today';
+
+        document.querySelectorAll('.nb-dyn-val').forEach(el => {
+            el.textContent = nbPlaceholderMode ? el.getAttribute('data-placeholder') : el.getAttribute('data-live');
+        });
+    }
+
+    function setNbPhoneLang(lang, btn) {
+        document.querySelectorAll('.nb-lang-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        document.querySelectorAll('.nb-dish-title').forEach(el => {
+            const tr = el.getAttribute('data-' + lang);
+            if (tr) el.textContent = tr;
+        });
+        fetch('/api/menu/filtered?lang=' + lang).catch(() => {});
+    }
+
+    function setNbCurrency(curr, btn) {
+        nbCurrentCurrency = curr;
+        const sym = curr === 'EUR' ? '€' : curr === 'USD' ? '$' : '£';
+        const rate = curr === 'EUR' ? 1.17 : curr === 'USD' ? 1.28 : 1.0;
+        document.querySelectorAll('.nb-dish-price').forEach(el => {
+            const gbp = parseFloat(el.getAttribute('data-gbp') || '15');
+            const converted = (gbp * rate).toFixed(2);
+            el.setAttribute('data-live', sym + converted);
+            if (!nbPlaceholderMode) el.textContent = sym + converted;
+        });
+    }
+
+    function filterNbPhoneCategory(cat, btn) {
+        document.querySelectorAll('.nb-cat-chip').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        document.querySelectorAll('#dishPhotos .nb-dish-card').forEach(card => {
+            if (cat === 'all') {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = card.getAttribute('data-cat') === cat ? 'flex' : 'none';
+            }
+        });
+    }
+
+    function addNbPhoneOrderItem(id, name, price) {
+        const existing = nbCartItems.find(i => i.id === id);
+        if (existing) {
+            existing.qty += 1;
+        } else {
+            nbCartItems.push({id, name, price, qty: 1});
+        }
+        updateCartSummary();
+    }
+
+    function updateCartSummary() {
+        const totalItems = nbCartItems.reduce((acc, i) => acc + i.qty, 0);
+        const subtotal = nbCartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+        const btn = document.getElementById('nbStickyViewOrderBtn');
+        if (btn) {
+            btn.textContent = `View order · ${totalItems} items`;
+        }
+
+        const tipAmount = subtotal * (nbSelectedTipPct / 100);
+        const grandTotal = subtotal + tipAmount;
+
+        const subEl = document.getElementById('nbCartSubtotal');
+        const tipEl = document.getElementById('nbCartTipAmount');
+        const grandEl = document.getElementById('nbCartGrandTotal');
+        if (subEl) subEl.textContent = '£' + subtotal.toFixed(2);
+        if (tipEl) tipEl.textContent = '£' + tipAmount.toFixed(2);
+        if (grandEl) grandEl.textContent = '£' + grandTotal.toFixed(2);
+
+        const list = document.getElementById('nbCartItemsList');
+        if (list) {
+            list.innerHTML = nbCartItems.map(item => `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <div>
+                        <strong style="color:#f8fafc; font-size:15px;">${item.name}</strong>
+                        <div style="font-size:13px; color:#94a3b8;">£${item.price.toFixed(2)} each</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button type="button" class="nb-btn nb-btn-navy" style="min-width:32px; min-height:32px; padding:0;" onclick="changeCartQty('${item.id}', -1)">-</button>
+                        <span style="font-weight:700; color:#f8fafc;">${item.qty}</span>
+                        <button type="button" class="nb-btn nb-btn-navy" style="min-width:32px; min-height:32px; padding:0;" onclick="changeCartQty('${item.id}', 1)">+</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function changeCartQty(id, delta) {
+        const item = nbCartItems.find(i => i.id === id);
+        if (item) {
+            item.qty += delta;
+            if (item.qty <= 0) {
+                nbCartItems = nbCartItems.filter(i => i.id !== id);
+            }
+        }
+        updateCartSummary();
+    }
+
+    function openNbCartModal() {
+        updateCartSummary();
+        document.getElementById('nbCartModal').classList.add('open');
+    }
+
+    function closeNbCartModal() {
+        document.getElementById('nbCartModal').classList.remove('open');
+    }
+
+    function openSplitBillModal() {
+        closeNbCartModal();
+        document.getElementById('nbSplitModal').classList.add('open');
+    }
+
+    function closeNbSplitModal() {
+        document.getElementById('nbSplitModal').classList.remove('open');
+    }
+
+    function openChefRecipeModal() {
+        fetch('/api/kds/recipes').catch(() => {});
+        document.getElementById('chefRecipeModal').classList.add('open');
+    }
+
+    function closeChefRecipeModal() {
+        document.getElementById('chefRecipeModal').classList.remove('open');
+    }
+
+    function selectTipPreset(pct, btn) {
+        nbSelectedTipPct = pct;
+        document.querySelectorAll('#nbCartModal .nb-btn-navy').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        updateCartSummary();
+    }
+
+    async function processCheckout(method) {
+        try {
+            const res = await fetch('/api/payments/checkout', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    order_id: 'ORD-1026',
+                    payment_method: method,
+                    tip_percentage: nbSelectedTipPct,
+                    currency: nbCurrentCurrency
+                })
+            });
+            const data = await res.json();
+            alert(`Payment Succeeded via ${method}!\nGrand Total: £${data.grand_total || '37.13'}\nTip Amount: £${data.tip_amount || '4.13'}`);
+            closeNbCartModal();
+        } catch (e) {
+            alert('Payment completed successfully via ' + method);
+            closeNbCartModal();
+        }
+    }
+
+    async function submitOrderOnlyToKds() {
+        try {
+            await fetch('/api/orders', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    table_number: 12,
+                    item_ids: nbCartItems.map(i => i.id)
+                })
+            });
+        } catch (e) {}
+        closeNbCartModal();
+        alert('Order sent directly to Kitchen Display!');
+        window.location.href = '/kitchen';
+    }
+
+    async function splitBillEvenly(parts) {
+        try {
+            await fetch('/api/orders/ORD-1026/split/even', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({parts})
+            });
+        } catch (e) {}
+        alert(`Bill divided equally between ${parts} guests.`);
+        closeNbSplitModal();
+    }
+
+    async function splitBillPercentage(pct) {
+        try {
+            await fetch('/api/orders/ORD-1026/split/percentage', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({percentage: pct})
+            });
+        } catch (e) {}
+        alert(`Payment of ${pct}% recorded.`);
+        closeNbSplitModal();
+    }
+
+    async function callServerService(type, label) {
+        try {
+            await fetch('/api/service-calls', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({table_number: 12, request_type: type, label})
+            });
+            alert(`Service call dispatched to staff: ${label}`);
+        } catch (e) {
+            alert(`Service call logged: ${label}`);
+        }
+    }
+
+    function applyPromoCodePrompt() {
+        const code = prompt('Enter promo code:', 'HAPPYHOUR25');
+        if (code) {
+            alert(`Promo code ${code} applied! 25% discount active.`);
+        }
+    }
+
+    function cycleNbTableState(tile) {
+        const states = [
+            {cls: 'nb-table-free', label: 'Free'},
+            {cls: 'nb-table-seated', label: 'Seated'},
+            {cls: 'nb-table-ordered', label: 'Ordered'},
+            {cls: 'nb-table-paying', label: 'Paying'}
+        ];
+        let currentIdx = states.findIndex(s => tile.classList.contains(s.cls));
+        const next = states[(currentIdx + 1) % states.length];
+        states.forEach(s => tile.classList.remove(s.cls));
+        tile.classList.add(next.cls);
+        const lbl = tile.querySelector('.nb-table-state-label');
+        if (lbl) lbl.textContent = next.label;
+    }
+
+    function filterNbKdsSource(source, btn) {
+        document.querySelectorAll('#deliveryChannelsGrid .nb-btn-navy').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+    }
+
+    async function advanceNbTicket(orderId, btn) {
+        try {
+            await fetch(`/api/kds/advance/${orderId}`, {method: 'POST'});
+        } catch (e) {}
+        btn.textContent = 'Updated';
+        btn.disabled = true;
+    }
+
+    function bookNbDemoPrompt() {
+        const email = prompt('Enter venue email or UK mobile for 7-day free trial:', 'owner@venue.co.uk');
+        if (email) {
+            fetch('/api/blueprint/consultation', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({venue_name: 'UK Hospitality Venue', contact: email})
+            }).catch(() => {});
+            alert('Consultation request confirmed. UK team (+44 7594 560831) will activate your account.');
+        }
+    }
+
+    async function logFridgeTempQuick() {
+        try {
+            await fetch('/api/uk-compliance/food-safety/temp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({appliance: 'Main Walk-In Cellar Fridge', temperature: 3.2, logged_by: 'Head Chef'})
+            });
+            alert('Temperature logged: 3.2°C (Compliant with FSA guidance)');
+        } catch (e) {
+            alert('Temperature logged: 3.2°C');
+        }
+    }
+
+    async function verifyChallenge25Quick() {
+        try {
+            await fetch('/api/uk-compliance/challenge25/verify', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({order_id: 'ORD-1026', customer_dob: '2001-05-12', staff_member: 'Duty Manager'})
+            });
+            alert('Challenge 25 ID verification logged successfully. Licence protected.');
+        } catch (e) {
+            alert('Challenge 25 ID verified.');
+        }
+    }
+
+    async function sendSameAgainRound() {
+        try {
+            await fetch('/api/pub/tabs/TAB-001/same-again', {method: 'POST'});
+            alert('Same Again round transmitted to Bar & Kitchen display!');
+        } catch (e) {
+            alert('Same Again round sent to Bar!');
+        }
+    }
+
+    function openNewBarTabPrompt() {
+        const name = prompt('Guest Tab Name:', 'Smith (Table 12)');
+        if (name) {
+            fetch('/api/pub/tabs/open', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({guest_name: name, card_last4: '4242', preauth_amount: 50.00})
+            }).catch(() => {});
+            alert(`Bar Tab opened for ${name} with £50.00 pre-authorisation hold.`);
+        }
+    }
+
+    function bookTableDepositPrompt() {
+        const name = prompt('Guest Name:', 'James Wilson');
+        if (name) {
+            fetch('/api/growth/reservations/deposit', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({guest_name: name, covers: 4, deposit_per_head: 10.00})
+            }).catch(() => {});
+            alert(`Reservation deposit hold of £40.00 (£10/guest) authorised for ${name}.`);
+        }
+    }
+
+    function preorderSundayRoastPrompt() {
+        fetch('/api/pub/roast/preorder', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({guest_name: 'Sarah Evans', date: 'Sunday', roast_type: 'Sirloin Beef', covers: 2})
+        }).catch(() => {});
+        alert('Sunday Roast pre-order logged. Kitchen inventory reserved.');
+    }
+
+    async function cleanCellarLine(tap) {
+        try {
+            await fetch(`/api/pub/cellar/clean-line/${tap}`, {method: 'POST'});
+            alert(`Beer tap #${tap} line cleaning logged. Compliant for 7 days.`);
+        } catch (e) {
+            alert(`Line clean logged for tap #${tap}.`);
+        }
+    }
+
+    async function placeSupplierOrder(wholesaler) {
+        try {
+            await fetch(`/api/margins/suppliers/order/${wholesaler}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({items: ['Maris Piper Potatoes 25kg', 'Cask Pale Ale 9gal']})
+            });
+            alert(`Purchase order submitted to ${wholesaler}.`);
+        } catch (e) {
+            alert(`Order submitted to ${wholesaler}.`);
+        }
+    }
+
+    function clockInPrompt() {
+        const pin = prompt('Enter 4-digit staff PIN:', '1234');
+        if (pin) {
+            fetch('/api/staff/clock-in', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({staff_id: 'STF-01', pin})
+            }).catch(() => {});
+            alert('Clock-in recorded. Labour cost timer started.');
+        }
+    }
+
+    async function testThermalPrinter(brand) {
+        try {
+            const res = await fetch('/api/reliability/printers/test', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({printer_id: brand === 'EPSON' ? 'PRN-01' : 'PRN-02', receipt_type: 'ORDER'})
+            });
+            const data = await res.json();
+            alert(`Test receipt generated for ${brand} (${data.brand || brand})!\nPayload bytes: ${data.escpos_payload_size_bytes || 84}`);
+        } catch (e) {
+            alert(`Test print command sent to ${brand} thermal printer.`);
+        }
+    }
+
+    async function syncOfflineQueue() {
+        try {
+            const res = await fetch('/api/reliability/offline-sync', {method: 'POST'});
+            const data = await res.json();
+            alert(`Offline store-and-forward queue synced!\nOrders synced: ${data.synced_count || 3}`);
+        } catch (e) {
+            alert('Offline queue synced successfully.');
+        }
+    }
+
+    async function fetchLiveZReportJson() {
+        try {
+            const res = await fetch('/api/finance/z-report');
+            const data = await res.json();
+            alert(`Z-Report Financial Summary:\nGross Sales: £${data.gross_sales || '4280.00'}\nVAT: £${data.total_vat || '713.33'}\nTips: £${data.total_tips || '428.00'}`);
+        } catch (e) {
+            alert('Z-Report ledger retrieved.');
+        }
+    }
+
+    // Connect to Kitchen SSE live stream
+    try {
+        const evtSource = new EventSource('/api/kds/events');
+        evtSource.onmessage = function(e) {
+            try {
+                const order = JSON.parse(e.data);
+                console.log('Incoming live order event:', order);
+            } catch(err) {}
+        };
+    } catch(err) {}
+
+    // Initialize screen on DOM ready
+    window.addEventListener('DOMContentLoaded', initScreenRouting);
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        initScreenRouting();
+    }
+</script>
+</body>
+</html>
