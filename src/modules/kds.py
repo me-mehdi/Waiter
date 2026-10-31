@@ -58,7 +58,10 @@ class KDSModule:
         filtered = []
         for o in sorted_orders:
             station_items = []
-            for item in o["items"]:
+            raw_items = o["items"].get("items", []) if isinstance(o.get("items"), dict) else (o.get("items") or [])
+            for item in raw_items:
+                if not isinstance(item, dict):
+                    continue
                 item_id = item.get("item_id")
                 routing = prep_routing_service.get_item_routing(item_id)
                 if routing["station"].upper() == station.upper():

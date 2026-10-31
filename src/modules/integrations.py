@@ -15,6 +15,12 @@ SUPPORTED_PLATFORMS = [
     "TOAST"
 ]
 
+EXTENDED_PLATFORMS = SUPPORTED_PLATFORMS + [
+    "JUSTEAT",
+    "JUST_EAT",
+    "CLICK_AND_COLLECT"
+]
+
 class IntegrationsModule:
     """
     Third-Party Delivery Aggregator & Enterprise POS Integration Simulator.
@@ -36,8 +42,8 @@ class IntegrationsModule:
         Injects ticket into KDS and updates stock.
         """
         plat_clean = platform.upper()
-        if plat_clean not in SUPPORTED_PLATFORMS:
-            raise ValueError(f"Unsupported delivery platform '{platform}'. Supported: {', '.join(SUPPORTED_PLATFORMS)}")
+        if plat_clean not in EXTENDED_PLATFORMS:
+            raise ValueError(f"Unsupported delivery platform '{platform}'. Supported: {', '.join(EXTENDED_PLATFORMS)}")
 
         if not items:
             raise ValueError("Order items list cannot be empty.")
@@ -104,7 +110,7 @@ class IntegrationsModule:
         Serializes menu catalog and stock levels into Deliverect / Deliveroo JSON sync format.
         """
         plat_clean = platform.upper()
-        if plat_clean not in SUPPORTED_PLATFORMS:
+        if plat_clean not in EXTENDED_PLATFORMS:
             raise ValueError(f"Unsupported delivery platform '{platform}'.")
 
         menu_items = list(db.menu_items.values())

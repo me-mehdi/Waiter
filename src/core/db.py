@@ -277,6 +277,11 @@ class DatabaseStore:
                 INSERT INTO menu_items (id, name_en, name_fr, name_ar, desc_en, desc_fr, desc_ar, price, category, upsell_ids, stock_qty)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, default_items)
+            cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-1'", (json.dumps(["gluten", "fish"]), json.dumps(["halal"])))
+            cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-2'", (json.dumps(["gluten", "eggs", "pork"]), json.dumps([])))
+            cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-3'", (json.dumps(["gluten"]), json.dumps(["vegan", "vegetarian"])))
+            cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-4'", (json.dumps(["eggs"]), json.dumps(["vegetarian", "gluten-free"])))
+            cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-5'", (json.dumps([]), json.dumps(["vegan", "vegetarian", "halal", "gluten-free"])))
 
         cursor.execute("SELECT COUNT(*) FROM promos")
         if cursor.fetchone()[0] == 0:

@@ -988,6 +988,88 @@ class TestWaiterModules(unittest.TestCase):
         self.assertEqual(res_sun.status_code, 200)
         self.assertTrue(res_sun.get_json()["garden_open"])
 
+    def test_growth_and_customers_all_four_pillars(self):
+        from src.app import app
+        client = app.test_client()
+
+        # 1. Delivery Aggregators (Deliveroo, Uber Eats, Just Eat) in Same KDS + 0% Commission Click & Collect
+        res_je = client.post("/api/growth/aggregator-order", json={
+            "platform": "JUSTEAT",
+            "customer_name": "Tariq Mahmood",
+            "item_ids": ["item-1", "item-4"]
+        })
+        self.assertEqual(res_je.status_code, 201)
+        data_je = res_je.get_json()
+        self.assertEqual(data_je["channel"], "JUSTEAT")
+        self.assertTrue(data_je["kds_unified"])
+
+        res_cnc = client.post("/api/growth/click-and-collect", json={
+            "customer_name": "Zara Khan",
+            "customer_phone": "+447700900456",
+            "item_ids": ["item-1", "item-5"],
+            "pickup_slot": "ASAP (15 mins)"
+        })
+        self.assertEqual(res_cnc.status_code, 201)
+        data_cnc = res_cnc.get_json()
+        self.assertEqual(data_cnc["channel"], "CLICK_AND_COLLECT")
+        self.assertEqual(data_cnc["commission_fee_gbp"], 0.00)
+        self.assertGreater(data_cnc["aggregator_commission_saved_gbp"], 0.00)
+        self.assertTrue(data_cnc["collection_code"].startswith("CNC-"))
+
+        # Verify both Just Eat and Click & Collect orders land in the unified KDS
+        res_kds = client.get("/api/kds/active")
+        kds_ids = [o["id"] for o in res_kds.get_json()["orders"]]
+        self.assertIn(data_je["order_id"], kds_ids)
+        self.assertIn(data_cnc["order_id"], kds_ids)
+
+        # 2. Reservations with Card Pre-Auth Deposits + Google Business Profile Booking Link
+        res_dep = client.post("/api/growth/reservations/deposit", json={
+            "guest_name": "Dr. Priya Patel",
+            "guest_phone": "+447700900888",
+            "guest_email": "priya@example.co.uk",
+            "party_size": 4,
+            "table_number": 6,
+            "booking_date": "2026-11-20",
+            "time_slot": "19:30",
+            "deposit_per_head_gbp": 10.0,
+            "booking_source": "GOOGLE_BUSINESS_PROFILE"
+        })
+        self.assertEqual(res_dep.status_code, 201)
+        data_dep = res_dep.get_json()
+        self.assertEqual(data_dep["deposit_preauth"]["total_deposit_held_gbp"], 40.00)
+        self.assertEqual(data_dep["deposit_preauth"]["status"], "PRE_AUTH_HELD")
+        self.assertTrue(data_dep["google_business_profile_sync"])
+
+        # 3. Loyalty: Apple & Google Wallet Stamp Cards + Post-Payment Google Review Prompt
+        res_wal = client.post("/api/growth/wallet-stamp", json={
+            "phone": "+447700900111",
+            "guest_name": "Amelia Clarke",
+            "stamps_to_add": 1
+        })
+        self.assertEqual(res_wal.status_code, 201)
+        data_wal = res_wal.get_json()
+        self.assertIn("APPLE_WALLET", data_wal["wallet_card"]["wallet_platforms"])
+        self.assertIn("GOOGLE_WALLET", data_wal["wallet_card"]["wallet_platforms"])
+        self.assertTrue(data_wal["google_review_prompt"]["triggered_after_payment"])
+        self.assertIn("writereview", data_wal["google_review_prompt"]["google_review_url"])
+
+        # 4. 10 UK Multicultural Languages (EN, FR, AR, PL, UR, BN, PA, ZH, ES, TR) + Halal/Vegan/Vegetarian
+        res_langs = client.get("/api/growth/languages?lang=pl")
+        self.assertEqual(res_langs.status_code, 200)
+        data_langs = res_langs.get_json()
+        self.assertEqual(data_langs["total_supported_languages"], 10)
+        codes = [l["code"] for l in data_langs["supported_languages"]]
+        for expected_code in ["en", "fr", "ar", "pl", "ur", "bn", "pa", "zh", "es", "tr"]:
+            self.assertIn(expected_code, codes)
+
+        # Verify filtered menu endpoint translates into Urdu (ur) with Halal filter
+        res_urdu_halal = client.get("/api/menu/filtered?lang=ur&dietary=halal")
+        self.assertEqual(res_urdu_halal.status_code, 200)
+        urdu_items = res_urdu_halal.get_json()
+        self.assertGreaterEqual(len(urdu_items), 2)
+        self.assertEqual(urdu_items[0]["active_language"], "ur")
+        self.assertTrue(urdu_items[0]["is_rtl"])
+
 if __name__ == "__main__":
     unittest.main()
 

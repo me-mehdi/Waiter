@@ -42,6 +42,7 @@ from src.modules.payments import payments_service
 from src.modules.uk_compliance import uk_compliance_service
 from src.modules.money_margins import money_margins_service
 from src.modules.pub_features import pub_features_service
+from src.modules.growth_customers import growth_customers_service
 
 app = Flask(__name__)
 
@@ -366,10 +367,17 @@ INDEX_HTML = """<!DOCTYPE html>
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                     <h4 class="fw-bold mb-0 text-dark">Digital Menu</h4>
                     <div class="d-flex align-items-center gap-2">
-                        <div class="btn-group btn-group-sm" id="langGroup">
-                            <button class="btn btn-outline-dark active fw-bold" onclick="setLanguage('en', this)">EN</button>
-                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('fr', this)">FR</button>
-                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('ar', this)">AR</button>
+                        <div class="btn-group btn-group-sm flex-wrap" id="langGroup">
+                            <button class="btn btn-dark active fw-bold" onclick="setLanguage('en', this)" title="English">🇬🇧 EN</button>
+                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('fr', this)" title="French">🇫🇷 FR</button>
+                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('ar', this)" title="Arabic">🇸🇦 AR</button>
+                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('pl', this)" title="Polish (Polski)">🇵🇱 PL</button>
+                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('ur', this)" title="Urdu (اردو)">🇵🇰 UR</button>
+                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('bn', this)" title="Bengali (বাংলা)">🇧🇩 BN</button>
+                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('pa', this)" title="Punjabi (ਪੰਜਾਬੀ)">🇮🇳 PA</button>
+                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('zh', this)" title="Mandarin (中文)">🇨🇳 ZH</button>
+                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('es', this)" title="Spanish (Español)">🇪🇸 ES</button>
+                            <button class="btn btn-outline-dark fw-bold" onclick="setLanguage('tr', this)" title="Turkish (Türkçe)">🇹🇷 TR</button>
                         </div>
                         <div class="btn-group btn-group-sm" id="currGroup">
                             <button class="btn btn-dark active fw-bold" onclick="setCurrency('GBP', this)">£ GBP</button>
@@ -385,8 +393,22 @@ INDEX_HTML = """<!DOCTYPE html>
                     <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold" onclick="filterMenuDiet('vegan', this)">🌱 Vegan</button>
                     <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold" onclick="filterMenuDiet('vegetarian', this)">🥬 Vegetarian</button>
                     <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold" onclick="filterMenuDiet('halal', this)">🕌 Halal</button>
-                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold ms-auto" onclick="toggleExclusion('gluten', this)">🌾 Exclude Gluten</button>
+                    <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold" onclick="filterMenuDiet('gluten-free', this)">🌾 Gluten-Free</button>
+                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold ms-auto" onclick="toggleExclusion('gluten', this)">🚫 Exclude Gluten</button>
                 </div>
+
+                <!-- Guest Growth Bar: 0% Commission Click & Collect + Apple/Google Wallet Stamp Card + Google Review Prompt -->
+                <div class="p-3 mb-3 rounded-3 border shadow-sm d-flex flex-wrap justify-content-between align-items-center gap-2" style="background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%); border-color: #bbf7d0 !important;">
+                    <div>
+                        <span class="badge bg-success me-1">0% COMMISSION DIRECT</span>
+                        <strong class="small text-dark">Click & Collect Takeaway · Apple & Google Wallet Stamp Card (6/9 Stamps)</strong>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm btn-success fw-bold" onclick="quickGuestClickAndCollect()"><i class="fa-solid fa-bag-shopping me-1"></i>Order Click & Collect</button>
+                        <button class="btn btn-sm btn-dark fw-bold" onclick="quickGuestWalletStamp()"><i class="fa-brands fa-apple me-1"></i><i class="fa-brands fa-google-pay me-1"></i>Wallet Stamp & Google Review</button>
+                    </div>
+                </div>
+                <div id="guestGrowthActionBanner" class="alert alert-success py-2 px-3 small fw-bold d-none mb-3"></div>
 
                 <div id="menuContainer" class="row g-3">
                     <!-- Dynamically populated -->
@@ -658,6 +680,9 @@ INDEX_HTML = """<!DOCTYPE html>
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" onclick="loadZReportAndPromos()"><i class="fa-solid fa-chart-pie me-1"></i> Z-Report & Promos</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="growthhub-tab" data-bs-toggle="tab" data-bs-target="#growthhub" type="button" onclick="loadGrowthAndCustomersHub()"><i class="fa-solid fa-rocket me-1 text-info"></i> 🚀 Growth & Customers</button>
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="pubhub-tab" data-bs-toggle="tab" data-bs-target="#pubhub" type="button" onclick="loadPubAndCellarHub()"><i class="fa-solid fa-beer-mug-empty me-1 text-warning"></i> 🍺 Pub & Cellar</button>
@@ -1482,6 +1507,163 @@ INDEX_HTML = """<!DOCTYPE html>
             </div>
 
             <!-- TAB 11-PUB: 🍺 British Pub, Bar Tabs, Cellar Kegs, Sunday Roast & Beer Garden Hub -->
+            <div class="tab-pane fade" id="growthhub" role="tabpanel">
+                <!-- Growth & Customers Header Banner -->
+                <div class="p-4 rounded-4 mb-4 text-white shadow-sm" style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #047857 100%); border: 1px solid #38bdf8;">
+                    <div class="row align-items-center g-3">
+                        <div class="col-lg-8">
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                <span class="badge bg-info text-dark fw-bold px-3 py-1">🛵 DELIVEROO + UBER EATS + JUST EAT IN KDS</span>
+                                <span class="badge bg-success fw-bold px-3 py-1">🛍️ 0% COMMISSION CLICK & COLLECT</span>
+                                <span class="badge bg-warning text-dark fw-bold px-3 py-1">💳 NO-SHOW DEPOSIT PRE-AUTH & GOOGLE RESERVE</span>
+                                <span class="badge bg-light text-dark fw-bold px-3 py-1">🌍 10 UK MULTICULTURAL LANGUAGES</span>
+                            </div>
+                            <h4 class="fw-bold mb-1"><i class="fa-solid fa-rocket text-info me-2"></i>Growth & Customers Command Suite</h4>
+                            <p class="small text-light opacity-75 mb-0">Unified KDS delivery aggregator routing, commission-free Click & Collect, Stripe pre-auth reservation deposits with Reserve with Google, Apple/Google Wallet stamp cards + post-payment Google Review prompts, and 10 UK multicultural languages.</p>
+                        </div>
+                        <div class="col-lg-4 text-lg-end">
+                            <button class="btn btn-info text-dark btn-sm fw-bold shadow-sm" onclick="loadGrowthAndCustomersHub()">
+                                <i class="fa-solid fa-rotate me-1"></i> Refresh Growth Metrics
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <!-- Pillar 1: Deliveroo, Uber Eats & Just Eat in Unified KDS + 0% Commission Click & Collect -->
+                    <div class="col-lg-6">
+                        <div class="card card-custom p-4 bg-white h-100 border-start border-4 border-success">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="fw-bold mb-0"><i class="fa-solid fa-motorcycle text-success me-2"></i>1. Aggregators in KDS + 0% Click & Collect</h5>
+                                <span class="badge bg-success" id="growthSavedCommBadge">Saved: £0.00</span>
+                            </div>
+                            <p class="small text-muted mb-3">Deliveroo, Uber Eats, and Just Eat orders land directly in the same Kitchen KDS alongside commission-free Click & Collect orders for the venue's own customers.</p>
+
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <button class="btn btn-sm btn-outline-info text-dark fw-bold" onclick="injectGrowthAggregatorOrder('DELIVEROO')">
+                                    <i class="fa-solid fa-bolt me-1"></i>+ Deliveroo Order → KDS
+                                </button>
+                                <button class="btn btn-sm btn-outline-success fw-bold" onclick="injectGrowthAggregatorOrder('UBEREATS')">
+                                    <i class="fa-solid fa-bolt me-1"></i>+ Uber Eats Order → KDS
+                                </button>
+                                <button class="btn btn-sm btn-outline-warning text-dark fw-bold" onclick="injectGrowthAggregatorOrder('JUSTEAT')">
+                                    <i class="fa-solid fa-bolt me-1"></i>+ Just Eat Order → KDS
+                                </button>
+                            </div>
+
+                            <div class="p-3 bg-light rounded-3 border mb-3">
+                                <label class="small fw-bold text-dark d-block mb-2"><i class="fa-solid fa-bag-shopping text-success me-1"></i>Create Commission-Free Click & Collect Order (0% Fee vs 30% Aggregator):</label>
+                                <div class="row g-2">
+                                    <div class="col-sm-5">
+                                        <input type="text" id="cncCustomerName" class="form-control form-control-sm" value="Zara Khan">
+                                    </div>
+                                    <div class="col-sm-4">
+                                        <select id="cncPickupSlot" class="form-select form-select-sm">
+                                            <option value="ASAP (15 mins)">ASAP (15 mins)</option>
+                                            <option value="Today 18:30">Today 18:30</option>
+                                            <option value="Today 19:15">Today 19:15</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <button class="btn btn-sm btn-success w-100 fw-bold" onclick="submitGrowthClickAndCollect()">0% Order</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="growthChannelsContainer" class="small"></div>
+                        </div>
+                    </div>
+
+                    <!-- Pillar 2: Reservations with Deposits + Google Business Profile Booking Link -->
+                    <div class="col-lg-6">
+                        <div class="card card-custom p-4 bg-white h-100 border-start border-4 border-primary">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="fw-bold mb-0"><i class="fa-brands fa-google text-primary me-2"></i>2. Deposit Reservations & Google Booking</h5>
+                                <span class="badge bg-primary">88% Fewer No-Shows</span>
+                            </div>
+                            <p class="small text-muted mb-3">Stripe card pre-authorisation (£10/guest hold) eliminates no-shows, paired with a direct "Reserve with Google" Business Profile booking link.</p>
+
+                            <div class="p-2 bg-primary bg-opacity-10 border border-primary rounded-3 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div class="small">
+                                    <strong class="text-primary d-block"><i class="fa-solid fa-link me-1"></i>Google Business Profile Booking Link:</strong>
+                                    <code id="growthGoogleReserveUrl" class="small text-dark">https://maps.google.com/?cid=the-waiter-covent-garden-flagship&action=reserve</code>
+                                </div>
+                                <span class="badge bg-success">LIVE ON GOOGLE MAPS</span>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-4">
+                                    <input type="text" id="depGuestName" class="form-control form-control-sm" value="Dr. Priya Patel" placeholder="Guest Name">
+                                </div>
+                                <div class="col-sm-3">
+                                    <select id="depPartySize" class="form-select form-select-sm">
+                                        <option value="2">2 Guests (£20 Hold)</option>
+                                        <option value="4" selected>4 Guests (£40 Hold)</option>
+                                        <option value="6">6 Guests (£60 Hold)</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-5">
+                                    <button class="btn btn-sm btn-primary w-100 fw-bold" onclick="createGrowthDepositBooking()">
+                                        <i class="fa-solid fa-shield-halved me-1"></i>Pre-Auth Card & Book
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="growthDepositsContainer" class="small"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Pillar 3: Loyalty Apple & Google Wallet Stamp Cards + Post-Payment Google Review Prompt -->
+                    <div class="col-lg-6">
+                        <div class="card card-custom p-4 bg-white h-100 border-start border-4 border-warning">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="fw-bold mb-0"><i class="fa-solid fa-wallet text-warning me-2"></i>3. Apple/Google Wallet Stamps & Google Reviews</h5>
+                                <span class="badge bg-dark"><i class="fa-brands fa-apple me-1"></i>.pkpass + Google Pay</span>
+                            </div>
+                            <p class="small text-muted mb-3">Zero-app loyalty stamp cards in Apple Wallet & Google Wallet (9 stamps = 10th visit free), plus an automatic Google Business Profile review prompt after payment.</p>
+
+                            <div class="input-group input-group-sm mb-3">
+                                <input type="text" id="walletGuestName" class="form-control" value="Amelia Clarke" placeholder="Guest Name">
+                                <input type="text" id="walletGuestPhone" class="form-control" value="+447700900111" placeholder="+44 Phone">
+                                <button class="btn btn-warning text-dark fw-bold" onclick="triggerGrowthWalletStampAndReview()">
+                                    <i class="fa-solid fa-stamp me-1"></i>+1 Stamp & Send Google Review Prompt
+                                </button>
+                            </div>
+
+                            <div id="growthWalletContainer" class="small"></div>
+                        </div>
+                    </div>
+
+                    <!-- Pillar 4: 10 UK Multicultural Languages + Halal, Vegan & Vegetarian Filters -->
+                    <div class="col-lg-6">
+                        <div class="card card-custom p-4 bg-white h-100 border-start border-4 border-info">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="fw-bold mb-0"><i class="fa-solid fa-language text-info me-2"></i>4. 10 UK City Languages & Halal/Vegan Matrix</h5>
+                                <span class="badge bg-info text-dark">10 Locales Active</span>
+                            </div>
+                            <p class="small text-muted mb-3">Beyond EN/FR/AR: native support for Polish, Urdu, Bengali, Punjabi, Mandarin, Spanish, and Turkish alongside Halal, Vegan, Vegetarian, and Gluten-Free filters.</p>
+
+                            <div class="d-flex flex-wrap gap-1 mb-3" id="growthLangPills">
+                                <button class="btn btn-xs btn-outline-dark btn-sm py-0 px-2 fw-bold" onclick="loadGrowthAndCustomersHub('en')">🇬🇧 EN</button>
+                                <button class="btn btn-xs btn-outline-dark btn-sm py-0 px-2 fw-bold" onclick="loadGrowthAndCustomersHub('pl')">🇵🇱 Polski</button>
+                                <button class="btn btn-xs btn-outline-dark btn-sm py-0 px-2 fw-bold" onclick="loadGrowthAndCustomersHub('ur')">🇵🇰 اردو</button>
+                                <button class="btn btn-xs btn-outline-dark btn-sm py-0 px-2 fw-bold" onclick="loadGrowthAndCustomersHub('bn')">🇧🇩 বাংলা</button>
+                                <button class="btn btn-xs btn-outline-dark btn-sm py-0 px-2 fw-bold" onclick="loadGrowthAndCustomersHub('pa')">🇮🇳 ਪੰਜਾਬੀ</button>
+                                <button class="btn btn-xs btn-outline-dark btn-sm py-0 px-2 fw-bold" onclick="loadGrowthAndCustomersHub('zh')">🇨🇳 中文</button>
+                                <button class="btn btn-xs btn-outline-dark btn-sm py-0 px-2 fw-bold" onclick="loadGrowthAndCustomersHub('es')">🇪🇸 Español</button>
+                                <button class="btn btn-xs btn-outline-dark btn-sm py-0 px-2 fw-bold" onclick="loadGrowthAndCustomersHub('tr')">🇹🇷 Türkçe</button>
+                                <button class="btn btn-xs btn-outline-dark btn-sm py-0 px-2 fw-bold" onclick="loadGrowthAndCustomersHub('fr')">🇫🇷 Français</button>
+                                <button class="btn btn-xs btn-outline-dark btn-sm py-0 px-2 fw-bold" onclick="loadGrowthAndCustomersHub('ar')">🇸🇦 العربية</button>
+                            </div>
+
+                            <div id="growthMulticulturalContainer" class="small"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="tab-pane fade" id="pubhub" role="tabpanel">
                 <!-- Top British Pub Banner -->
                 <div class="card card-custom p-4 bg-dark text-white shadow-sm mb-4 border-start border-5 border-warning">
@@ -5472,6 +5654,240 @@ TOTAL:                £20.70`;
             });
             loadBeerGardenZones();
         }
+
+        // =====================================================================
+        // 32. GROWTH & CUSTOMERS HUB (DELIVEROO/UBEREATS/JUSTEAT + CLICK & COLLECT,
+        //     DEPOSIT RESERVATIONS, APPLE/GOOGLE WALLET STAMPS, 10 UK LANGUAGES)
+        // =====================================================================
+        async function loadGrowthAndCustomersHub(previewLang = 'pl') {
+            try {
+                const res = await fetch('/api/growth/dashboard?lang=' + encodeURIComponent(previewLang));
+                const data = await res.json();
+
+                // 1. Delivery Aggregators + 0% Click & Collect
+                const del = data.delivery_and_click_collect;
+                const savedBadge = document.getElementById('growthSavedCommBadge');
+                if (savedBadge) savedBadge.textContent = `Saved vs 30% Aggregators: £${del.commission_saved_vs_aggregators_gbp.toFixed(2)}`;
+
+                const chContainer = document.getElementById('growthChannelsContainer');
+                if (chContainer) {
+                    const chRows = Object.entries(del.channels).map(([ch, info]) => `
+                        <tr>
+                            <td class="fw-bold">${ch === 'CLICK_AND_COLLECT' ? '🛍️ CLICK & COLLECT (Direct)' : '🛵 ' + ch}</td>
+                            <td><span class="badge ${ch === 'CLICK_AND_COLLECT' ? 'bg-success' : 'bg-secondary'}">${info.commission_rate}</span></td>
+                            <td class="fw-bold">${info.orders} orders</td>
+                            <td class="text-end fw-bold">£${info.revenue_gbp.toFixed(2)}</td>
+                        </tr>
+                    `).join('');
+                    const recentCnc = (del.click_and_collect_orders || []).slice(0, 2).map(c =>
+                        `<div class="p-2 bg-success bg-opacity-10 border border-success rounded mb-1 d-flex justify-content-between">
+                            <span><strong>${c.collection_code}</strong> · ${c.customer_name} (${c.pickup_slot})</span>
+                            <span class="badge bg-success">£${c.total_gbp.toFixed(2)} · Saved £${c.aggregator_commission_saved_gbp.toFixed(2)}</span>
+                        </div>`
+                    ).join('');
+                    chContainer.innerHTML = `
+                        <table class="table table-sm align-middle mb-2">
+                            <thead class="table-light"><tr><th>Channel (Unified KDS)</th><th>Commission</th><th>Volume</th><th class="text-end">Gross</th></tr></thead>
+                            <tbody>${chRows}</tbody>
+                        </table>
+                        ${recentCnc}
+                    `;
+                }
+
+                // 2. Deposit Reservations & Google Business Profile
+                const gRes = data.reservations_and_google;
+                const urlEl = document.getElementById('growthGoogleReserveUrl');
+                if (urlEl) urlEl.textContent = gRes.google_business_profile_url;
+                const depContainer = document.getElementById('growthDepositsContainer');
+                if (depContainer) {
+                    depContainer.innerHTML = (gRes.active_deposit_holds || []).slice(0, 4).map(h => `
+                        <div class="p-2 border rounded-3 mb-2 bg-light d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong class="text-dark">${h.guest_name} (${h.party_size} guests)</strong>
+                                <span class="badge bg-info text-dark ms-1">${h.booking_source}</span>
+                                <div class="text-muted" style="font-size:0.75rem;">Stripe Hold: <code>${h.stripe_preauth_id}</code> · Card •••• ${h.card_last4}</div>
+                            </div>
+                            <span class="badge bg-primary">£${h.total_deposit_held_gbp.toFixed(2)} HELD</span>
+                        </div>
+                    `).join('');
+                }
+
+                // 3. Apple & Google Wallet Stamp Cards + Post-Payment Google Review Prompt
+                const walContainer = document.getElementById('growthWalletContainer');
+                if (walContainer) {
+                    const card = (data.wallet_cards && data.wallet_cards[0]) || {
+                        guest_name: 'Amelia Clarke', phone: '+447700900111', stamps_collected: 6, stamps_target: 9, free_rewards_unlocked: 1, card_id: 'WAL-UK-8821'
+                    };
+                    let stampsHtml = '';
+                    for (let i = 1; i <= card.stamps_target; i++) {
+                        const filled = i <= card.stamps_collected;
+                        stampsHtml += `<span class="d-inline-flex align-items-center justify-content-center rounded-circle me-1 ${filled ? 'bg-warning text-dark fw-bold' : 'bg-secondary bg-opacity-25 text-muted'}" style="width:28px;height:28px;font-size:0.75rem;">${filled ? '★' : i}</span>`;
+                    }
+                    const latestPrompt = (data.recent_google_review_prompts && data.recent_google_review_prompts[0]);
+                    walContainer.innerHTML = `
+                        <div class="p-3 rounded-3 text-white mb-2" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <span class="badge bg-warning text-dark me-1">APPLE WALLET & GOOGLE PAY</span>
+                                    <strong>${card.guest_name}</strong> <span class="text-light opacity-75">(${card.phone})</span>
+                                </div>
+                                <span class="badge bg-success">${card.stamps_collected}/${card.stamps_target} Stamps · ${card.free_rewards_unlocked} Free Meal</span>
+                            </div>
+                            <div class="mb-2">${stampsHtml}</div>
+                            <div class="d-flex justify-content-between small text-light opacity-75">
+                                <span>Pass ID: <code>${card.card_id}</code></span>
+                                <span>Auto-Push Notification on Payment</span>
+                            </div>
+                        </div>
+                        ${latestPrompt ? `
+                        <div class="p-2 bg-warning bg-opacity-10 border border-warning rounded-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong class="text-dark d-block"><i class="fa-brands fa-google text-danger me-1"></i>${latestPrompt.headline}</strong>
+                                <span class="text-muted" style="font-size:0.75rem;">Incentive: ${latestPrompt.incentive_badge}</span>
+                            </div>
+                            <a href="${latestPrompt.google_review_url}" target="_blank" class="btn btn-xs btn-warning btn-sm fw-bold">5★ Review Link</a>
+                        </div>` : ''}
+                    `;
+                }
+
+                // 4. 10 UK Multicultural Languages + Halal / Vegan / Vegetarian Matrix
+                const multi = data.multicultural_and_dietary;
+                const multiContainer = document.getElementById('growthMulticulturalContainer');
+                if (multiContainer) {
+                    const dc = multi.dietary_item_counts;
+                    const sampleRows = (multi.translated_menu_preview || []).slice(0, 4).map(item => `
+                        <tr>
+                            <td class="fw-bold">${item.name_translated}</td>
+                            <td class="text-muted" style="font-size:0.75rem;">${item.description_translated}</td>
+                            <td class="text-end">${(item.dietary || []).map(d => `<span class="badge bg-success bg-opacity-10 text-success border border-success me-1">${d}</span>`).join('')}</td>
+                        </tr>
+                    `).join('');
+                    multiContainer.innerHTML = `
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <span class="badge bg-success">🕌 Halal Dishes: ${dc.halal}</span>
+                            <span class="badge bg-success">🌱 Vegan Dishes: ${dc.vegan}</span>
+                            <span class="badge bg-success">🥬 Vegetarian: ${dc.vegetarian}</span>
+                            <span class="badge bg-primary">🌾 Gluten-Free: ${dc['gluten-free']}</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light"><tr><th>Translated Dish (${multi.active_language.toUpperCase()})</th><th>Native Description</th><th class="text-end">Dietary Tags</th></tr></thead>
+                                <tbody>${sampleRows}</tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Error loading Growth & Customers Hub:', e);
+            }
+        }
+
+        async function injectGrowthAggregatorOrder(platform) {
+            await fetch('/api/growth/aggregator-order', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    platform: platform,
+                    customer_name: platform + ' Guest London',
+                    item_ids: ['item-1', 'item-4']
+                })
+            });
+            loadGrowthAndCustomersHub();
+            loadKDS();
+        }
+
+        async function submitGrowthClickAndCollect() {
+            const name = document.getElementById('cncCustomerName').value || 'Direct Guest';
+            const slot = document.getElementById('cncPickupSlot').value || 'ASAP (15 mins)';
+            await fetch('/api/growth/click-and-collect', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    customer_name: name,
+                    customer_phone: '+447700900456',
+                    item_ids: ['item-1', 'item-5'],
+                    pickup_slot: slot
+                })
+            });
+            loadGrowthAndCustomersHub();
+            loadKDS();
+        }
+
+        async function createGrowthDepositBooking() {
+            const guestName = document.getElementById('depGuestName').value || 'Dr. Priya Patel';
+            const partySize = parseInt(document.getElementById('depPartySize').value || '4', 10);
+            await fetch('/api/growth/reservations/deposit', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    guest_name: guestName,
+                    guest_phone: '+447700900888',
+                    guest_email: 'priya.patel@example.co.uk',
+                    party_size: partySize,
+                    table_number: 6,
+                    booking_date: new Date().toISOString().slice(0, 10),
+                    time_slot: '19:30',
+                    deposit_per_head_gbp: 10.0,
+                    booking_source: 'GOOGLE_BUSINESS_PROFILE'
+                })
+            });
+            loadGrowthAndCustomersHub();
+        }
+
+        async function triggerGrowthWalletStampAndReview() {
+            const guestName = document.getElementById('walletGuestName').value || 'Amelia Clarke';
+            const phone = document.getElementById('walletGuestPhone').value || '+447700900111';
+            await fetch('/api/growth/wallet-stamp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    guest_name: guestName,
+                    phone: phone,
+                    stamps_to_add: 1
+                })
+            });
+            loadGrowthAndCustomersHub();
+        }
+
+        async function quickGuestClickAndCollect() {
+            const items = currentCart.length > 0 ? currentCart.map(i => i.id) : ['item-1', 'item-5'];
+            const res = await fetch('/api/growth/click-and-collect', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    customer_name: 'Direct Venue Guest',
+                    customer_phone: '+447700900111',
+                    item_ids: items,
+                    pickup_slot: 'ASAP (15 mins)'
+                })
+            });
+            const data = await res.json();
+            const banner = document.getElementById('guestGrowthActionBanner');
+            if (banner) {
+                banner.innerHTML = `<i class="fa-solid fa-bag-shopping me-2"></i><strong>0% Commission Click & Collect Confirmed!</strong> Pickup Code: <code>${data.collection_code}</code> · Routed to Kitchen KDS (£${data.aggregator_commission_saved_gbp.toFixed(2)} commission saved for venue).`;
+                banner.classList.remove('d-none');
+            }
+            loadKDS();
+        }
+
+        async function quickGuestWalletStamp() {
+            const res = await fetch('/api/growth/wallet-stamp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    guest_name: 'Valued Table Guest',
+                    phone: '+447700900111',
+                    stamps_to_add: 1
+                })
+            });
+            const data = await res.json();
+            const banner = document.getElementById('guestGrowthActionBanner');
+            if (banner && data.wallet_card) {
+                banner.innerHTML = `<i class="fa-solid fa-wallet me-2"></i><strong>Apple/Google Wallet Stamp Added (${data.wallet_card.stamps_collected}/${data.wallet_card.stamps_target})!</strong> <a href="${data.google_review_prompt.google_review_url}" target="_blank" class="alert-link ms-2">⭐ Leave a 5-Star Google Review (+25 Bonus Pts)</a>`;
+                banner.classList.remove('d-none');
+            }
+        }
+
     </script>
 </body>
 </html>"""
@@ -7345,6 +7761,81 @@ def toggle_pub_beer_garden():
         simulate_weather=data.get("simulate_weather")
     )
     return jsonify(res)
+
+
+
+# --- 32. Growth & Customers Endpoints (Deliveroo/UberEats/JustEat + 0% Click & Collect, Deposit Bookings, Wallet Stamps, 10 UK Languages) ---
+@app.route("/api/growth/dashboard", methods=["GET"])
+def get_growth_customers_dashboard():
+    lang = request.args.get("lang", "en")
+    return jsonify(growth_customers_service.get_full_growth_dashboard(active_lang=lang))
+
+@app.route("/api/growth/aggregator-order", methods=["POST"])
+def inject_growth_aggregator_kds_order():
+    data = request.json or {}
+    try:
+        res = growth_customers_service.inject_aggregator_order(
+            platform=data.get("platform", "JUSTEAT"),
+            customer_name=data.get("customer_name", "Just Eat Customer"),
+            item_ids=data.get("item_ids", ["item-1", "item-4"]),
+            external_ref=data.get("external_ref"),
+            delivery_address=data.get("delivery_address", "Central London Delivery")
+        )
+        return jsonify(res), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/growth/click-and-collect", methods=["POST"])
+def submit_commission_free_click_and_collect():
+    data = request.json or {}
+    try:
+        res = growth_customers_service.submit_click_and_collect_order(
+            customer_name=data.get("customer_name", "Direct Guest"),
+            customer_phone=data.get("customer_phone", "+447700900111"),
+            item_ids=data.get("item_ids", ["item-1"]),
+            pickup_slot=data.get("pickup_slot", "ASAP (15 mins)"),
+            promo_code=data.get("promo_code")
+        )
+        return jsonify(res), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/growth/reservations/deposit", methods=["POST"])
+def create_deposit_protected_reservation():
+    data = request.json or {}
+    try:
+        res = growth_customers_service.create_deposit_reservation(
+            guest_name=data.get("guest_name", "Google Guest"),
+            guest_phone=data.get("guest_phone", "+447700900222"),
+            guest_email=data.get("guest_email", "guest@example.co.uk"),
+            party_size=int(data.get("party_size", 4)),
+            table_number=int(data.get("table_number", 4)),
+            booking_date=data.get("booking_date", "2026-11-15"),
+            time_slot=data.get("time_slot", "19:30"),
+            deposit_per_head_gbp=float(data.get("deposit_per_head_gbp", 10.0)),
+            booking_source=data.get("booking_source", "GOOGLE_BUSINESS_PROFILE"),
+            card_last4=data.get("card_last4", "4242"),
+            special_requests=data.get("special_requests", "")
+        )
+        return jsonify(res), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/growth/wallet-stamp", methods=["POST"])
+def add_wallet_stamp_and_prompt_google_review():
+    data = request.json or {}
+    res = growth_customers_service.add_stamp_and_trigger_google_review(
+        phone=data.get("phone", "+447700900111"),
+        guest_name=data.get("guest_name", "Valued Guest"),
+        order_id=data.get("order_id"),
+        stamps_to_add=int(data.get("stamps_to_add", 1))
+    )
+    return jsonify(res), 201
+
+@app.route("/api/growth/languages", methods=["GET"])
+def get_uk_multicultural_languages_matrix():
+    lang = request.args.get("lang", "en")
+    return jsonify(growth_customers_service.get_multicultural_and_dietary_matrix(active_lang=lang))
 
 
 if __name__ == "__main__":
