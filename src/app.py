@@ -44,7 +44,7 @@ from src.modules.money_margins import money_margins_service
 from src.modules.pub_features import pub_features_service
 from src.modules.growth_customers import growth_customers_service
 from src.modules.reliability import reliability_service
-from src.modules.navy_brass_ui import NAVY_BRASS_SUITE_HTML
+from src.modules.navy_brass_ui import NAVY_BRASS_SUITE_HTML, render_navy_brass_page
 
 app = Flask(__name__)
 
@@ -519,16 +519,60 @@ TERMINAL_HTML = """
 """
 
 @app.route("/")
+@app.route("/landing")
 def home():
-    return render_template_string(INDEX_HTML)
+    return render_template_string(render_navy_brass_page("all"))
+
+@app.route("/menu")
+@app.route("/guest")
+@app.route("/order")
+def guest_menu_page():
+    return render_template_string(render_navy_brass_page("menu"))
+
+@app.route("/kitchen")
+@app.route("/kds")
+def kitchen_display_page():
+    return render_template_string(render_navy_brass_page("kitchen"))
+
+@app.route("/today")
+@app.route("/owner")
+@app.route("/dashboard")
+def owner_today_page():
+    return render_template_string(render_navy_brass_page("today"))
+
+@app.route("/till")
+@app.route("/pos")
+def till_pos_page():
+    return render_template_string(render_navy_brass_page("till"))
+
+@app.route("/reservations")
+@app.route("/bookings")
+def table_reservations_page():
+    return render_template_string(render_navy_brass_page("reservations"))
+
+@app.route("/stock")
+@app.route("/cellar")
+def stock_cellar_page():
+    return render_template_string(render_navy_brass_page("stock"))
+
+@app.route("/staff")
+@app.route("/rota")
+def staff_rota_page():
+    return render_template_string(render_navy_brass_page("staff"))
+
+@app.route("/settings")
+@app.route("/printers")
+@app.route("/reliability")
+def reliability_settings_page():
+    return render_template_string(render_navy_brass_page("settings"))
 
 @app.route("/tv")
 def tv_display():
-    return render_template_string(TV_HTML)
+    return render_template_string(render_navy_brass_page("kitchen"))
 
 @app.route("/terminal")
 def terminal():
-    return render_template_string(TERMINAL_HTML)
+    return render_template_string(render_navy_brass_page("till"))
 
 # --- 1. CSV Export Endpoints ---
 @app.route("/api/export/orders/csv", methods=["GET"])

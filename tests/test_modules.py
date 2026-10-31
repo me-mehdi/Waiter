@@ -1168,6 +1168,42 @@ class TestWaiterModules(unittest.TestCase):
             self.assertIn("Allergen labels: up to date", html)
             self.assertIn("Sales by hour", html)
 
+    def test_all_dedicated_page_routes(self):
+        from src.app import app
+        client = app.test_client()
+
+        routes = [
+            ("/", "One system for every table, ticket and till."),
+            ("/menu", "TABLE 12"),
+            ("/guest", "TABLE 12"),
+            ("/kitchen", "Kitchen"),
+            ("/kds", "Kitchen"),
+            ("/today", "SALES TODAY"),
+            ("/owner", "SALES TODAY"),
+            ("/till", "Till / POS"),
+            ("/pos", "Till / POS"),
+            ("/reservations", "Table Reservations"),
+            ("/bookings", "Table Reservations"),
+            ("/stock", "Stock, Cellar"),
+            ("/cellar", "Stock, Cellar"),
+            ("/staff", "Staff Rota"),
+            ("/rota", "Staff Rota"),
+            ("/settings", "System Reliability"),
+            ("/printers", "System Reliability"),
+            ("/tv", "Kitchen"),
+            ("/terminal", "Till / POS"),
+            ("/uk", "One system for every table, ticket and till."),
+        ]
+
+        for route, expected_text in routes:
+            res = client.get(route)
+            self.assertEqual(res.status_code, 200, f"Route {route} failed with status {res.status_code}")
+            html = res.get_data(as_text=True)
+            self.assertIn(expected_text, html, f"Expected '{expected_text}' in route '{route}'")
+            self.assertIn("Fraunces", html)
+            self.assertIn("#0f1520", html)
+            self.assertIn("#c8a86b", html)
+
 if __name__ == "__main__":
     unittest.main()
 
