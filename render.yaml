@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: waiter
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn.conf.py src.app:app
+    envVars:
+      - key: PORT
+        value: 5050
+      - key: PYTHON_VERSION
+        value: 3.11.9

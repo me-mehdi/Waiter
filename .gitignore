@@ -5,3 +5,6 @@ __pycache__/
 .env
 waiter.db
 venv/
+scratch/
+.pytest_cache/
+
