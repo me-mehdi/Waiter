@@ -4,6 +4,10 @@ from typing import Dict
 class Config:
     PROJECT_NAME = "The Waiter"
     MARKET = "UK"
+
+    # Licensing Act 2003: menu items that trigger a Challenge 25 ID check.
+    # Single source of truth for the guest menu, KDS ticket flag and compliance register.
+    ALCOHOL_ITEM_IDS = frozenset({"item-3"})
     
     DEFAULT_CURRENCY = "GBP"
     SUPPORTED_CURRENCIES = ["GBP", "EUR", "USD"]

@@ -186,14 +186,12 @@ class GrowthAndCustomersModule:
             "CLICK_AND_COLLECT": {"orders": 0, "revenue_gbp": 0.0, "commission_rate": "0% (Commission-Free)"},
         }
         for o in all_orders:
-            items_data = o.get("items", {})
-            if isinstance(items_data, dict):
-                ch = items_data.get("channel")
-                if ch in breakdown:
-                    breakdown[ch]["orders"] += 1
-                    breakdown[ch]["revenue_gbp"] = round(
-                        breakdown[ch]["revenue_gbp"] + float(o.get("total", 0.0)), 2
-                    )
+            ch = o.get("channel")
+            if ch in breakdown:
+                breakdown[ch]["orders"] += 1
+                breakdown[ch]["revenue_gbp"] = round(
+                    breakdown[ch]["revenue_gbp"] + float(o.get("total", 0.0)), 2
+                )
 
         cnc_rev = breakdown["CLICK_AND_COLLECT"]["revenue_gbp"]
         saved_gbp = round(cnc_rev * 0.30, 2)

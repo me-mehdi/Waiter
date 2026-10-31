@@ -239,6 +239,7 @@ class BillSplittingModule:
         status_info = self.get_split_status(order_id)
         if status_info["settlement_status"] == "SETTLED":
             db.update_order_status(order_id, "PAID")
+            db.mark_order_paid(order_id, "SPLIT")
 
         return status_info
 

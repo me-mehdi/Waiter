@@ -29,6 +29,8 @@ class PaymentsModule:
         order = db.orders.get(order_id)
         if not order:
             raise ValueError(f"Order '{order_id}' not found")
+        if (order.get("status") or "").upper() == "CANCELLED":
+            raise ValueError(f"Order '{order_id}' was cancelled and cannot be paid")
 
         order_total = order["total"]
         
@@ -69,6 +71,9 @@ class PaymentsModule:
         if "payments_history" not in db.custom_settings:
             db.custom_settings["payments_history"] = []
         db.custom_settings["payments_history"].append(payment_record)
+
+        # Settle the order without touching its kitchen status
+        db.mark_order_paid(order_id, payment_method, tip_amount)
 
         return payment_record
 

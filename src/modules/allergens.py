@@ -60,6 +60,7 @@ class AllergenModule:
             translated["stock_status"] = stock_status
             translated["allergens"] = item.get("allergens", [])
             translated["dietary"] = item.get("dietary", [])
+            translated["alcohol"] = item["id"] in Config.ALCOHOL_ITEM_IDS
 
             filtered.append(translated)
 

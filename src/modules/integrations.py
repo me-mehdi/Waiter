@@ -148,11 +148,7 @@ class IntegrationsModule:
         channels = []
         for p in SUPPORTED_PLATFORMS:
             # Match orders tagged with this channel
-            channel_orders = []
-            for o in all_orders:
-                items_data = o.get("items", {})
-                if isinstance(items_data, dict) and items_data.get("channel") == p:
-                    channel_orders.append(o)
+            channel_orders = [o for o in all_orders if o.get("channel") == p]
 
             vol = len(channel_orders)
             rev = sum(o["total"] for o in channel_orders)

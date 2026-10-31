@@ -17,7 +17,7 @@ class ExporterModule:
         
         orders = list(db.orders.values())
         for order in orders:
-            item_names = "; ".join([i["name"] for i in order["items"]])
+            item_names = "; ".join([i["name"] for i in order["items"] if isinstance(i, dict)])
             writer.writerow([
                 order["id"],
                 order["table_number"],

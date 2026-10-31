@@ -24,10 +24,13 @@ class FloorPlanModule:
     def __init__(self):
         self._reservations: Dict[int, dict] = {}
 
+    # An unpaid table stays "occupied" through Served so the owner can see who is still eating or paying.
+    OCCUPYING_STATUSES = ("New", "Preparing", "Ready", "Served")
+
     def get_floor_plan(self) -> List[dict]:
         active_orders_by_table = {}
         for order in db.orders.values():
-            if order["status"] in ["New", "Preparing", "Ready"]:
+            if order["status"] in self.OCCUPYING_STATUSES and order.get("payment_status") != "PAID":
                 active_orders_by_table[order["table_number"]] = order
 
         floor_map = []
@@ -38,13 +41,17 @@ class FloorPlanModule:
 
             if active_order:
                 status = "OCCUPIED"
+                phase = {"New": "ORDERED", "Preparing": "ORDERED", "Ready": "READY", "Served": "SEATED"}.get(active_order["status"], "ORDERED")
             elif reservation:
                 status = reservation.get("status", "RESERVED")
+                phase = "RESERVED"
             else:
                 status = "AVAILABLE"
+                phase = "FREE"
 
             table_info = dict(config)
             table_info["status"] = status
+            table_info["phase"] = phase
             table_info["active_order"] = active_order
             table_info["reservation"] = reservation
             floor_map.append(table_info)

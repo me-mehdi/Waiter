@@ -6,7 +6,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from src.core.db import db
-
+from src.core.config import Config
 
 class UKComplianceModule:
     """
@@ -223,7 +223,7 @@ class UKComplianceModule:
         ]
 
         # 3. Challenge 25 Age Verification Log (Licensing Act 2003)
-        self.alcohol_item_ids = {"item-3"}
+        self.alcohol_item_ids = set(Config.ALCOHOL_ITEM_IDS)
         self.challenge25_logs: List[dict] = [
             {
                 "check_id": "CH25-1001",

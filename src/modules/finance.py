@@ -24,7 +24,9 @@ class FinanceModule:
         if order_id in db.invoices:
             return db.invoices[order_id]
 
-        invoice_number = f"INV-UK-{db.invoice_counter}"
+        # Deterministic, unique per order (ORD-0007 -> INV-UK-1007) so every invoice has its own number.
+        order_seq = order_id.rsplit("-", 1)[-1]
+        invoice_number = f"INV-UK-{1000 + int(order_seq)}" if order_seq.isdigit() else f"INV-UK-{db.invoice_counter}"
         curr = currency.upper()
         symbol = Config.CURRENCY_SYMBOLS.get(curr, "£")
         tax_rate = Config.TAX_RATES.get(curr, 0.20)
@@ -33,9 +35,10 @@ class FinanceModule:
         subtotal_gbp = order["subtotal"]
         subtotal = Config.convert_price(subtotal_gbp, curr)
         discount = Config.convert_price(order["discount"], curr)
-        
-        vat_amount = round(subtotal * tax_rate, 2)
-        total_with_vat = round((subtotal - discount) + vat_amount, 2)
+
+        # UK consumer prices are VAT-inclusive: VAT is the portion already inside the amount charged.
+        total_with_vat = round(subtotal - discount, 2)
+        vat_amount = round(total_with_vat * tax_rate / (1 + tax_rate), 2)
 
         items_converted = []
         for item in order["items"]:
@@ -43,7 +46,7 @@ class FinanceModule:
             item_copy["price"] = Config.convert_price(item["price"], curr)
             items_converted.append(item_copy)
 
-        invoice_status = "REFUNDED" if order["status"] == "CANCELLED" else "PAID"
+        invoice_status = "REFUNDED" if order["status"] == "CANCELLED" else ("PAID" if order.get("payment_status") == "PAID" else "ISSUED")
 
         invoice = {
             "invoice_number": invoice_number,
@@ -184,9 +187,11 @@ class FinanceModule:
 
         gross_sales = sum(o["subtotal"] for o in completed_orders)
         discounts = sum(o["discount"] for o in completed_orders)
-        net_sales = gross_sales - discounts
-        vat_amount = round(net_sales * tax_rate, 2)
-        total_revenue = round(net_sales + vat_amount, 2)
+        # Takings are VAT-inclusive; VAT is the portion already inside the amount collected.
+        takings_inc_vat = gross_sales - discounts
+        vat_amount = round(takings_inc_vat * tax_rate / (1 + tax_rate), 2)
+        net_sales = round(takings_inc_vat - vat_amount, 2)
+        total_revenue = round(takings_inc_vat, 2)
 
         gross_sales = Config.convert_price(gross_sales, curr)
         discounts = Config.convert_price(discounts, curr)

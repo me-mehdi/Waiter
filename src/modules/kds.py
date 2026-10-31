@@ -3,6 +3,7 @@ import threading
 import json
 from typing import List, Dict, Optional
 from src.core.db import db
+from src.core.config import Config
 from src.modules.prep_routing import prep_routing_service
 
 class KDSModule:
@@ -43,10 +44,20 @@ class KDSModule:
 
     def get_active_kitchen_orders(self, station: Optional[str] = None) -> List[dict]:
         """Returns all orders currently in kitchen (New, Preparing, Ready), optionally filtered by prep station."""
-        active_orders = [
-            dict(order) for order in db.orders.values()
-            if order["status"] in ["New", "Preparing", "Ready"]
-        ]
+        menu = db.menu_items
+        active_orders = []
+        for order in db.orders.values():
+            if order["status"] not in ["New", "Preparing", "Ready"]:
+                continue
+            o = dict(order)
+            item_ids = [i.get("item_id") for i in o["items"] if isinstance(i, dict)]
+            allergens = set()
+            for iid in item_ids:
+                allergens.update(menu.get(iid, {}).get("allergens", []))
+            o["allergens"] = sorted(allergens)
+            o["requires_challenge25"] = any(iid in Config.ALCOHOL_ITEM_IDS for iid in item_ids)
+            o["channel"] = o.get("channel") or "DINE_IN"
+            active_orders.append(o)
         
         # Sort by creation time (FIFO)
         sorted_orders = sorted(active_orders, key=lambda x: x["created_at"])
@@ -58,8 +69,7 @@ class KDSModule:
         filtered = []
         for o in sorted_orders:
             station_items = []
-            raw_items = o["items"].get("items", []) if isinstance(o.get("items"), dict) else (o.get("items") or [])
-            for item in raw_items:
+            for item in o["items"]:
                 if not isinstance(item, dict):
                     continue
                 item_id = item.get("item_id")

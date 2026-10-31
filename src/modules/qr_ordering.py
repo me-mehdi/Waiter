@@ -36,6 +36,7 @@ class QROrderingModule:
             translated["currency"] = currency.upper()
             translated["stock_qty"] = stock
             translated["stock_status"] = stock_status
+            translated["alcohol"] = item["id"] in Config.ALCOHOL_ITEM_IDS
             
             formatted_menu.append(translated)
         return formatted_menu
@@ -63,7 +64,7 @@ class QROrderingModule:
                 upsell_items.append(translated)
         return upsell_items
 
-    def submit_order(self, table_number: int, item_ids: List[str], promo_code: str = None, venue_id: str = None) -> dict:
+    def submit_order(self, table_number: int, item_ids: List[str], promo_code: str = None, venue_id: str = None, notes: str = None) -> dict:
         if not venue_id:
             venue_id = venue_service.get_active_venue()["id"]
 
@@ -81,11 +82,13 @@ class QROrderingModule:
                 })
         
         discount = 0.0
-        if promo_code and promo_code in db.promos:
-            promo = db.promos[promo_code]
+        promo_key = (promo_code or "").strip().upper()
+        promos = db.promos
+        if promo_key and promo_key in promos:
+            promo = promos[promo_key]
             if promo["active"] and promo["current_uses"] < promo["max_uses"]:
                 discount = subtotal * (promo["discount_pct"] / 100.0)
-                promo["current_uses"] += 1
+                db.increment_promo_use(promo_key)
                 
         total = max(0.0, subtotal - discount)
         
@@ -95,7 +98,8 @@ class QROrderingModule:
             "subtotal": round(subtotal, 2),
             "discount": round(discount, 2),
             "total": round(total, 2),
-            "venue_id": venue_id
+            "venue_id": venue_id,
+            "notes": notes or ""
         }
         
         order = db.add_order(order_payload)

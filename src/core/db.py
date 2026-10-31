@@ -82,6 +82,14 @@ class DatabaseStore:
             order_cols = [col["name"] for col in cursor.fetchall()]
             if "venue_id" not in order_cols:
                 cursor.execute("ALTER TABLE orders ADD COLUMN venue_id TEXT DEFAULT 'venue-1'")
+            if "notes" not in order_cols:
+                cursor.execute("ALTER TABLE orders ADD COLUMN notes TEXT DEFAULT ''")
+            if "payment_status" not in order_cols:
+                cursor.execute("ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT 'UNPAID'")
+            if "payment_method" not in order_cols:
+                cursor.execute("ALTER TABLE orders ADD COLUMN payment_method TEXT DEFAULT ''")
+            if "tip_amount" not in order_cols:
+                cursor.execute("ALTER TABLE orders ADD COLUMN tip_amount REAL DEFAULT 0")
 
             # 3. Venues Table
             cursor.execute("""
@@ -363,19 +371,45 @@ class DatabaseStore:
             rows = cursor.fetchall()
             orders_dict = {}
             for row in rows:
-                orders_dict[row["id"]] = {
+                items, meta = self.unwrap_order_items(row["items_json"])
+                keys = row.keys()
+                order = {
                     "id": row["id"],
                     "table_number": row["table_number"],
-                    "items": json.loads(row["items_json"]),
+                    "items": items,
                     "status": row["status"],
                     "subtotal": row["subtotal"],
                     "discount": row["discount"],
                     "total": row["total"],
                     "created_at": row["created_at"],
                     "updated_at": row["updated_at"],
-                    "venue_id": row["venue_id"] if "venue_id" in row.keys() else "venue-1"
+                    "venue_id": row["venue_id"] if "venue_id" in keys else "venue-1",
+                    "notes": (row["notes"] or "") if "notes" in keys else "",
+                    "payment_status": (row["payment_status"] or "UNPAID") if "payment_status" in keys else "UNPAID",
+                    "payment_method": (row["payment_method"] or "") if "payment_method" in keys else "",
+                    "tip_amount": (row["tip_amount"] or 0.0) if "tip_amount" in keys else 0.0,
                 }
+                # Channel metadata (Deliveroo / Uber Eats / Just Eat / Click & Collect / offline sync)
+                for meta_key in ("channel", "external_ref", "customer_name", "customer_phone",
+                                 "delivery_address", "pickup_slot", "offline_id"):
+                    if meta_key in meta:
+                        order[meta_key] = meta[meta_key]
+                orders_dict[row["id"]] = order
             return orders_dict
+
+    @staticmethod
+    def unwrap_order_items(items_json: str):
+        """
+        Orders normally store a JSON list of items. Channel orders (delivery aggregators,
+        click & collect, offline sync) wrap the list in an object with channel metadata.
+        Always returns (items_list, metadata_dict) so every module can rely on a list.
+        """
+        parsed = json.loads(items_json) if items_json else []
+        if isinstance(parsed, dict):
+            inner = parsed.get("items", [])
+            meta = {k: v for k, v in parsed.items() if k != "items"}
+            return (inner if isinstance(inner, list) else []), meta
+        return parsed, {}
 
 
     @property
@@ -533,12 +567,16 @@ class DatabaseStore:
                 "total": order_data.get("total", 0.0),
                 "created_at": now_iso,
                 "updated_at": now_iso,
-                "venue_id": order_data.get("venue_id", "venue-1")
+                "venue_id": order_data.get("venue_id", "venue-1"),
+                "notes": (order_data.get("notes") or "").strip(),
+                "payment_status": "UNPAID",
+                "payment_method": "",
+                "tip_amount": 0.0,
             }
 
             cursor.execute("""
-                INSERT INTO orders (id, table_number, items_json, status, subtotal, discount, total, created_at, updated_at, venue_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO orders (id, table_number, items_json, status, subtotal, discount, total, created_at, updated_at, venue_id, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order["id"],
                 order["table_number"],
@@ -549,7 +587,8 @@ class DatabaseStore:
                 order["total"],
                 order["created_at"],
                 order["updated_at"],
-                order["venue_id"]
+                order["venue_id"],
+                order["notes"]
             ))
 
             
@@ -571,6 +610,27 @@ class DatabaseStore:
             conn.commit()
             return self.orders.get(order_id)
 
+    def increment_promo_use(self, code: str) -> None:
+        with self._lock, self._get_connection() as conn:
+            conn.execute("UPDATE promos SET current_uses = current_uses + 1 WHERE code = ?", (code,))
+            conn.commit()
+
+    def mark_order_paid(self, order_id: str, payment_method: str = "", tip_amount: float = 0.0) -> Optional[dict]:
+        """
+        Records settlement without touching the kitchen status, so a ticket that is
+        still being prepared never disappears from the KDS just because the guest paid.
+        """
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            now_iso = datetime.now(timezone.utc).isoformat()
+            cursor.execute("""
+                UPDATE orders
+                SET payment_status = 'PAID', payment_method = ?, tip_amount = ?, updated_at = ?
+                WHERE id = ?
+            """, (payment_method, float(tip_amount or 0.0), now_iso, order_id))
+            conn.commit()
+        return self.orders.get(order_id)
+
     def cancel_order(self, order_id: str) -> Optional[dict]:
         """
         Cancels order, returns items to inventory stock, and marks invoice as REFUNDED.
@@ -588,8 +648,8 @@ class DatabaseStore:
             now_iso = datetime.now(timezone.utc).isoformat()
             cursor.execute("UPDATE orders SET status = 'CANCELLED', updated_at = ? WHERE id = ?", (now_iso, order_id))
 
-            # Return stock back to inventory
-            items = json.loads(order_row["items_json"])
+            # Return stock back to inventory (channel orders wrap their items in an object)
+            items, _meta = self.unwrap_order_items(order_row["items_json"])
             for item in items:
                 item_id = item.get("item_id")
                 if item_id:
