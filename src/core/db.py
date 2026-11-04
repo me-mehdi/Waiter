@@ -302,6 +302,12 @@ class DatabaseStore:
                 VALUES (?, ?, ?, ?, ?)
             """, default_promos)
 
+        try:
+            from src.core.seed_restaurant_menu import seed_menu
+            seed_menu(conn)
+        except Exception as _e:
+            pass
+
         conn.commit()
 
     def reset(self):
@@ -340,7 +346,14 @@ class DatabaseStore:
                     "upsell_ids": json.loads(row["upsell_ids"] or "[]"),
                     "stock_qty": row["stock_qty"] if "stock_qty" in row.keys() else 30,
                     "allergens": json.loads(row["allergens_json"]) if ("allergens_json" in row.keys() and row["allergens_json"]) else [],
-                    "dietary": json.loads(row["dietary_json"]) if ("dietary_json" in row.keys() and row["dietary_json"]) else []
+                    "dietary": json.loads(row["dietary_json"]) if ("dietary_json" in row.keys() and row["dietary_json"]) else [],
+                    "kcal": row["kcal"] if "kcal" in row.keys() else 0,
+                    "serves": row["serves"] if "serves" in row.keys() else "",
+                    "is_featured": bool(row["is_featured"]) if "is_featured" in row.keys() else False,
+                    "is_new": bool(row["is_new"]) if "is_new" in row.keys() else False,
+                    "image_url": row["image_url"] if "image_url" in row.keys() else "",
+                    "modifiers": json.loads(row["modifiers_json"]) if ("modifiers_json" in row.keys() and row["modifiers_json"]) else {},
+                    "price_from": bool(row["price_from"]) if "price_from" in row.keys() else False
                 }
             return items
 
@@ -569,14 +582,14 @@ class DatabaseStore:
                 "updated_at": now_iso,
                 "venue_id": order_data.get("venue_id", "venue-1"),
                 "notes": (order_data.get("notes") or "").strip(),
-                "payment_status": "UNPAID",
-                "payment_method": "",
-                "tip_amount": 0.0,
+                "payment_status": order_data.get("payment_status", "UNPAID"),
+                "payment_method": order_data.get("payment_method", ""),
+                "tip_amount": round(float(order_data.get("tip_amount", 0.0)), 2),
             }
 
             cursor.execute("""
-                INSERT INTO orders (id, table_number, items_json, status, subtotal, discount, total, created_at, updated_at, venue_id, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO orders (id, table_number, items_json, status, subtotal, discount, total, created_at, updated_at, venue_id, notes, payment_status, payment_method, tip_amount)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order["id"],
                 order["table_number"],
@@ -588,7 +601,10 @@ class DatabaseStore:
                 order["created_at"],
                 order["updated_at"],
                 order["venue_id"],
-                order["notes"]
+                order["notes"],
+                order["payment_status"],
+                order["payment_method"],
+                order["tip_amount"]
             ))
 
             

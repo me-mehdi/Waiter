@@ -45,6 +45,7 @@ from src.modules.pub_features import pub_features_service
 from src.modules.growth_customers import growth_customers_service
 from src.modules.reliability import reliability_service
 from src.modules.navy_brass_ui import NAVY_BRASS_SUITE_HTML, render_navy_brass_page
+from src.modules.restaurant_ordering_ui import render_restaurant_ordering_html
 
 app = Flask(__name__)
 
@@ -523,6 +524,16 @@ TERMINAL_HTML = """
 def home():
     return render_template_string(render_navy_brass_page("all"))
 
+@app.route("/order/menu")
+@app.route("/order/menu/<path:subpath>")
+def restaurant_order_menu_page(subpath=None):
+    table = request.args.get("table", 12)
+    try:
+        table_num = int(table)
+    except Exception:
+        table_num = 12
+    return render_template_string(render_restaurant_ordering_html(table_num=table_num, initial_item_id=subpath))
+
 @app.route("/menu")
 @app.route("/guest")
 @app.route("/order")
@@ -862,11 +873,22 @@ def place_order():
     data = request.json or {}
     table_num = data.get("table_number", 1)
     raw_items = data.get("items", ["item-1", "item-3"])
-    items = [it if isinstance(it, str) else (it.get("item_id") or it.get("id")) for it in raw_items]
-    items = [i for i in items if i]
     promo = data.get("promo_code")
-    order = qr_ordering_service.submit_order(table_num, items, promo)
-    return jsonify(order), 201
+    notes = data.get("notes")
+    tip = data.get("tip_amount", 0.0)
+    pay_method = data.get("payment_method", "CARD_STRIPE")
+    customer = data.get("customer")
+    
+    order = qr_ordering_service.submit_order(
+        table_number=table_num,
+        items=raw_items,
+        promo_code=promo,
+        notes=notes,
+        tip_amount=tip,
+        payment_method=pay_method,
+        customer=customer
+    )
+    return jsonify({"order": order, "status": "CREATED"}), 201
 
 @app.route("/api/order/cancel/<order_id>", methods=["POST"])
 def cancel_order(order_id):

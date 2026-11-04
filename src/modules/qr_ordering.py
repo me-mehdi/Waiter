@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 from src.core.db import db
 from src.core.translation import translator
 from src.core.config import Config
@@ -64,21 +64,54 @@ class QROrderingModule:
                 upsell_items.append(translated)
         return upsell_items
 
-    def submit_order(self, table_number: int, item_ids: List[str], promo_code: str = None, venue_id: str = None, notes: str = None) -> dict:
+    def submit_order(
+        self,
+        table_number: int,
+        item_ids: List[Any] = None,
+        promo_code: str = None,
+        venue_id: str = None,
+        notes: str = None,
+        tip_amount: float = 0.0,
+        payment_method: str = "",
+        customer: dict = None,
+        items: List[Any] = None
+    ) -> dict:
         if not venue_id:
             venue_id = venue_service.get_active_venue()["id"]
 
+        target_items = items if items is not None else (item_ids or [])
         subtotal = 0.0
         order_items = []
         
-        for item_id in item_ids:
-            item = db.menu_items.get(item_id)
-            if item:
-                subtotal += item["price"]
+        for it in target_items:
+            if isinstance(it, str):
+                item_id = it
+                item = db.menu_items.get(item_id)
+                if item:
+                    subtotal += item["price"]
+                    order_items.append({
+                        "item_id": item["id"],
+                        "name": item["name"]["en"],
+                        "price": item["price"],
+                        "quantity": 1
+                    })
+            elif isinstance(it, dict):
+                item_id = it.get("item_id") or it.get("id")
+                item = db.menu_items.get(item_id)
+                unit_price = float(it.get("price") or (item["price"] if item else 0.0))
+                qty = int(it.get("quantity") or 1)
+                item_name = it.get("name") or (item["name"]["en"] if item else "Item")
+                subtotal += unit_price * qty
                 order_items.append({
-                    "item_id": item["id"],
-                    "name": item["name"]["en"],
-                    "price": item["price"]
+                    "item_id": item_id,
+                    "name": item_name,
+                    "price": unit_price,
+                    "quantity": qty,
+                    "heat": it.get("heat"),
+                    "meal_type": it.get("meal_type"),
+                    "sides": it.get("sides") or [],
+                    "extras": it.get("extras") or [],
+                    "notes": it.get("notes") or ""
                 })
         
         discount = 0.0
@@ -90,16 +123,21 @@ class QROrderingModule:
                 discount = subtotal * (promo["discount_pct"] / 100.0)
                 db.increment_promo_use(promo_key)
                 
-        total = max(0.0, subtotal - discount)
+        tip = max(0.0, float(tip_amount or 0.0))
+        total = max(0.0, subtotal - discount) + tip
         
         order_payload = {
             "table_number": table_number,
             "items": order_items,
             "subtotal": round(subtotal, 2),
             "discount": round(discount, 2),
+            "tip_amount": round(tip, 2),
             "total": round(total, 2),
             "venue_id": venue_id,
-            "notes": notes or ""
+            "notes": notes or "",
+            "payment_method": payment_method or "",
+            "payment_status": "PAID" if payment_method else "UNPAID",
+            "customer": customer or {}
         }
         
         order = db.add_order(order_payload)
