@@ -305,64 +305,6 @@
             color: var(--nb-green);
         }
 
-        /* 3-DEVICE HERO SHOWCASE PREVIEW */
-        .saas-hero-visual {
-            position: relative;
-            margin-top: 50px;
-            z-index: 1;
-        }
-
-        .saas-visual-grid {
-            display: grid;
-            grid-template-columns: 280px 1fr 340px;
-            gap: 20px;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .saas-preview-card {
-            background: var(--nb-navy-surface);
-            border: 1px solid var(--nb-navy-border);
-            border-radius: var(--nb-radius-lg);
-            padding: 20px;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
-            transition: transform 0.3s ease, border-color 0.3s ease;
-            text-align: left;
-        }
-
-        .saas-preview-card:hover {
-            border-color: var(--nb-brass);
-            transform: translateY(-4px);
-        }
-
-        .saas-preview-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 14px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--nb-navy-border);
-        }
-
-        .saas-preview-title {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--nb-white);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .saas-preview-tag {
-            font-size: 11px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 6px;
-            background: rgba(200, 168, 107, 0.15);
-            color: var(--nb-brass);
-        }
-
         /* SOCIAL PROOF / STATS BANNER */
         .saas-stats-banner {
             background: var(--nb-navy-surface);
@@ -1060,7 +1002,6 @@
 
         /* Responsive */
         @media (max-width: 1024px) {
-            .saas-visual-grid { grid-template-columns: 1fr; gap: 24px; }
             .saas-stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
             .saas-features-grid { grid-template-columns: repeat(2, 1fr); }
             .saas-calculator-card { grid-template-columns: 1fr; }
