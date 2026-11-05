@@ -304,6 +304,15 @@ def render_admin_login_page(error_msg: str = None, return_url: str = "../index.h
             font-family: monospace;
             font-weight: 600;
         }}
+        @keyframes adminCardPulse {{
+            0%, 100% {{ box-shadow: 0 0 0 2px var(--nb-brass), 0 8px 24px rgba(200, 168, 107, 0.3); }}
+            50% {{ box-shadow: 0 0 0 5px var(--nb-brass-light), 0 12px 30px rgba(200, 168, 107, 0.6); }}
+        }}
+        .order-card-highlight {{
+            animation: adminCardPulse 2.5s infinite !important;
+            border-color: var(--nb-brass) !important;
+            background: #172233 !important;
+        }}
     </style>
 </head>
 <body>
@@ -1298,6 +1307,15 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                 overflow-x: auto;
             }}
         }}
+        @keyframes adminCardPulse {{
+            0%, 100% {{ box-shadow: 0 0 0 2px var(--nb-brass), 0 8px 24px rgba(200, 168, 107, 0.3); }}
+            50% {{ box-shadow: 0 0 0 5px var(--nb-brass-light), 0 12px 30px rgba(200, 168, 107, 0.6); }}
+        }}
+        .order-card-highlight {{
+            animation: adminCardPulse 2.5s infinite !important;
+            border-color: var(--nb-brass) !important;
+            background: #172233 !important;
+        }}
     </style>
 </head>
 <body>
@@ -2092,15 +2110,6 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                     }}
                 }} catch(e) {{}}
             }}
-
-            // 3. Cloud ntfy.sh pub/sub fallback
-            try {{
-                await fetch(SYNC_TOPIC_URL, {{
-                    method: 'POST',
-                    headers: {{'Title': 'Live Catalog Broadcast', 'Priority': 'high'}},
-                    body: JSON.stringify(eventData)
-                }});
-            }} catch(e) {{}}
         }}
 
         // Dynamic category helper for Add/Edit Modal
@@ -2311,6 +2320,9 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             const grid = document.getElementById('ordersCardsGrid');
             grid.innerHTML = '';
 
+            const urlParams = new URLSearchParams(window.location.search);
+            const highlightId = (urlParams.get('highlight') || urlParams.get('order') || localStorage.getItem('waiter_last_placed_order') || '').toLowerCase();
+
             let countNew = 0, countPrep = 0, countReady = 0;
 
             adminOrders.forEach(ord => {{
@@ -2320,8 +2332,14 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
 
                 if (filterStatus !== 'ALL' && ord.status !== filterStatus) return;
 
+                const ordId = String(ord.id || ord.order_id || 'ORD-999');
+                const ordKey = ordId.toLowerCase();
+                const isHighlight = highlightId && (ordKey.includes(highlightId) || highlightId.includes(ordKey.replace('ord-', '')));
+                const cardClass = 'nb-card' + (isHighlight ? ' order-card-highlight' : '');
+                const highlightBadge = isHighlight ? `<span style="background:var(--nb-brass); color:#000; font-weight:800; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:6px;"><i class="fa-solid fa-star"></i> RECENT ORDER</span>` : '';
+
                 const card = document.createElement('div');
-                card.className = 'nb-card';
+                card.className = cardClass;
 
                 const statusColor = ord.status === 'New' ? 'var(--nb-blue)' : (ord.status === 'Preparing' ? 'var(--nb-amber)' : 'var(--nb-green)');
 
@@ -2332,7 +2350,7 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
 
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
-                        <strong style="font-size:16px; color:#f8fafc;">#${{ord.id || ord.order_id}} · Table ${{ord.table_number || 'Takeaway'}}</strong>
+                        <strong style="font-size:16px; color:#f8fafc;">#${{ordId}} · Table ${{ord.table_number || 'Takeaway'}} ${{highlightBadge}}</strong>
                         <span class="badge" style="background:rgba(255,255,255,0.08); color:${{statusColor}}; border:1px solid ${{statusColor}};">${{ord.status}}</span>
                     </div>
                     <div style="margin-bottom:12px; min-height:48px;">${{itemsListHtml || '<div style="font-size:13px; color:#94a3b8;">Items in kitchen preparation</div>'}}</div>
@@ -2341,10 +2359,10 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                         <strong style="color:var(--nb-brass); font-size:16px;">£${{parseFloat(ord.total || 18.50).toFixed(2)}}</strong>
                     </div>
                     <div style="display:flex; gap:6px;">
-                        ${{ord.status === 'New' ? `<button type="button" class="nb-btn nb-btn-brass nb-btn-sm" style="flex:1;" onclick="advanceOrderStatus('${{ord.id || ord.order_id}}', 'Preparing')">Prep</button>` : ''}}
-                        ${{ord.status === 'Preparing' ? `<button type="button" class="nb-btn nb-btn-success nb-btn-sm" style="flex:1;" onclick="advanceOrderStatus('${{ord.id || ord.order_id}}', 'Ready')">Mark Ready</button>` : ''}}
-                        ${{ord.status === 'Ready' ? `<button type="button" class="nb-btn nb-btn-navy nb-btn-sm" style="flex:1;" onclick="advanceOrderStatus('${{ord.id || ord.order_id}}', 'Served')">Complete</button>` : ''}}
-                        <button type="button" class="nb-btn nb-btn-danger nb-btn-sm" onclick="voidOrder('${{ord.id || ord.order_id}}')"><i class="fa-solid fa-ban"></i></button>
+                        ${{ord.status === 'New' ? `<button type="button" class="nb-btn nb-btn-brass nb-btn-sm" style="flex:1;" onclick="advanceOrderStatus('${{ordId}}', 'Preparing')">Prep</button>` : ''}}
+                        ${{ord.status === 'Preparing' ? `<button type="button" class="nb-btn nb-btn-success nb-btn-sm" style="flex:1;" onclick="advanceOrderStatus('${{ordId}}', 'Ready')">Mark Ready</button>` : ''}}
+                        ${{ord.status === 'Ready' ? `<button type="button" class="nb-btn nb-btn-navy nb-btn-sm" style="flex:1;" onclick="advanceOrderStatus('${{ordId}}', 'Served')">Complete</button>` : ''}}
+                        <button type="button" class="nb-btn nb-btn-danger nb-btn-sm" onclick="voidOrder('${{ordId}}')"><i class="fa-solid fa-ban"></i></button>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -2353,6 +2371,11 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             document.getElementById('countOrdersNew').textContent = countNew;
             document.getElementById('countOrdersPrep').textContent = countPrep;
             document.getElementById('countOrdersReady').textContent = countReady;
+
+            if (highlightId) {{
+                const hl = document.querySelector('.order-card-highlight');
+                if (hl) setTimeout(() => hl.scrollIntoView({{ behavior: 'smooth', block: 'center' }}), 150);
+            }}
         }}
 
         function filterOrdersByStatus(status, btn) {{
@@ -2872,40 +2895,35 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             }}
         }}
 
-        function connectAdminSSE() {{
-            if (adminSseInstance) {{
-                try {{ adminSseInstance.close(); }} catch(e) {{}}
-                adminSseInstance = null;
-            }}
-
-            try {{
-                adminSseInstance = new EventSource(`${{SYNC_TOPIC_URL}}/sse`);
-                adminSseInstance.onmessage = (e) => {{
-                    try {{
-                        const evt = JSON.parse(e.data);
-                        if (evt && evt.message) {{
-                            const payload = JSON.parse(evt.message);
-                            handleAdminSyncBroadcast(payload, evt.id);
-                        }}
-                    }} catch(err) {{}}
-                }};
-                adminSseInstance.onerror = () => {{
-                    try {{ adminSseInstance.close(); }} catch(e) {{}}
-                    adminSseInstance = null;
-                    setTimeout(connectAdminSSE, 2500);
-                }};
-            }} catch(e) {{
-                setTimeout(connectAdminSSE, 3000);
-            }}
+        function pollAdminSyncUpdates() {{
+            // Real-time synchronization handled via high-speed Cloud MQTT WebSockets + BroadcastChannel
         }}
 
+        function connectAdminSSE() {{
+            // Real-time synchronization handled via high-speed Cloud MQTT WebSockets + BroadcastChannel
+        }}
+
+        const ADMIN_MQTT_BROKERS = [
+            'wss://broker.hivemq.com:8884/mqtt',
+            'wss://broker.emqx.io:8084/mqtt'
+        ];
+        let adminBrokerIdx = 0;
+
         function connectAdminMQTT() {{
+            if (typeof mqtt === 'undefined') {{
+                setTimeout(connectAdminMQTT, 150);
+                return;
+            }}
+            const brokerUrl = ADMIN_MQTT_BROKERS[adminBrokerIdx];
             try {{
-                adminMqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {{
+                if (adminMqttClient) {{
+                    try {{ adminMqttClient.end(true); }} catch(e) {{}}
+                }}
+                adminMqttClient = mqtt.connect(brokerUrl, {{
                     clientId: CLIENT_DEVICE_ID,
                     clean: true,
                     reconnectPeriod: 2500,
-                    connectTimeout: 5000
+                    connectTimeout: 4000
                 }});
 
                 adminMqttClient.on('connect', () => {{
@@ -2946,6 +2964,13 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                             handleAdminSyncBroadcast(evt, 'mqtt-' + Date.now());
                         }}
                     }} catch(e) {{}}
+                }});
+
+                adminMqttClient.on('error', () => {{
+                    if (adminBrokerIdx < ADMIN_MQTT_BROKERS.length - 1) {{
+                        adminBrokerIdx++;
+                        setTimeout(connectAdminMQTT, 1000);
+                    }}
                 }});
             }} catch(e) {{}}
         }}

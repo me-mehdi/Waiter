@@ -439,6 +439,15 @@
         .nb-table tr:hover td {
             background-color: rgba(200, 168, 107, 0.04);
         }
+        @keyframes nbPulseHighlight {
+            0%, 100% { box-shadow: 0 0 0 3px var(--nb-brass), 0 8px 24px rgba(200, 168, 107, 0.4); }
+            50% { box-shadow: 0 0 0 6px #e6cb96, 0 12px 32px rgba(200, 168, 107, 0.7); }
+        }
+        .nb-highlight-ticket {
+            animation: nbPulseHighlight 2.5s infinite !important;
+            border-color: var(--nb-brass) !important;
+            background: #172233 !important;
+        }
     </style>
 </head>
 <body>
@@ -638,14 +647,19 @@
     <!-- SCREEN 3: KITCHEN DISPLAY (RESPONSIVE)                             -->
     <!-- ================================================================== -->
     <div class="nb-container nb-screen-section" id="nb-screen-kitchen">
+        <a id="kitchen"></a>
         <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px; margin-bottom:28px;">
             <div style="display:flex; align-items:center; gap:16px;">
                 <h2 class="nb-serif" style="font-size:32px; font-weight:700; margin:0; color:#f8fafc;">Kitchen</h2>
+                <a href="./admin/kitchen/" target="_blank" class="nb-btn nb-btn-brass" style="min-height:38px; padding:6px 14px; font-size:13px; text-decoration:none;">
+                    <i class="fa-solid fa-expand me-1"></i> Open Full Dedicated KDS
+                </a>
                 <button type="button" class="nb-btn nb-btn-outline-brass" onclick="openChefRecipeModal()" style="min-height:38px; padding:6px 12px; font-size:13px;">Chef SOP Recipes</button>
             </div>
             <!-- Delivery Aggregator & Dine-in Source Filters -->
             <div id="deliveryChannelsGrid" style="display:flex; flex-wrap:wrap; gap:8px;" role="group" aria-label="Order Sources">
-                <button type="button" class="nb-btn nb-btn-navy active" onclick="filterNbKdsSource('all', this)">Dine-in</button>
+                <button type="button" class="nb-btn nb-btn-navy active" onclick="filterNbKdsSource('all', this)">All Orders</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="filterNbKdsSource('dine-in', this)">Dine-in</button>
                 <button type="button" class="nb-btn nb-btn-navy" onclick="filterNbKdsSource('deliveroo', this)">Deliveroo</button>
                 <button type="button" class="nb-btn nb-btn-navy" onclick="filterNbKdsSource('ubereats', this)">Uber Eats</button>
                 <button type="button" class="nb-btn nb-btn-navy" onclick="filterNbKdsSource('justeat', this)">Just Eat</button>
@@ -656,44 +670,16 @@
             <!-- NEW Column -->
             <div id="nbKdsColNew">
                 <div style="color:#8ab4f8; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px;">NEW</div>
-                <div class="nb-kds-ticket nb-kds-new" id="nbTicket1026" data-order-id="ORD-1026">
-                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
-                        <strong style="font-size:20px; color:#f8fafc;">#1026 · Table 12</strong>
-                        <span style="font-size:18px; color:#8ab4f8; font-variant-numeric:tabular-nums; font-weight:600;">00:42</span>
-                    </div>
-                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:6px;">2× Sunday Roast</div>
-                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:12px;">1× Fish and Chips</div>
-                    <div style="font-size:14px; font-weight:700; color:#f28b82; margin-bottom:16px;">Allergy: no gluten</div>
-                    <button type="button" class="nb-btn nb-btn-navy" style="width:100%;" onclick="advanceNbTicket('ORD-1026', this)">Advance to Prep</button>
-                </div>
             </div>
 
             <!-- PREPARING Column -->
             <div id="nbKdsColPrep">
                 <div style="color:#e2b049; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px;">PREPARING</div>
-                <div class="nb-kds-ticket nb-kds-prep" id="nbTicket1024" data-order-id="ORD-1024">
-                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
-                        <strong style="font-size:20px; color:#f8fafc;">#1024 · Delivery</strong>
-                        <span style="font-size:18px; color:#e2b049; font-variant-numeric:tabular-nums; font-weight:600;">06:10</span>
-                    </div>
-                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:6px;">1× Burger</div>
-                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:16px;">2× Chips</div>
-                    <button type="button" class="nb-btn nb-btn-navy" style="width:100%;" onclick="advanceNbTicket('ORD-1024', this)">Advance to Ready</button>
-                </div>
             </div>
 
             <!-- READY Column -->
             <div id="nbKdsColReady">
                 <div style="color:#78cfa0; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px;">READY</div>
-                <div class="nb-kds-ticket nb-kds-ready" id="nbTicket1025" data-order-id="ORD-1025">
-                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
-                        <strong style="font-size:20px; color:#f8fafc;">#1025 · Table 4</strong>
-                        <span style="font-size:16px; color:#78cfa0; font-weight:700;">Ready</span>
-                    </div>
-                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:6px;">3× Pizza</div>
-                    <div style="font-size:16px; color:#e2e8f0; margin-bottom:16px;">3× Soft drink</div>
-                    <button type="button" class="nb-btn nb-btn-brass" style="width:100%;" onclick="advanceNbTicket('ORD-1025', this)">Mark Served</button>
-                </div>
             </div>
         </div>
     </div>
@@ -1346,6 +1332,13 @@
         document.querySelectorAll('.nb-screen-section').forEach(sec => {
             sec.style.display = visibleIds.includes(sec.id) ? 'block' : 'none';
         });
+
+        if (screenKey === 'kitchen') {
+            setTimeout(() => {
+                const kSec = document.getElementById('nb-screen-kitchen');
+                if (kSec) kSec.scrollIntoView({ behavior: 'smooth' });
+            }, 80);
+        }
     }
 
     function toggleNbPlaceholderMode(shouldSave = true) {
@@ -1714,6 +1707,9 @@
         const colReady = document.getElementById('nbKdsColReady');
         if (!colNew || !colPrep || !colReady) return;
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const highlightId = (urlParams.get('highlight') || urlParams.get('order') || localStorage.getItem('waiter_last_placed_order') || '').toLowerCase();
+
         colNew.innerHTML = `<div style="color:#8ab4f8; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px;">NEW</div>`;
         colPrep.innerHTML = `<div style="color:#e2b049; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px;">PREPARING</div>`;
         colReady.innerHTML = `<div style="color:#78cfa0; font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px;">READY</div>`;
@@ -1728,6 +1724,10 @@
             const orderId = String(ord.id || ord.order_id || 'ORD-999');
             const displayNum = orderId.replace('ORD-', '');
             const tableText = ord.table_number ? (typeof ord.table_number === 'number' ? `Table ${ord.table_number}` : ord.table_number) : (ord.channel || 'Dine-In');
+
+            const isHighlight = highlightId && (orderId.toLowerCase().includes(highlightId) || displayNum.toLowerCase() === highlightId || highlightId.includes(displayNum.toLowerCase()));
+            const highlightClass = isHighlight ? ' nb-highlight-ticket' : '';
+            const highlightBadge = isHighlight ? `<span style="background:var(--nb-brass); color:#000; font-weight:800; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:6px;"><i class="fa-solid fa-star"></i> YOUR ORDER</span>` : '';
 
             let itemsHtml = '';
             if (ord.items && Array.isArray(ord.items)) {
@@ -1750,10 +1750,10 @@
             ticket.id = 'nbTicket-' + orderId.replace(/[^a-zA-Z0-9]/g, '-');
 
             if (ord.status === 'New') {
-                ticket.className = 'nb-kds-ticket nb-kds-new';
+                ticket.className = 'nb-kds-ticket nb-kds-new' + highlightClass;
                 ticket.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
-                        <strong style="font-size:20px; color:#f8fafc;">#${displayNum} · ${tableText}</strong>
+                        <strong style="font-size:20px; color:#f8fafc;">#${displayNum} · ${tableText} ${highlightBadge}</strong>
                         <span style="font-size:18px; color:#8ab4f8; font-variant-numeric:tabular-nums; font-weight:600;">NEW</span>
                     </div>
                     ${itemsHtml}
@@ -1762,10 +1762,10 @@
                 `;
                 colNew.appendChild(ticket);
             } else if (ord.status === 'Preparing') {
-                ticket.className = 'nb-kds-ticket nb-kds-prep';
+                ticket.className = 'nb-kds-ticket nb-kds-prep' + highlightClass;
                 ticket.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
-                        <strong style="font-size:20px; color:#f8fafc;">#${displayNum} · ${tableText}</strong>
+                        <strong style="font-size:20px; color:#f8fafc;">#${displayNum} · ${tableText} ${highlightBadge}</strong>
                         <span style="font-size:18px; color:#e2b049; font-variant-numeric:tabular-nums; font-weight:600;">PREP</span>
                     </div>
                     ${itemsHtml}
@@ -1774,10 +1774,10 @@
                 `;
                 colPrep.appendChild(ticket);
             } else if (ord.status === 'Ready') {
-                ticket.className = 'nb-kds-ticket nb-kds-ready';
+                ticket.className = 'nb-kds-ticket nb-kds-ready' + highlightClass;
                 ticket.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
-                        <strong style="font-size:20px; color:#f8fafc;">#${displayNum} · ${tableText}</strong>
+                        <strong style="font-size:20px; color:#f8fafc;">#${displayNum} · ${tableText} ${highlightBadge}</strong>
                         <span style="font-size:16px; color:#78cfa0; font-weight:700;">Ready</span>
                     </div>
                     ${itemsHtml}
@@ -1787,6 +1787,11 @@
                 colReady.appendChild(ticket);
             }
         });
+
+        if (highlightId) {
+            const hl = document.querySelector('.nb-highlight-ticket');
+            if (hl) setTimeout(() => hl.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+        }
     }
 
     function filterNbKdsSource(source, btn) {
@@ -1827,21 +1832,12 @@
         } catch(e) {}
 
         // Broadcast to ultra-fast MQTT Cloud broker
-        if (kdsMqttClient && kdsMqttClient.connected) {
+        if (kdsMqttClient) {
             try {
                 kdsMqttClient.publish(VENUE_MQTT_LIVE, JSON.stringify(updateEvent), { qos: 1 });
                 kdsMqttClient.publish(VENUE_MQTT_STATE, JSON.stringify(nbKdsOrders), { retain: true, qos: 1 });
             } catch(e) {}
         }
-
-        // Broadcast to cloud ntfy fallback
-        try {
-            fetch(KDS_SYNC_TOPIC, {
-                method: 'POST',
-                headers: { 'Title': 'KDS Order Advanced', 'Priority': 'high' },
-                body: JSON.stringify(updateEvent)
-            });
-        } catch(e) {}
 
         try {
             await fetch(`/api/kds/advance/${orderId}`, {method: 'POST'});
@@ -2053,70 +2049,35 @@
         }
     }
 
-    async function pollNbKdsSyncUpdates() {
-        if (isKdsPolling) return;
-        isKdsPolling = true;
-        try {
-            const sinceParam = kdsLastSyncTimestamp > 0 ? (Math.max(1, Math.floor(kdsLastSyncTimestamp / 1000) - 10)) + 's' : '12h';
-            const resp = await fetch(`${KDS_SYNC_TOPIC}/json?poll=1&since=${sinceParam}`, {
-                cache: 'no-store'
-            });
-            if (resp.ok) {
-                const text = await resp.text();
-                const lines = text.trim().split('\n');
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-                    try {
-                        const evt = JSON.parse(line);
-                        if (evt && evt.message) {
-                            const payload = JSON.parse(evt.message);
-                            handleKdsSyncEvent(payload, evt.id);
-                        }
-                    } catch(err) {}
-                }
-            }
-        } catch(e) {}
-        finally {
-            isKdsPolling = false;
-        }
+    function pollNbKdsSyncUpdates() {
+        // Real-time synchronization handled via high-speed Cloud MQTT WebSockets + BroadcastChannel
     }
 
     function connectKdsSSE() {
-        if (kdsSseInstance) {
-            try { kdsSseInstance.close(); } catch(e) {}
-            kdsSseInstance = null;
-        }
-        try {
-            kdsSseInstance = new EventSource(`${KDS_SYNC_TOPIC}/sse`);
-            kdsSseInstance.onmessage = (e) => {
-                try {
-                    const evt = JSON.parse(e.data);
-                    if (evt && evt.message) {
-                        const payload = JSON.parse(evt.message);
-                        handleKdsSyncEvent(payload, evt.id);
-                    }
-                } catch(err) {}
-            };
-            kdsSseInstance.onerror = () => {
-                try { kdsSseInstance.close(); } catch(e) {}
-                kdsSseInstance = null;
-                setTimeout(connectKdsSSE, 2500);
-            };
-        } catch(e) {
-            setTimeout(connectKdsSSE, 3000);
-        }
+        // Real-time synchronization handled via high-speed Cloud MQTT WebSockets + BroadcastChannel
     }
 
-    function initKdsRealtimeSync() {
-        initNbKdsStore();
+    const SUITE_MQTT_BROKERS = [
+        'wss://broker.hivemq.com:8884/mqtt',
+        'wss://broker.emqx.io:8084/mqtt'
+    ];
+    let suiteBrokerIdx = 0;
 
-        // 1. MQTT Cloud WebSocket Broker Sync
+    function connectSuiteMqtt() {
+        if (typeof mqtt === 'undefined') {
+            setTimeout(connectSuiteMqtt, 150);
+            return;
+        }
+        const brokerUrl = SUITE_MQTT_BROKERS[suiteBrokerIdx];
         try {
-            kdsMqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+            if (kdsMqttClient) {
+                try { kdsMqttClient.end(true); } catch(e) {}
+            }
+            kdsMqttClient = mqtt.connect(brokerUrl, {
                 clientId: 'kds_suite_' + Math.random().toString(16).substring(2, 8),
                 clean: true,
                 reconnectPeriod: 2500,
-                connectTimeout: 5000
+                connectTimeout: 4000
             });
             kdsMqttClient.on('connect', () => {
                 kdsMqttClient.subscribe(VENUE_MQTT_LIVE);
@@ -2155,7 +2116,18 @@
                     }
                 } catch(e) {}
             });
+            kdsMqttClient.on('error', () => {
+                if (suiteBrokerIdx < SUITE_MQTT_BROKERS.length - 1) {
+                    suiteBrokerIdx++;
+                    setTimeout(connectSuiteMqtt, 1000);
+                }
+            });
         } catch(e) {}
+    }
+
+    function initKdsRealtimeSync() {
+        initNbKdsStore();
+        connectSuiteMqtt();
 
         // 2. In-browser BroadcastChannel (<5ms)
         try {
@@ -2167,30 +2139,7 @@
             }
         } catch(e) {}
 
-        // 2. Initial catch-up poll
-        pollNbKdsSyncUpdates();
-
-        // 3. Auto-reconnecting SSE
-        connectKdsSSE();
-
-        // 4. 2.5s active short polling watchdog
-        if (kdsPollTimer) clearInterval(kdsPollTimer);
-        kdsPollTimer = setInterval(pollNbKdsSyncUpdates, 2500);
-
-        // 5. Wakeup on unlock / focus
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                pollNbKdsSyncUpdates();
-                if (!kdsSseInstance || kdsSseInstance.readyState === EventSource.CLOSED) {
-                    connectKdsSSE();
-                }
-            }
-        });
-        window.addEventListener('focus', () => pollNbKdsSyncUpdates());
-        window.addEventListener('online', () => {
-            pollNbKdsSyncUpdates();
-            connectKdsSSE();
-        });
+        // 3. Storage event listener for cross-tab sync
         window.addEventListener('storage', (e) => {
             if (e.key === 'waiter_admin_orders') {
                 initNbKdsStore();

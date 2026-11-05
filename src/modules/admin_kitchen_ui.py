@@ -12,22 +12,20 @@ def render_admin_kitchen_page() -> str:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>The Waiter · Kitchen Display System (KDS)</title>
-    <!-- SYNCHRONOUS STRICT AUTHENTICATION GUARD -->
+    <!-- KDS AUTHENTICATION & ACCESS MODE -->
     <script>
         (function() {
             try {
                 var authStr = sessionStorage.getItem('waiter_admin_auth') || localStorage.getItem('waiter_admin_auth');
-                if (!authStr) {
-                    window.location.replace('../login/index.html?returnUrl=../kitchen/index.html');
-                    return;
-                }
-                var parsed = JSON.parse(authStr);
-                if (!parsed || !parsed.token) {
-                    window.location.replace('../login/index.html?returnUrl=../kitchen/index.html');
-                    return;
+                window.isKitchenAdminAuth = false;
+                if (authStr) {
+                    var parsed = JSON.parse(authStr);
+                    if (parsed && parsed.token) {
+                        window.isKitchenAdminAuth = true;
+                    }
                 }
             } catch(e) {
-                window.location.replace('../login/index.html?returnUrl=../kitchen/index.html');
+                window.isKitchenAdminAuth = false;
             }
         })();
     </script>
@@ -407,6 +405,28 @@ def render_admin_kitchen_page() -> str:
         }
         .kds-toast.active { display: flex; animation: slideUp 0.3s ease; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        /* Highlight ticket (e.g. from customer order link) */
+        @keyframes pulseHighlight {
+            0%, 100% { box-shadow: 0 0 0 3px var(--nb-brass), 0 8px 24px rgba(200, 168, 107, 0.4); }
+            50% { box-shadow: 0 0 0 6px var(--nb-brass-light), 0 12px 32px rgba(200, 168, 107, 0.7); }
+        }
+        .kds-highlight-ticket {
+            animation: pulseHighlight 2.5s infinite !important;
+            border-color: var(--nb-brass) !important;
+            background: #192336 !important;
+        }
+        .badge-highlight-order {
+            background: var(--nb-brass);
+            color: #000;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 12px;
+            letter-spacing: 0.04em;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
     </style>
 </head>
 <body>
@@ -583,6 +603,9 @@ def render_admin_kitchen_page() -> str:
             const colReady = document.getElementById('nbKdsColReady');
             if (!colNew || !colPrep || !colReady) return;
 
+            const urlParams = new URLSearchParams(window.location.search);
+            const highlightId = (urlParams.get('highlight') || urlParams.get('order') || window.location.hash.replace('#', '')).toLowerCase();
+
             colNew.innerHTML = '';
             colPrep.innerHTML = '';
             colReady.innerHTML = '';
@@ -598,6 +621,10 @@ def render_admin_kitchen_page() -> str:
                 const orderId = String(ord.id || ord.order_id || 'ORD-999');
                 const displayNum = orderId.replace('ORD-', '');
                 const tableText = ord.table_number ? (typeof ord.table_number === 'number' ? `Table ${ord.table_number}` : ord.table_number) : (ord.channel || 'Dine-In');
+
+                const isHighlighted = highlightId && (orderId.toLowerCase().includes(highlightId) || displayNum.toLowerCase() === highlightId || highlightId.includes(displayNum.toLowerCase()));
+                const highlightClass = isHighlighted ? ' kds-highlight-ticket' : '';
+                const highlightBadge = isHighlighted ? `<span class="badge-highlight-order"><i class="fa-solid fa-star"></i> YOUR ORDER</span>` : '';
 
                 let itemsHtml = '';
                 if (ord.items && Array.isArray(ord.items)) {
@@ -624,10 +651,10 @@ def render_admin_kitchen_page() -> str:
 
                 if (ord.status === 'New') {
                     cNew++;
-                    ticket.className = 'kds-ticket ticket-new';
+                    ticket.className = 'kds-ticket ticket-new' + highlightClass;
                     ticket.innerHTML = `
                         <div class="ticket-top">
-                            <span class="ticket-id">#${displayNum} · ${tableText}</span>
+                            <span class="ticket-id">#${displayNum} · ${tableText} ${highlightBadge}</span>
                             <span class="ticket-timer" style="color:var(--nb-blue);">NEW</span>
                         </div>
                         <div class="ticket-items">${itemsHtml}</div>
@@ -642,10 +669,10 @@ def render_admin_kitchen_page() -> str:
                     colNew.appendChild(ticket);
                 } else if (ord.status === 'Preparing') {
                     cPrep++;
-                    ticket.className = 'kds-ticket ticket-prep';
+                    ticket.className = 'kds-ticket ticket-prep' + highlightClass;
                     ticket.innerHTML = `
                         <div class="ticket-top">
-                            <span class="ticket-id">#${displayNum} · ${tableText}</span>
+                            <span class="ticket-id">#${displayNum} · ${tableText} ${highlightBadge}</span>
                             <span class="ticket-timer" style="color:var(--nb-amber);">PREPARING</span>
                         </div>
                         <div class="ticket-items">${itemsHtml}</div>
@@ -660,10 +687,10 @@ def render_admin_kitchen_page() -> str:
                     colPrep.appendChild(ticket);
                 } else if (ord.status === 'Ready') {
                     cReady++;
-                    ticket.className = 'kds-ticket ticket-ready';
+                    ticket.className = 'kds-ticket ticket-ready' + highlightClass;
                     ticket.innerHTML = `
                         <div class="ticket-top">
-                            <span class="ticket-id">#${displayNum} · ${tableText}</span>
+                            <span class="ticket-id">#${displayNum} · ${tableText} ${highlightBadge}</span>
                             <span class="ticket-timer" style="color:var(--nb-green);">READY</span>
                         </div>
                         <div class="ticket-items">${itemsHtml}</div>
@@ -682,6 +709,11 @@ def render_admin_kitchen_page() -> str:
             document.getElementById('countNew').textContent = cNew;
             document.getElementById('countPrep').textContent = cPrep;
             document.getElementById('countReady').textContent = cReady;
+
+            if (highlightId) {
+                const hl = document.querySelector('.kds-highlight-ticket');
+                if (hl) setTimeout(() => hl.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
+            }
         }
 
         function filterChannel(channel, btn) {
@@ -713,7 +745,7 @@ def render_admin_kitchen_page() -> str:
             }
 
             // Broadcast MQTT Cloud
-            if (mqttClient && mqttClient.connected) {
+            if (mqttClient) {
                 try {
                     mqttClient.publish(VENUE_TOPIC_LIVE, JSON.stringify(evtPayload), { qos: 1 });
                     mqttClient.publish(VENUE_TOPIC_STATE, JSON.stringify(kdsOrders), { retain: true, qos: 1 });
@@ -742,7 +774,7 @@ def render_admin_kitchen_page() -> str:
             if (localBus) {
                 try { localBus.postMessage(evtPayload); } catch(e) {}
             }
-            if (mqttClient && mqttClient.connected) {
+            if (mqttClient) {
                 try {
                     mqttClient.publish(VENUE_TOPIC_LIVE, JSON.stringify(evtPayload), { qos: 1 });
                     mqttClient.publish(VENUE_TOPIC_STATE, JSON.stringify(kdsOrders), { retain: true, qos: 1 });
@@ -804,73 +836,95 @@ def render_admin_kitchen_page() -> str:
                 }
             });
 
-            // 3. High-Speed Cloud MQTT WebSocket Broker
+            // 3. High-Speed Cloud MQTT WebSocket Broker with Dual Failover
             const statusPill = document.getElementById('kdsStatusPill');
             const statusText = document.getElementById('kdsStatusText');
+            const MQTT_BROKERS = [
+                'wss://broker.hivemq.com:8884/mqtt',
+                'wss://broker.emqx.io:8084/mqtt'
+            ];
+            let brokerIdx = 0;
 
-            try {
-                mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
-                    clientId: CLIENT_ID,
-                    clean: true,
-                    reconnectPeriod: 2500,
-                    connectTimeout: 5000
-                });
+            function connectKdsMqtt() {
+                if (typeof mqtt === 'undefined') {
+                    setTimeout(connectKdsMqtt, 150);
+                    return;
+                }
+                const brokerUrl = MQTT_BROKERS[brokerIdx];
+                try {
+                    if (mqttClient) {
+                        try { mqttClient.end(true); } catch(e) {}
+                    }
+                    mqttClient = mqtt.connect(brokerUrl, {
+                        clientId: CLIENT_ID,
+                        clean: true,
+                        reconnectPeriod: 2500,
+                        connectTimeout: 4000
+                    });
 
-                mqttClient.on('connect', () => {
-                    if (statusPill) statusPill.classList.remove('offline');
-                    if (statusText) statusText.textContent = 'LIVE MQTT CLOUD CONNECTED';
-                    mqttClient.subscribe(VENUE_TOPIC_LIVE);
-                    mqttClient.subscribe(VENUE_TOPIC_STATE);
-                });
+                    mqttClient.on('connect', () => {
+                        if (statusPill) statusPill.classList.remove('offline');
+                        if (statusText) statusText.textContent = 'LIVE MQTT CLOUD CONNECTED';
+                        mqttClient.subscribe(VENUE_TOPIC_LIVE);
+                        mqttClient.subscribe(VENUE_TOPIC_STATE);
+                    });
 
-                mqttClient.on('message', (topic, payload) => {
-                    try {
-                        const text = payload.toString();
-                        if (topic === VENUE_TOPIC_STATE) {
-                            // Retained state array received
-                            const remoteOrders = JSON.parse(text);
-                            if (Array.isArray(remoteOrders) && remoteOrders.length > 0) {
-                                // Merge by ID
-                                const existingIds = new Set(kdsOrders.map(o => o.id || o.order_id));
-                                let addedAny = false;
-                                remoteOrders.forEach(ro => {
-                                    const rId = ro.id || ro.order_id;
-                                    if (!existingIds.has(rId)) {
-                                        kdsOrders.unshift(ro);
-                                        existingIds.add(rId);
-                                        addedAny = true;
-                                    } else {
-                                        const localOrd = kdsOrders.find(o => (o.id === rId || o.order_id === rId));
-                                        if (localOrd && ro.status && localOrd.status !== ro.status) {
-                                            localOrd.status = ro.status;
+                    mqttClient.on('message', (topic, payload) => {
+                        try {
+                            const text = payload.toString();
+                            if (topic === VENUE_TOPIC_STATE) {
+                                // Retained state array received
+                                const remoteOrders = JSON.parse(text);
+                                if (Array.isArray(remoteOrders) && remoteOrders.length > 0) {
+                                    // Merge by ID
+                                    const existingIds = new Set(kdsOrders.map(o => o.id || o.order_id));
+                                    let addedAny = false;
+                                    remoteOrders.forEach(ro => {
+                                        const rId = ro.id || ro.order_id;
+                                        if (!existingIds.has(rId)) {
+                                            kdsOrders.unshift(ro);
+                                            existingIds.add(rId);
                                             addedAny = true;
+                                        } else {
+                                            const localOrd = kdsOrders.find(o => (o.id === rId || o.order_id === rId));
+                                            if (localOrd && ro.status && localOrd.status !== ro.status) {
+                                                localOrd.status = ro.status;
+                                                addedAny = true;
+                                            }
                                         }
+                                    });
+                                    if (addedAny) {
+                                        try { localStorage.setItem('waiter_admin_orders', JSON.stringify(kdsOrders)); } catch(e) {}
+                                        renderKdsBoard();
                                     }
-                                });
-                                if (addedAny) {
-                                    try { localStorage.setItem('waiter_admin_orders', JSON.stringify(kdsOrders)); } catch(e) {}
-                                    renderKdsBoard();
                                 }
+                            } else if (topic === VENUE_TOPIC_LIVE) {
+                                const evt = JSON.parse(text);
+                                handleIncomingEvent(evt);
                             }
-                        } else if (topic === VENUE_TOPIC_LIVE) {
-                            const evt = JSON.parse(text);
-                            handleIncomingEvent(evt);
+                        } catch(err) {}
+                    });
+
+                    mqttClient.on('error', () => {
+                        if (brokerIdx < MQTT_BROKERS.length - 1) {
+                            brokerIdx++;
+                            setTimeout(connectKdsMqtt, 1000);
+                        } else {
+                            if (statusPill) statusPill.classList.add('offline');
+                            if (statusText) statusText.textContent = 'LOCAL BUS ACTIVE';
                         }
-                    } catch(err) {}
-                });
+                    });
 
-                mqttClient.on('error', () => {
-                    if (statusPill) statusPill.classList.add('offline');
-                    if (statusText) statusText.textContent = 'MQTT LOCAL ONLY';
-                });
-
-                mqttClient.on('offline', () => {
-                    if (statusPill) statusPill.classList.add('offline');
-                    if (statusText) statusText.textContent = 'LOCAL BUS (RECONNECTING...)';
-                });
-            } catch(e) {
-                if (statusText) statusText.textContent = 'LOCAL BUS ACTIVE';
+                    mqttClient.on('offline', () => {
+                        if (statusPill) statusPill.classList.add('offline');
+                        if (statusText) statusText.textContent = 'LOCAL BUS (RECONNECTING...)';
+                    });
+                } catch(e) {
+                    if (statusText) statusText.textContent = 'LOCAL BUS ACTIVE';
+                }
             }
+
+            connectKdsMqtt();
         }
 
         window.addEventListener('DOMContentLoaded', () => {

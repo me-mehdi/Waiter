@@ -1457,12 +1457,17 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
                 </div>
             </div>
             <div style="display: flex; gap: 10px;">
-                <a href="../../#kitchen" target="_blank" class="btn-allergy-confirm" style="background: var(--charcoal); flex: 1; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <i class="fa-solid fa-tv"></i> View on KDS
+                <a id="btnViewKdsModal" href="../../admin/kitchen/" target="_blank" class="btn-allergy-confirm" style="background: var(--charcoal); flex: 1; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fa-solid fa-tv"></i> View on Kitchen KDS
                 </a>
                 <button onclick="resetOrderAfterSuccess()" class="btn-allergy-confirm" style="background: var(--primary); flex: 1;">
                     Order More
                 </button>
+            </div>
+            <div style="margin-top: 12px; font-size: 0.85rem; text-align: center;">
+                <a id="btnViewSuiteModal" href="../../#kitchen" target="_blank" style="color: var(--text-muted); text-decoration: underline; font-weight: 600;">
+                    <i class="fa-solid fa-desktop me-1"></i> Open in Showcase Suite (#kitchen)
+                </a>
             </div>
         </div>
     </div>
@@ -1711,83 +1716,61 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
             }}
         }}
 
-        async function pollSyncUpdates() {{
-            if (isPolling) return;
-            isPolling = true;
-            try {{
-                const sinceParam = lastSyncTimestamp > 0 ? (Math.max(1, Math.floor(lastSyncTimestamp / 1000) - 10)) + 's' : '12h';
-                const resp = await fetch(`${{SYNC_TOPIC_URL}}/json?poll=1&since=${{sinceParam}}`, {{
-                    cache: 'no-store'
-                }});
-                if (resp.ok) {{
-                    const text = await resp.text();
-                    const lines = text.trim().split('\\n');
-                    for (const line of lines) {{
-                        if (!line.trim()) continue;
-                        try {{
-                            const evt = JSON.parse(line);
-                            if (evt && evt.message) {{
-                                const payload = JSON.parse(evt.message);
-                                handleSyncBroadcast(payload, evt.id);
-                            }}
-                        }} catch(err) {{}}
-                    }}
-                }}
-            }} catch(e) {{
-            }} finally {{
-                isPolling = false;
-            }}
+        function pollSyncUpdates() {{
+            // Real-time synchronization handled via high-speed Cloud MQTT WebSockets + BroadcastChannel
         }}
 
         function connectSSE() {{
-            if (sseInstance) {{
-                try {{ sseInstance.close(); }} catch(e) {{}}
-                sseInstance = null;
-            }}
-
-            try {{
-                sseInstance = new EventSource(`${{SYNC_TOPIC_URL}}/sse`);
-                sseInstance.onmessage = (e) => {{
-                    try {{
-                        const evt = JSON.parse(e.data);
-                        if (evt && evt.message) {{
-                            const payload = JSON.parse(evt.message);
-                            handleSyncBroadcast(payload, evt.id);
-                        }}
-                    }} catch(err) {{}}
-                }};
-                sseInstance.onerror = () => {{
-                    try {{ sseInstance.close(); }} catch(e) {{}}
-                    sseInstance = null;
-                    setTimeout(connectSSE, 2500);
-                }};
-            }} catch(e) {{
-                setTimeout(connectSSE, 3000);
-            }}
+            // Real-time synchronization handled via high-speed Cloud MQTT WebSockets + BroadcastChannel
         }}
 
         const VENUE_MQTT_STATE = 'waiter_covent_garden/orders/state';
         const VENUE_MQTT_LIVE = 'waiter_covent_garden/orders/live';
         let customerMqttClient = null;
 
+        const CUST_MQTT_BROKERS = [
+            'wss://broker.hivemq.com:8884/mqtt',
+            'wss://broker.emqx.io:8084/mqtt'
+        ];
+        let custBrokerIdx = 0;
+
         function connectCustomerMQTT() {{
+            if (typeof mqtt === 'undefined') {{
+                setTimeout(connectCustomerMQTT, 150);
+                return;
+            }}
+            const brokerUrl = CUST_MQTT_BROKERS[custBrokerIdx];
             try {{
-                customerMqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {{
+                if (customerMqttClient) {{
+                    try {{ customerMqttClient.end(true); }} catch(e) {{}}
+                }}
+                customerMqttClient = mqtt.connect(brokerUrl, {{
                     clientId: 'cust_' + Math.random().toString(16).substring(2, 8),
                     clean: true,
                     reconnectPeriod: 2500,
-                    connectTimeout: 5000
+                    connectTimeout: 4000
                 }});
 
                 customerMqttClient.on('connect', () => {{
                     customerMqttClient.subscribe(VENUE_MQTT_LIVE);
+                    customerMqttClient.subscribe(VENUE_MQTT_STATE);
                 }});
 
                 customerMqttClient.on('message', (topic, payload) => {{
                     try {{
-                        const evt = JSON.parse(payload.toString());
-                        handleSyncBroadcast(evt, 'mqtt-' + Date.now());
+                        const text = payload.toString();
+                        if (topic === VENUE_MQTT_LIVE) {{
+                            const evt = JSON.parse(text);
+                            handleSyncBroadcast(evt, 'mqtt-' + Date.now());
+                        }}
                     }} catch(e) {{}}
+                }});
+
+                customerMqttClient.on('error', () => {{
+                    if (custBrokerIdx < CUST_MQTT_BROKERS.length - 1) {{
+                        custBrokerIdx++;
+                        setTimeout(connectCustomerMQTT, 1000);
+                    }}
                 }});
             }} catch(e) {{}}
         }}
@@ -2557,23 +2540,18 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
             }}
 
             // 3. Ultra-fast Cloud MQTT Broadcast & Retained State Sync
-            if (customerMqttClient) {{
-                try {{
-                    customerMqttClient.publish(VENUE_MQTT_LIVE, JSON.stringify(orderEvent), {{ qos: 1 }});
-                    customerMqttClient.publish(VENUE_MQTT_STATE, JSON.stringify(existingOrders), {{ retain: true, qos: 1 }});
-                }} catch(e) {{}}
+            function broadcastMqttOrder() {{
+                if (customerMqttClient) {{
+                    try {{
+                        customerMqttClient.publish(VENUE_MQTT_LIVE, JSON.stringify(orderEvent), {{ qos: 1 }});
+                        customerMqttClient.publish(VENUE_MQTT_STATE, JSON.stringify(existingOrders), {{ retain: true, qos: 1 }});
+                    }} catch(e) {{}}
+                }}
             }}
+            broadcastMqttOrder();
+            setTimeout(broadcastMqttOrder, 700);
 
-            // 4. Broadcast NEW_ORDER event across remote devices via cloud pub/sub fallback
-            try {{
-                fetch(SYNC_TOPIC_URL, {{
-                    method: 'POST',
-                    headers: {{ 'Title': 'New Customer Order Placed', 'Priority': 'urgent' }},
-                    body: JSON.stringify(orderEvent)
-                }});
-            }} catch(e) {{}}
-
-            // 5. Try backend API if server is running
+            // 4. Try backend API if server is running
             try {{
                 fetch('/api/order', {{
                     method: 'POST',
@@ -2584,8 +2562,18 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
 
             // 5. Display Order Confirmation with Live Status
             closeCheckoutModal();
+            try {{ localStorage.setItem('waiter_last_placed_order', orderId); }} catch(e) {{}}
             document.getElementById('successOrderRef').innerText = '#' + orderId.replace('ORD-', '');
             document.getElementById('successTableNum').innerText = `Table ${{tableNum}}`;
+
+            const kdsLink = document.getElementById('btnViewKdsModal');
+            if (kdsLink) {{
+                kdsLink.href = `../../admin/kitchen/?highlight=${{orderId}}`;
+            }}
+            const suiteLink = document.getElementById('btnViewSuiteModal');
+            if (suiteLink) {{
+                suiteLink.href = `../../#kitchen?highlight=${{orderId}}`;
+            }}
             const badge = document.getElementById('successOrderStatus');
             if (badge) {{
                 badge.textContent = 'SENT TO KITCHEN';
