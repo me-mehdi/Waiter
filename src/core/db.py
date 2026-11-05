@@ -53,6 +53,8 @@ class DatabaseStore:
                 cursor.execute("ALTER TABLE menu_items ADD COLUMN allergens_json TEXT DEFAULT '[]'")
             if "dietary_json" not in cols:
                 cursor.execute("ALTER TABLE menu_items ADD COLUMN dietary_json TEXT DEFAULT '[]'")
+            if "is_available" not in cols:
+                cursor.execute("ALTER TABLE menu_items ADD COLUMN is_available INTEGER DEFAULT 1")
 
             cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-1'", (json.dumps(["gluten", "fish"]), json.dumps(["halal"])))
             cursor.execute("UPDATE menu_items SET allergens_json = ?, dietary_json = ? WHERE id = 'item-2'", (json.dumps(["gluten", "eggs", "pork"]), json.dumps([])))
@@ -242,6 +244,40 @@ class DatabaseStore:
                 )
             """)
 
+            # 13. Dining Tables
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS dining_tables (
+                    id TEXT PRIMARY KEY,
+                    table_number INTEGER NOT NULL UNIQUE,
+                    capacity INTEGER NOT NULL DEFAULT 4,
+                    zone TEXT NOT NULL DEFAULT 'Main Dining Room',
+                    status TEXT DEFAULT 'AVAILABLE'
+                )
+            """)
+
+            # 14. Fridge & Freezer Temperature Logs
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS fridge_logs (
+                    id TEXT PRIMARY KEY,
+                    appliance TEXT NOT NULL,
+                    temperature REAL NOT NULL,
+                    status TEXT NOT NULL,
+                    recorded_by TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
+            # 15. Challenge 25 Refusal Register
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS challenge25_logs (
+                    id TEXT PRIMARY KEY,
+                    item_name TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    staff_member TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
             conn.commit()
             self._seed_default_data(cursor, conn)
 
@@ -302,6 +338,52 @@ class DatabaseStore:
                 VALUES (?, ?, ?, ?, ?)
             """, default_promos)
 
+        cursor.execute("SELECT COUNT(*) FROM dining_tables")
+        if cursor.fetchone()[0] == 0:
+            default_tables = [
+                ("tbl-1", 1, 2, "Main Dining Room", "AVAILABLE"),
+                ("tbl-2", 2, 2, "Main Dining Room", "AVAILABLE"),
+                ("tbl-3", 3, 4, "Main Dining Room", "AVAILABLE"),
+                ("tbl-4", 4, 4, "Main Dining Room", "OCCUPIED"),
+                ("tbl-5", 5, 6, "VIP Booth", "AVAILABLE"),
+                ("tbl-6", 6, 6, "VIP Booth", "AVAILABLE"),
+                ("tbl-7", 7, 2, "Patio & Terrace", "AVAILABLE"),
+                ("tbl-8", 8, 2, "Patio & Terrace", "AVAILABLE"),
+                ("tbl-9", 9, 4, "Patio & Terrace", "AVAILABLE"),
+                ("tbl-10", 10, 4, "Bar Lounge", "AVAILABLE"),
+                ("tbl-11", 11, 4, "Bar Lounge", "AVAILABLE"),
+                ("tbl-12", 12, 8, "Banquet Table", "OCCUPIED")
+            ]
+            cursor.executemany("""
+                INSERT INTO dining_tables (id, table_number, capacity, zone, status)
+                VALUES (?, ?, ?, ?, ?)
+            """, default_tables)
+
+        cursor.execute("SELECT COUNT(*) FROM fridge_logs")
+        if cursor.fetchone()[0] == 0:
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+            default_fridge = [
+                ("frg-1", "Walk-in Meat Chiller", 2.4, "NORMAL (PASS)", "Chef Gordon", now_iso),
+                ("frg-2", "Cellar Keg Room", 11.2, "NORMAL (PASS)", "Alice Vance", now_iso),
+                ("frg-3", "Fish & Seafood Fridge", 1.8, "NORMAL (PASS)", "Chef Gordon", now_iso)
+            ]
+            cursor.executemany("""
+                INSERT INTO fridge_logs (id, appliance, temperature, status, recorded_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, default_fridge)
+
+        cursor.execute("SELECT COUNT(*) FROM challenge25_logs")
+        if cursor.fetchone()[0] == 0:
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+            default_c25 = [
+                ("c25-1", "Craft IPA Pint", "No valid ID presented (suspected underage)", "Charlie Parker", now_iso),
+                ("c25-2", "House Red Wine Bottle", "Expired driving licence presented", "Diana Ross", now_iso)
+            ]
+            cursor.executemany("""
+                INSERT INTO challenge25_logs (id, item_name, reason, staff_member, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, default_c25)
+
         try:
             from src.core.seed_restaurant_menu import seed_menu
             seed_menu(conn)
@@ -324,6 +406,9 @@ class DatabaseStore:
             cursor.execute("DELETE FROM food_waste")
             cursor.execute("DELETE FROM table_bookings")
             cursor.execute("DELETE FROM store_transfers")
+            cursor.execute("DELETE FROM dining_tables")
+            cursor.execute("DELETE FROM fridge_logs")
+            cursor.execute("DELETE FROM challenge25_logs")
             conn.commit()
             self._seed_default_data(cursor, conn)
 
@@ -353,7 +438,8 @@ class DatabaseStore:
                     "is_new": bool(row["is_new"]) if "is_new" in row.keys() else False,
                     "image_url": row["image_url"] if "image_url" in row.keys() else "",
                     "modifiers": json.loads(row["modifiers_json"]) if ("modifiers_json" in row.keys() and row["modifiers_json"]) else {},
-                    "price_from": bool(row["price_from"]) if "price_from" in row.keys() else False
+                    "price_from": bool(row["price_from"]) if "price_from" in row.keys() else False,
+                    "is_available": bool(row["is_available"]) if ("is_available" in row.keys() and row["is_available"] is not None) else (row["stock_qty"] > 0 if "stock_qty" in row.keys() else True)
                 }
             return items
 
@@ -707,5 +793,217 @@ class DatabaseStore:
             ))
             conn.commit()
             return review
+
+    # --- Admin CRUD & Control Methods ---
+    def add_menu_item(self, item_data: dict) -> dict:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            item_id = item_data.get("id")
+            if not item_id:
+                import uuid
+                item_id = f"item-{uuid.uuid4().hex[:8]}"
+
+            name_val = item_data.get("name")
+            if isinstance(name_val, dict):
+                name_en = item_data.get("name_en") or name_val.get("en", "New Dish")
+                name_fr = item_data.get("name_fr") or name_val.get("fr", "")
+                name_ar = item_data.get("name_ar") or name_val.get("ar", "")
+            else:
+                name_en = item_data.get("name_en") or (str(name_val) if name_val else "New Dish")
+                name_fr = item_data.get("name_fr", "")
+                name_ar = item_data.get("name_ar", "")
+
+            desc_val = item_data.get("description")
+            if isinstance(desc_val, dict):
+                desc_en = item_data.get("desc_en") or desc_val.get("en", "")
+                desc_fr = item_data.get("desc_fr") or desc_val.get("fr", "")
+                desc_ar = item_data.get("desc_ar") or desc_val.get("ar", "")
+            else:
+                desc_en = item_data.get("desc_en") or (str(desc_val) if desc_val else "")
+                desc_fr = item_data.get("desc_fr", "")
+                desc_ar = item_data.get("desc_ar", "")
+
+            price = float(item_data.get("price", 9.99))
+            category = item_data.get("category", "Mains")
+            upsell_ids = json.dumps(item_data.get("upsell_ids", []))
+            stock_qty = int(item_data.get("stock_qty", 30))
+            allergens_json = json.dumps(item_data.get("allergens", []))
+            dietary_json = json.dumps(item_data.get("dietary", []))
+            kcal = int(item_data.get("kcal", 0))
+            serves = str(item_data.get("serves", ""))
+            is_featured = 1 if item_data.get("is_featured") else 0
+            is_new = 1 if item_data.get("is_new") else 0
+            image_url = str(item_data.get("image_url", ""))
+            modifiers_json = json.dumps(item_data.get("modifiers", {}))
+            price_from = 1 if item_data.get("price_from") else 0
+            is_available = 0 if item_data.get("is_available") is False else 1
+
+            cursor.execute("""
+                INSERT OR REPLACE INTO menu_items (
+                    id, name_en, name_fr, name_ar, desc_en, desc_fr, desc_ar,
+                    price, category, upsell_ids, stock_qty, allergens_json, dietary_json,
+                    kcal, serves, is_featured, is_new, image_url, modifiers_json, price_from, is_available
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                item_id, name_en, name_fr, name_ar, desc_en, desc_fr, desc_ar,
+                price, category, upsell_ids, stock_qty, allergens_json, dietary_json,
+                kcal, serves, is_featured, is_new, image_url, modifiers_json, price_from, is_available
+            ))
+            conn.commit()
+            return self.menu_items.get(item_id, {})
+
+    def update_menu_item(self, item_id: str, item_data: dict) -> Optional[dict]:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM menu_items WHERE id = ?", (item_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            name_val = item_data.get("name")
+            if isinstance(name_val, dict):
+                name_en = item_data.get("name_en") or name_val.get("en", row["name_en"])
+                name_fr = item_data.get("name_fr") or name_val.get("fr", row["name_fr"])
+                name_ar = item_data.get("name_ar") or name_val.get("ar", row["name_ar"])
+            else:
+                name_en = item_data.get("name_en") or (str(name_val) if name_val else row["name_en"])
+                name_fr = item_data.get("name_fr", row["name_fr"])
+                name_ar = item_data.get("name_ar", row["name_ar"])
+
+            desc_val = item_data.get("description")
+            if isinstance(desc_val, dict):
+                desc_en = item_data.get("desc_en") or desc_val.get("en", row["desc_en"])
+                desc_fr = item_data.get("desc_fr") or desc_val.get("fr", row["desc_fr"])
+                desc_ar = item_data.get("desc_ar") or desc_val.get("ar", row["desc_ar"])
+            else:
+                desc_en = item_data.get("desc_en") or (str(desc_val) if desc_val else row["desc_en"])
+                desc_fr = item_data.get("desc_fr", row["desc_fr"])
+                desc_ar = item_data.get("desc_ar", row["desc_ar"])
+
+            price = float(item_data.get("price", row["price"]))
+            category = item_data.get("category", row["category"])
+            stock_qty = int(item_data.get("stock_qty", row["stock_qty"] if "stock_qty" in row.keys() else 30))
+            kcal = int(item_data.get("kcal", row["kcal"] if "kcal" in row.keys() else 0))
+            image_url = item_data.get("image_url", row["image_url"] if "image_url" in row.keys() else "")
+
+            allergens_json = json.dumps(item_data.get("allergens")) if "allergens" in item_data else (row["allergens_json"] if "allergens_json" in row.keys() else "[]")
+            dietary_json = json.dumps(item_data.get("dietary")) if "dietary" in item_data else (row["dietary_json"] if "dietary_json" in row.keys() else "[]")
+
+            if "is_available" in item_data:
+                is_available = 0 if item_data["is_available"] is False else 1
+            else:
+                is_available = row["is_available"] if "is_available" in row.keys() else 1
+
+            cursor.execute("""
+                UPDATE menu_items SET
+                    name_en = ?, name_fr = ?, name_ar = ?,
+                    desc_en = ?, desc_fr = ?, desc_ar = ?,
+                    price = ?, category = ?, stock_qty = ?, kcal = ?,
+                    image_url = ?, allergens_json = ?, dietary_json = ?, is_available = ?
+                WHERE id = ?
+            """, (
+                name_en, name_fr, name_ar, desc_en, desc_fr, desc_ar,
+                price, category, stock_qty, kcal, image_url, allergens_json, dietary_json, is_available, item_id
+            ))
+            conn.commit()
+            return self.menu_items.get(item_id)
+
+    def delete_menu_item(self, item_id: str) -> bool:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM menu_items WHERE id = ?", (item_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def toggle_menu_item_86(self, item_id: str, is_available: Optional[bool] = None) -> Optional[dict]:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM menu_items WHERE id = ?", (item_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            curr_avail = bool(row["is_available"]) if ("is_available" in row.keys() and row["is_available"] is not None) else (row["stock_qty"] > 0)
+            new_avail = (not curr_avail) if is_available is None else is_available
+            new_val = 1 if new_avail else 0
+            cursor.execute("UPDATE menu_items SET is_available = ? WHERE id = ?", (new_val, item_id))
+            conn.commit()
+            return self.menu_items.get(item_id)
+
+    def get_tables(self) -> List[dict]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM dining_tables ORDER BY table_number ASC")
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    def add_or_update_table(self, table_number: int, capacity: int = 4, zone: str = "Main Dining Room", status: str = "AVAILABLE") -> dict:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            table_id = f"tbl-{table_number}"
+            cursor.execute("""
+                INSERT INTO dining_tables (id, table_number, capacity, zone, status)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(table_number) DO UPDATE SET
+                    capacity = excluded.capacity,
+                    zone = excluded.zone,
+                    status = excluded.status
+            """, (table_id, table_number, capacity, zone, status))
+            conn.commit()
+            return {"id": table_id, "table_number": table_number, "capacity": capacity, "zone": zone, "status": status}
+
+    def delete_table(self, table_number: int) -> bool:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM dining_tables WHERE table_number = ?", (table_number,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_table_status(self, table_number: int, status: str) -> bool:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE dining_tables SET status = ? WHERE table_number = ?", (status, table_number))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def get_fridge_logs(self) -> List[dict]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM fridge_logs ORDER BY created_at DESC LIMIT 50")
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    def add_fridge_log(self, appliance: str, temperature: float, recorded_by: str = "Manager") -> dict:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            import uuid
+            log_id = f"frg-{uuid.uuid4().hex[:8]}"
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+            status = "ALERT (HIGH)" if temperature > 8.0 else ("ALERT (LOW)" if temperature < -25.0 else "NORMAL (PASS)")
+            cursor.execute("""
+                INSERT INTO fridge_logs (id, appliance, temperature, status, recorded_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (log_id, appliance, float(temperature), status, recorded_by, now_iso))
+            conn.commit()
+            return {"id": log_id, "appliance": appliance, "temperature": float(temperature), "status": status, "recorded_by": recorded_by, "created_at": now_iso}
+
+    def get_challenge25_logs(self) -> List[dict]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM challenge25_logs ORDER BY created_at DESC LIMIT 50")
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    def add_challenge25_log(self, item_name: str, reason: str, staff_member: str = "Server") -> dict:
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.cursor()
+            import uuid
+            log_id = f"c25-{uuid.uuid4().hex[:8]}"
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+            cursor.execute("""
+                INSERT INTO challenge25_logs (id, item_name, reason, staff_member, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (log_id, item_name, reason, staff_member, now_iso))
+            conn.commit()
+            return {"id": log_id, "item_name": item_name, "reason": reason, "staff_member": staff_member, "created_at": now_iso}
 
 db = DatabaseStore()

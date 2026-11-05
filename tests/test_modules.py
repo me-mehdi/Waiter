@@ -1204,6 +1204,85 @@ class TestWaiterModules(unittest.TestCase):
             self.assertIn("#0f1520", html)
             self.assertIn("#c8a86b", html)
 
+    def test_admin_dashboard_page_and_crud_api_endpoints(self):
+        """
+        Verify the Admin Control Console page (/admin) and all CRUD API endpoints:
+        Menu Items Add/Edit/Delete/86-Toggle, Orders pipeline, Tables QR studio,
+        and UK statutory compliance logs.
+        """
+        from src.app import app
+        client = app.test_client()
+
+        # 1. Admin Page Route
+        res = client.get("/admin")
+        self.assertEqual(res.status_code, 200)
+        html = res.get_data(as_text=True)
+        self.assertIn("Admin Console", html)
+        self.assertIn("Menu &amp; Dish Catalog Control", html)
+        self.assertIn("Live Orders &amp; Kitchen Pipeline", html)
+        self.assertIn("Dining Floor Plan &amp; QR Code Studio", html)
+        self.assertIn("Fraunces", html)
+
+        # 2. Get Menu
+        res = client.get("/api/admin/menu")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        self.assertGreater(data.get("count", 0), 0)
+
+        # 3. Add Menu Item (CRUD: Create)
+        new_dish = {
+            "name_en": "Truffle &amp; Rosemary Chips",
+            "category": "Sides",
+            "price": 5.95,
+            "desc_en": "Triple cooked skin-on chips tossed in white truffle oil and rosemary sea salt.",
+            "allergens": ["cereals_with_gluten"],
+            "dietary": ["vegan", "vegetarian", "halal"],
+            "stock_qty": 40
+        }
+        res = client.post("/api/admin/menu", json=new_dish)
+        self.assertEqual(res.status_code, 201)
+        created = res.get_json().get("item")
+        item_id = created.get("id")
+        self.assertTrue(item_id)
+        self.assertEqual(created.get("category"), "Sides")
+
+        # 4. Update Menu Item (CRUD: Update)
+        res = client.put(f"/api/admin/menu/{item_id}", json={"price": 6.50, "category": "Sides"})
+        self.assertEqual(res.status_code, 200)
+        updated = res.get_json().get("item")
+        self.assertEqual(updated.get("price"), 6.50)
+
+        # 5. Toggle 86 / Out of Stock
+        res = client.post(f"/api/admin/menu/{item_id}/toggle-86", json={"is_available": False})
+        self.assertEqual(res.status_code, 200)
+        toggled = res.get_json().get("item")
+        self.assertFalse(toggled.get("is_available"))
+
+        # 6. Delete Menu Item (CRUD: Delete)
+        res = client.delete(f"/api/admin/menu/{item_id}")
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.get_json().get("success"))
+
+        # 7. Tables Management
+        res = client.get("/api/admin/tables")
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.get_json().get("success"))
+
+        res = client.post("/api/admin/tables", json={"table_number": 99, "capacity": 6, "zone": "VIP Terrace"})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.get_json()["table"]["table_number"], 99)
+
+        res = client.delete("/api/admin/tables/99")
+        self.assertEqual(res.status_code, 200)
+
+        # 8. Compliance Logs (Fridge & Challenge 25)
+        res = client.post("/api/admin/compliance/fridge", json={"appliance": "Bar Keg Chiller", "temperature": 3.8, "recorded_by": "Duty Manager"})
+        self.assertEqual(res.status_code, 201)
+
+        res = client.post("/api/admin/compliance/c25", json={"item_name": "Craft Cider", "reason": "No photo ID produced", "staff_member": "Alice"})
+        self.assertEqual(res.status_code, 201)
+
 if __name__ == "__main__":
     unittest.main()
 

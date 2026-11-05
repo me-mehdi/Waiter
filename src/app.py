@@ -46,6 +46,7 @@ from src.modules.growth_customers import growth_customers_service
 from src.modules.reliability import reliability_service
 from src.modules.navy_brass_ui import NAVY_BRASS_SUITE_HTML, render_navy_brass_page
 from src.modules.restaurant_ordering_ui import render_restaurant_ordering_html
+from src.modules.admin_dashboard_ui import render_admin_dashboard
 
 app = Flask(__name__)
 
@@ -551,6 +552,12 @@ def kitchen_display_page():
 @app.route("/dashboard")
 def owner_today_page():
     return render_template_string(render_navy_brass_page("today"))
+
+@app.route("/admin")
+@app.route("/admin/")
+def admin_console_page():
+    active_tab = request.args.get("tab", "menu")
+    return render_template_string(render_admin_dashboard(active_tab=active_tab))
 
 @app.route("/till")
 @app.route("/pos")
@@ -2130,6 +2137,110 @@ def run_certified_printer_diagnostic():
 @app.route("/uk", methods=["GET"])
 def render_navy_and_brass_uk_suite():
     return render_template_string(NAVY_BRASS_SUITE_HTML)
+
+
+# =====================================================================
+# 35. Admin Control Console API Endpoints (CRUD & Venue Management)
+# =====================================================================
+
+@app.route("/api/admin/menu", methods=["GET"])
+def api_admin_get_menu():
+    items = list(db.menu_items.values())
+    return jsonify({"success": True, "items": items, "count": len(items)})
+
+@app.route("/api/admin/menu", methods=["POST"])
+def api_admin_add_menu():
+    data = request.get_json() or {}
+    item = db.add_menu_item(data)
+    return jsonify({"success": True, "item": item}), 201
+
+@app.route("/api/admin/menu/<item_id>", methods=["PUT"])
+def api_admin_update_menu(item_id):
+    data = request.get_json() or {}
+    item = db.update_menu_item(item_id, data)
+    if not item:
+        return jsonify({"success": False, "error": "Item not found"}), 404
+    return jsonify({"success": True, "item": item})
+
+@app.route("/api/admin/menu/<item_id>", methods=["DELETE"])
+def api_admin_delete_menu(item_id):
+    deleted = db.delete_menu_item(item_id)
+    return jsonify({"success": deleted})
+
+@app.route("/api/admin/menu/<item_id>/toggle-86", methods=["POST"])
+def api_admin_toggle_86(item_id):
+    data = request.get_json() or {}
+    is_avail = data.get("is_available")
+    item = db.toggle_menu_item_86(item_id, is_avail)
+    if not item:
+        return jsonify({"success": False, "error": "Item not found"}), 404
+    return jsonify({"success": True, "item": item})
+
+@app.route("/api/admin/orders", methods=["GET"])
+def api_admin_get_orders():
+    orders = list(db.orders.values())
+    return jsonify({"success": True, "orders": orders, "count": len(orders)})
+
+@app.route("/api/admin/orders/<order_id>/status", methods=["POST"])
+def api_admin_update_order_status(order_id):
+    data = request.get_json() or {}
+    new_status = data.get("status", "Preparing")
+    updated = db.update_order_status(order_id, new_status)
+    return jsonify({"success": bool(updated), "order": updated})
+
+@app.route("/api/admin/orders/<order_id>/void", methods=["POST"])
+def api_admin_void_order(order_id):
+    res = db.cancel_order(order_id)
+    return jsonify({"success": bool(res), "order": res})
+
+@app.route("/api/admin/tables", methods=["GET"])
+def api_admin_get_tables():
+    tables = db.get_tables()
+    return jsonify({"success": True, "tables": tables})
+
+@app.route("/api/admin/tables", methods=["POST"])
+def api_admin_add_table():
+    data = request.get_json() or {}
+    num = int(data.get("table_number", 1))
+    cap = int(data.get("capacity", 4))
+    zone = str(data.get("zone", "Main Dining Room"))
+    status = str(data.get("status", "AVAILABLE"))
+    tbl = db.add_or_update_table(num, cap, zone, status)
+    return jsonify({"success": True, "table": tbl})
+
+@app.route("/api/admin/tables/<int:table_num>", methods=["DELETE"])
+def api_admin_delete_table(table_num):
+    deleted = db.delete_table(table_num)
+    return jsonify({"success": deleted})
+
+@app.route("/api/admin/tables/<int:table_num>/status", methods=["POST"])
+def api_admin_update_table_status(table_num):
+    data = request.get_json() or {}
+    status = str(data.get("status", "AVAILABLE"))
+    updated = db.update_table_status(table_num, status)
+    return jsonify({"success": updated})
+
+@app.route("/api/admin/compliance/fridge", methods=["GET", "POST"])
+def api_admin_fridge_logs():
+    if request.method == "POST":
+        data = request.get_json() or {}
+        appliance = str(data.get("appliance", "Walk-in Meat Chiller"))
+        temp = float(data.get("temperature", 3.0))
+        by = str(data.get("recorded_by", "Manager"))
+        log = db.add_fridge_log(appliance, temp, by)
+        return jsonify({"success": True, "log": log}), 201
+    return jsonify({"success": True, "logs": db.get_fridge_logs()})
+
+@app.route("/api/admin/compliance/c25", methods=["GET", "POST"])
+def api_admin_c25_logs():
+    if request.method == "POST":
+        data = request.get_json() or {}
+        item = str(data.get("item_name", "Pint of Lager"))
+        reason = str(data.get("reason", "No ID presented"))
+        staff = str(data.get("staff_member", "Server"))
+        log = db.add_challenge25_log(item, reason, staff)
+        return jsonify({"success": True, "log": log}), 201
+    return jsonify({"success": True, "logs": db.get_challenge25_logs()})
 
 
 if __name__ == "__main__":
