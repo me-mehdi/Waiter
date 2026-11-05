@@ -1899,24 +1899,28 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
     <!-- MODAL: QR CODE PREVIEW & PRINT                                -->
     <!-- ============================================================== -->
     <div class="admin-modal-backdrop" id="qrModalBackdrop">
-        <div class="admin-modal" style="max-width:420px; text-align:center;">
+        <div class="admin-modal" style="max-width:440px; text-align:center;">
             <div class="admin-modal-header">
                 <h3 class="nb-serif admin-modal-title" id="qrModalTitle">Table QR Code</h3>
                 <button type="button" class="admin-modal-close" onclick="closeQrModal()">&times;</button>
             </div>
             <div class="admin-modal-body">
-                <div style="background:#FAF7F2; padding:24px; border-radius:12px; display:inline-block; margin-bottom:16px;">
-                    <div id="qrCodeContainer" style="width:200px; height:200px; margin:0 auto; background:#fff; display:flex; align-items:center; justify-content:center;">
+                <div style="font-size:12px; color:var(--nb-text-muted); margin-bottom:8px;">Switch Table QR Stand:</div>
+                <div id="qrTablePillsContainer" style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center; margin-bottom:14px;"></div>
+
+                <div style="background:#FAF7F2; padding:20px; border-radius:12px; display:inline-block; margin-bottom:14px; border:1px solid #e2d9cd; box-shadow: 0 4px 14px rgba(0,0,0,0.06);">
+                    <div id="qrCodeContainer" style="width:200px; height:200px; margin:0 auto; background:#fff; display:flex; align-items:center; justify-content:center; border-radius:8px; overflow:hidden;">
                         <img id="qrCodeImg" src="" alt="Table QR Code" style="width:100%; height:100%;">
                     </div>
                     <div style="color:#141c28; font-weight:800; font-size:18px; margin-top:12px;" id="qrTableLabel">TABLE 12</div>
-                    <div style="color:#64748b; font-size:12px;">Scan to order in your language</div>
+                    <div style="color:#64748b; font-size:12px; margin-top:2px;">Scan with phone camera to order</div>
                 </div>
-                <div style="font-size:13px; color:var(--nb-text-muted); word-break:break-all;" id="qrUrlDisplay"></div>
+                <div style="font-size:12px; color:var(--nb-text-muted); word-break:break-all; background:rgba(0,0,0,0.2); padding:8px 12px; border-radius:6px;" id="qrUrlDisplay"></div>
             </div>
-            <div class="admin-modal-footer" style="justify-content:center;">
-                <button type="button" class="nb-btn nb-btn-navy" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Tent Card</button>
-                <a id="qrTestLink" href="#" target="_blank" class="nb-btn nb-btn-brass"><i class="fa-solid fa-arrow-up-right-from-square"></i> Test QR URL</a>
+            <div class="admin-modal-footer" style="justify-content:center; gap:8px;">
+                <button type="button" class="nb-btn nb-btn-navy" onclick="downloadQrImage()"><i class="fa-solid fa-download"></i> Save PNG</button>
+                <button type="button" class="nb-btn nb-btn-navy" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Tent</button>
+                <a id="qrTestLink" href="#" target="_blank" class="nb-btn nb-btn-brass"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Table Menu</a>
             </div>
         </div>
     </div>
@@ -2524,9 +2528,27 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
         }}
 
         // QR Code Modal
+        let activeQrTableNum = 1;
+
+        function getTableOrderUrl(tableNum) {{
+            if (window.location.protocol === 'file:') {{
+                const rootUrl = window.location.href.split('/admin')[0];
+                return `${{rootUrl}}/order/menu/index.html?table=${{tableNum}}`;
+            }}
+            let rootUrl = window.location.href.split('#')[0].split('?')[0];
+            rootUrl = rootUrl.replace(/\/admin(?:\/index\.html|\/)?$/, '');
+            return `${{rootUrl}}/order/menu/?table=${{tableNum}}`;
+        }}
+
         function openQrModal(tableNum) {{
-            const baseUrl = window.location.origin + window.location.pathname.replace(/\\/admin\\/?$/, '');
-            const targetUrl = `${{baseUrl}}/order/menu/?table=${{tableNum}}`;
+            activeQrTableNum = tableNum || 1;
+            renderQrForTable(activeQrTableNum);
+            document.getElementById('qrModalBackdrop').classList.add('show');
+        }}
+
+        function renderQrForTable(tableNum) {{
+            activeQrTableNum = tableNum;
+            const targetUrl = getTableOrderUrl(tableNum);
 
             document.getElementById('qrModalTitle').textContent = `Table #${{tableNum}} QR Stand`;
             document.getElementById('qrTableLabel').textContent = `TABLE ${{tableNum}}`;
@@ -2534,14 +2556,49 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             document.getElementById('qrTestLink').href = targetUrl;
 
             // Generate clean QR image using reliable public API
-            const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=${{encodeURIComponent(targetUrl)}}`;
+            const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=${{encodeURIComponent(targetUrl)}}`;
             document.getElementById('qrCodeImg').src = qrImgUrl;
 
-            document.getElementById('qrModalBackdrop').classList.add('show');
+            // Render table selector pills
+            const pillsContainer = document.getElementById('qrTablePillsContainer');
+            if (pillsContainer) {{
+                pillsContainer.innerHTML = '';
+                for (let i = 1; i <= 12; i++) {{
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'nb-btn nb-btn-sm ' + (i === tableNum ? 'nb-btn-brass' : 'nb-btn-outline-brass');
+                    btn.style.padding = '2px 8px';
+                    btn.style.fontSize = '11px';
+                    btn.textContent = `T${{i}}`;
+                    btn.onclick = () => renderQrForTable(i);
+                    pillsContainer.appendChild(btn);
+                }}
+            }}
         }}
 
         function closeQrModal() {{
             document.getElementById('qrModalBackdrop').classList.remove('show');
+        }}
+
+        function downloadQrImage() {{
+            const qrImg = document.getElementById('qrCodeImg');
+            if (!qrImg || !qrImg.src) return;
+            fetch(qrImg.src)
+                .then(res => res.blob())
+                .then(blob => {{
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `Table_${{activeQrTableNum}}_QR.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                }})
+                .catch(() => {{
+                    window.open(qrImg.src, '_blank');
+                }});
         }}
 
         // --- UK COMPLIANCE ---

@@ -1102,10 +1102,10 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
                 </div>
             </a>
 
-            <div class="dine-in-context">
+            <div class="dine-in-context" onclick="promptChangeTable()" style="cursor: pointer;" title="Click to change table number">
                 <i class="fa-solid fa-location-dot" style="color: var(--primary);"></i>
                 <span>Eating in Restaurant</span>
-                <span class="table-tag" id="headerTableTag">TABLE {table_num}</span>
+                <span class="table-tag" id="headerTableTag"><i class="fa-solid fa-chair" style="margin-right:4px;"></i>TABLE {table_num}</span>
             </div>
 
             <div class="header-actions">
@@ -1123,6 +1123,17 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
             </div>
         </div>
     </header>
+
+    <!-- ACTIVE TABLE NOTIFICATION BANNER -->
+    <div id="tableActiveBanner" style="display:none; align-items:center; justify-content:space-between; background: linear-gradient(90deg, #141c28, #1e293b); color:#fff; border-bottom: 2px solid #c8a86b; padding: 10px 18px; font-size: 0.86rem;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="background:#c8a86b; color:#000; font-weight:800; font-size:11px; padding:2px 8px; border-radius:12px;"><i class="fa-solid fa-qrcode"></i> QR SEATED</span>
+            <span id="tableActiveBannerText"><strong>Table {table_num}</strong> · Direct QR Order Active</span>
+        </div>
+        <button type="button" onclick="promptChangeTable()" style="background:rgba(255,255,255,0.12); color:#e2e8f0; border:1px solid rgba(255,255,255,0.25); border-radius:6px; padding:3px 10px; font-size:0.78rem; font-weight:700; cursor:pointer;">
+            <i class="fa-solid fa-pen-to-square"></i> Change Table
+        </button>
+    </div>
 
     <!-- STICKY CATEGORY NAV -->
     <nav class="category-nav-wrap">
@@ -1143,7 +1154,7 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
             <div class="basket-sidebar-card">
                 <div class="basket-header">
                     <div class="basket-header-title">Your Order</div>
-                    <span class="table-tag" style="background: var(--charcoal); color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700;">Table {table_num}</span>
+                    <span class="table-tag" id="sidebarTableTag" style="background: var(--charcoal); color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700;">Table {table_num}</span>
                 </div>
                 
                 <div class="basket-body" id="sidebarBasketBody">
@@ -1289,7 +1300,7 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
                     <div style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 900; color: var(--charcoal);">
                         <i class="fa-solid fa-basket-shopping text-primary me-2"></i>Your Basket
                     </div>
-                    <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; margin-top: 2px;">
+                    <div id="drawerTableSub" style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; margin-top: 2px;">
                         Table {table_num} · Dine-in
                     </div>
                 </div>
@@ -1823,11 +1834,104 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
             }});
         }}
 
+        // --- TABLE QR ROUTING & DINE-IN PERSISTENCE ---
+        function resolveTableNumber() {{
+            try {{
+                const params = new URLSearchParams(window.location.search);
+                let tbl = params.get('table') || params.get('tbl') || params.get('t');
+                if (!tbl && window.location.hash) {{
+                    const match = window.location.hash.match(/(?:table|tbl|t)=(\d+)/i);
+                    if (match) tbl = match[1];
+                }}
+                if (tbl && !isNaN(parseInt(tbl))) {{
+                    const num = parseInt(tbl);
+                    localStorage.setItem('waiter_active_table', num);
+                    sessionStorage.setItem('waiter_active_table', num);
+                    return {{ number: num, fromUrl: true }};
+                }}
+            }} catch(e) {{}}
+
+            const saved = localStorage.getItem('waiter_active_table') || sessionStorage.getItem('waiter_active_table');
+            if (saved && !isNaN(parseInt(saved))) {{
+                return {{ number: parseInt(saved), fromUrl: false }};
+            }}
+
+            return {{ number: typeof INITIAL_TABLE !== 'undefined' ? INITIAL_TABLE : 12, fromUrl: false }};
+        }}
+
+        function setActiveTable(tblNum, showBanner = false) {{
+            const num = parseInt(tblNum) || 12;
+            window.ACTIVE_TABLE = num;
+            localStorage.setItem('waiter_active_table', num);
+            sessionStorage.setItem('waiter_active_table', num);
+
+            // Update Header Tag
+            const headerTag = document.getElementById('headerTableTag');
+            if (headerTag) {{
+                headerTag.innerHTML = `<i class="fa-solid fa-chair" style="margin-right:4px;"></i>TABLE ${{num}}`;
+                headerTag.title = 'Click to switch table';
+                headerTag.style.cursor = 'pointer';
+            }}
+
+            // Update Sidebar Tag
+            const sidebarTag = document.getElementById('sidebarTableTag');
+            if (sidebarTag) {{
+                sidebarTag.textContent = `Table ${{num}}`;
+            }}
+
+            // Update Drawer Subtext
+            const drawerSub = document.getElementById('drawerTableSub');
+            if (drawerSub) {{
+                drawerSub.textContent = `Table ${{num}} · Dine-in`;
+            }}
+
+            // Update Checkout Input
+            const checkoutInput = document.getElementById('checkoutTableNum');
+            if (checkoutInput) {{
+                checkoutInput.value = num;
+            }}
+
+            // Update Confirmation modal
+            const successTbl = document.getElementById('successTableNum');
+            if (successTbl) {{
+                successTbl.textContent = `Table ${{num}}`;
+            }}
+
+            // Show Dine-in Banner if arriving via QR or requested
+            const banner = document.getElementById('tableActiveBanner');
+            const bannerText = document.getElementById('tableActiveBannerText');
+            if (banner && bannerText) {{
+                bannerText.innerHTML = `<strong>Table ${{num}}</strong> · Direct QR Order Active`;
+                banner.style.display = 'flex';
+            }}
+        }}
+
+        function promptChangeTable() {{
+            const current = window.ACTIVE_TABLE || 12;
+            const input = prompt(`Switch to another table number (1-50):`, current);
+            if (input !== null) {{
+                const parsed = parseInt(input.trim());
+                if (!isNaN(parsed) && parsed >= 1 && parsed <= 99) {{
+                    setActiveTable(parsed, true);
+                    try {{
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.set('table', parsed);
+                        window.history.replaceState({{}}, '', newUrl.toString());
+                    }} catch(e) {{}}
+                }}
+            }}
+        }}
+
         // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {{
             if (window.self !== window.top) {{
                 document.body.classList.add('is-embedded');
             }}
+
+            // Setup table routing first
+            const tableRes = resolveTableNumber();
+            setActiveTable(tableRes.number, tableRes.fromUrl);
+
             initRealtimeSync();
             renderCategories();
             renderMenuSections();
@@ -2465,7 +2569,7 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing Payment...';
 
-            const tableNum = parseInt(document.getElementById('checkoutTableNum').value) || INITIAL_TABLE;
+            const tableNum = parseInt(document.getElementById('checkoutTableNum').value) || window.ACTIVE_TABLE || INITIAL_TABLE;
             const dinerName = document.getElementById('checkoutDinerName').value.trim() || 'Guest';
             const email = document.getElementById('checkoutEmail').value.trim() || 'guest@restaurant.co.uk';
             const notes = document.getElementById('checkoutNotes').value.trim();

@@ -869,7 +869,7 @@ def get_table_qr_png(table_num):
 @app.route("/api/qr/table/<int:table_num>/preview", methods=["GET"])
 def get_table_qr_preview(table_num):
     base_url = request.host_url.rstrip("/")
-    table_url = f"{base_url}/?table={table_num}"
+    table_url = f"{base_url}/order/menu/?table={table_num}"
     b64_img = qr_generator_service.generate_table_qr_base64(table_num, base_url)
     return jsonify({
         "table_number": table_num,

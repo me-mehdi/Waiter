@@ -616,6 +616,13 @@
             <p style="font-size: 14px; color: #94a3b8; max-width: 480px; margin: 0 auto;">
                 Live mobile ordering app powered directly by <a href="./order/menu/" target="_blank" style="color: var(--nb-brass); text-decoration: underline;">/order/menu/</a>.
             </p>
+            <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:16px; flex-wrap:wrap;">
+                <span style="font-size:13px; color:#94a3b8; font-weight:600;"><i class="fa-solid fa-qrcode" style="color:var(--nb-brass);"></i> Simulate Table QR Scan:</span>
+                <button type="button" class="nb-btn nb-btn-sm nb-btn-outline-brass" onclick="simulateSuiteTableScan(4)" id="suiteBtnT4">Table 4</button>
+                <button type="button" class="nb-btn nb-btn-sm nb-btn-outline-brass" onclick="simulateSuiteTableScan(10)" id="suiteBtnT10">Table 10</button>
+                <button type="button" class="nb-btn nb-btn-sm nb-btn-brass" onclick="simulateSuiteTableScan(12)" id="suiteBtnT12">Table 12</button>
+                <button type="button" class="nb-btn nb-btn-sm nb-btn-outline-brass" onclick="simulateSuiteTableScan(15)" id="suiteBtnT15">Table 15</button>
+            </div>
         </div>
         <div class="nb-phone-wrapper">
             <div class="nb-phone-frame" role="region" aria-label="Customer Phone QR Order Interface" style="width: 390px; height: 844px; max-width: 100%; border: 12px solid #141c28; border-radius: 48px; box-shadow: 0 25px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08); background: #FAF7F2; position: relative; overflow: hidden; display: flex; flex-direction: column;">
@@ -2147,14 +2154,39 @@
         });
     }
 
+    function simulateSuiteTableScan(tableNum) {
+        const frame = document.getElementById('nbLiveMobileOrderFrame');
+        if (frame) {
+            frame.src = `./order/menu/?table=${tableNum}`;
+        }
+        [4, 10, 12, 15].forEach(t => {
+            const btn = document.getElementById(`suiteBtnT${t}`);
+            if (btn) {
+                btn.className = 'nb-btn nb-btn-sm ' + (t === tableNum ? 'nb-btn-brass' : 'nb-btn-outline-brass');
+            }
+        });
+    }
+
+    function checkSuiteInitialTable() {
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tbl = urlParams.get('table') || urlParams.get('tbl');
+            if (tbl) {
+                simulateSuiteTableScan(parseInt(tbl));
+            }
+        } catch(e) {}
+    }
+
     // Initialize screen on DOM ready
     window.addEventListener('DOMContentLoaded', () => {
         initScreenRouting();
         initKdsRealtimeSync();
+        checkSuiteInitialTable();
     });
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
         initScreenRouting();
         initKdsRealtimeSync();
+        checkSuiteInitialTable();
     }
 </script>
 </body>

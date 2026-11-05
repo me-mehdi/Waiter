@@ -15,7 +15,7 @@ class QRGeneratorModule:
     
     def generate_table_qr_png(self, table_number: int, base_url: str = "http://127.0.0.1:5050") -> bytes:
         """Generates a PNG image byte stream for a table's QR code."""
-        table_url = f"{base_url}/?table={table_number}"
+        table_url = f"{base_url}/order/menu/?table={table_number}"
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_M,
