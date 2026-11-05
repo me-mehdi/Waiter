@@ -47,6 +47,7 @@ from src.modules.reliability import reliability_service
 from src.modules.navy_brass_ui import NAVY_BRASS_SUITE_HTML, render_navy_brass_page
 from src.modules.restaurant_ordering_ui import render_restaurant_ordering_html
 from src.modules.admin_dashboard_ui import render_admin_dashboard, render_admin_login_page
+from src.modules.admin_kitchen_ui import render_admin_kitchen_page
 
 app = Flask(__name__)
 
@@ -567,6 +568,15 @@ def admin_console_page():
 @app.route("/admin/login/")
 def admin_login_page():
     return render_template_string(render_admin_login_page(return_url="/admin/"))
+
+@app.route("/admin/kitchen")
+@app.route("/admin/kitchen/")
+def admin_kitchen_page():
+    token = request.cookies.get("admin_token") or request.headers.get("Authorization", "").replace("Bearer ", "").strip()
+    user = auth_service.validate_session(token) if token else None
+    if not user:
+        return redirect("/admin/login?returnUrl=/admin/kitchen")
+    return render_template_string(render_admin_kitchen_page())
 
 @app.route("/till")
 @app.route("/pos")

@@ -19,6 +19,8 @@ def render_admin_login_page(error_msg: str = None, return_url: str = "../index.h
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- MQTT WebSocket Client for zero-latency cross-device sync -->
+    <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
     <style>
         :root {{
             --nb-navy: #0e1626;
@@ -545,6 +547,51 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
     # Fetch initial data for SSR injection
     menu_items = list(db.menu_items.values())
     orders = list(db.orders.values())
+    if not orders:
+        orders = [
+            {
+                "id": "ORD-1026",
+                "order_id": "ORD-1026",
+                "table_number": 12,
+                "channel": "DINE_IN",
+                "status": "New",
+                "total": 24.50,
+                "created_at": "Just now",
+                "notes": "Allergy: no gluten",
+                "items": [
+                    {"qty": 2, "title": "Half Roast Chicken"},
+                    {"qty": 1, "title": "Peri-Salted Chips"}
+                ]
+            },
+            {
+                "id": "ORD-1024",
+                "order_id": "ORD-1024",
+                "table_number": 4,
+                "channel": "DINE_IN",
+                "status": "Preparing",
+                "total": 18.20,
+                "created_at": "5 mins ago",
+                "notes": "",
+                "items": [
+                    {"qty": 1, "title": "Butterfly Chicken Breast"},
+                    {"qty": 1, "title": "Spicy Rice"}
+                ]
+            },
+            {
+                "id": "ORD-1025",
+                "order_id": "ORD-1025",
+                "table_number": "Deliveroo #402",
+                "channel": "DELIVEROO",
+                "status": "Ready",
+                "total": 32.80,
+                "created_at": "10 mins ago",
+                "notes": "Bag sealed with tamper tape",
+                "items": [
+                    {"qty": 1, "title": "Family Chicken Platter"},
+                    {"qty": 2, "title": "Garlic Bread"}
+                ]
+            }
+        ]
     tables = db.get_tables()
     fridge_logs = db.get_fridge_logs()
     c25_logs = db.get_challenge25_logs()
@@ -584,6 +631,8 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- MQTT WebSocket Client for zero-latency cross-device sync -->
+    <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
     <style>
         :root {{
             --nb-navy: #0e1626;
@@ -1429,7 +1478,7 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                     <p style="color:var(--nb-text-muted); font-size:14px;">Monitor real-time tickets from dine-in tables, Deliveroo, and Uber Eats.</p>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <a href="./kitchen" target="_blank" class="nb-btn nb-btn-brass nb-btn-sm"><i class="fa-solid fa-tv"></i> Fullscreen KDS TV</a>
+                    <a href="./kitchen/" target="_blank" class="nb-btn nb-btn-brass nb-btn-sm"><i class="fa-solid fa-tv"></i> Fullscreen KDS TV</a>
                 </div>
             </div>
 
@@ -2010,8 +2059,11 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
         }}
 
         const SYNC_TOPIC_URL = 'https://ntfy.sh/the_waiter_venue_sync_covent_garden';
+        const VENUE_MQTT_STATE = 'waiter_covent_garden/orders/state';
+        const VENUE_MQTT_LIVE = 'waiter_covent_garden/orders/live';
         const CLIENT_DEVICE_ID = 'admin-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now();
         let adminSyncBroadcastChan = null;
+        let adminMqttClient = null;
 
         try {{
             if ('BroadcastChannel' in window) {{
@@ -2031,7 +2083,17 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                 try {{ adminSyncBroadcastChan.postMessage(eventData); }} catch(e) {{}}
             }}
 
-            // 2. Cloud ntfy.sh pub/sub for cross-device instant sync
+            // 2. High-Speed Cloud MQTT WebSocket Sync & Retained State
+            if (adminMqttClient) {{
+                try {{
+                    adminMqttClient.publish(VENUE_MQTT_LIVE, JSON.stringify(eventData), {{ qos: 1 }});
+                    if (eventData.action === 'ORDER_STATUS_UPDATE' || eventData.action === 'VOID_ORDER' || eventData.action === 'NEW_ORDER') {{
+                        adminMqttClient.publish(VENUE_MQTT_STATE, JSON.stringify(adminOrders), {{ retain: true, qos: 1 }});
+                    }}
+                }} catch(e) {{}}
+            }}
+
+            // 3. Cloud ntfy.sh pub/sub fallback
             try {{
                 await fetch(SYNC_TOPIC_URL, {{
                     method: 'POST',
@@ -2837,7 +2899,59 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             }}
         }}
 
+        function connectAdminMQTT() {{
+            try {{
+                adminMqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {{
+                    clientId: CLIENT_DEVICE_ID,
+                    clean: true,
+                    reconnectPeriod: 2500,
+                    connectTimeout: 5000
+                }});
+
+                adminMqttClient.on('connect', () => {{
+                    adminMqttClient.subscribe(VENUE_MQTT_LIVE);
+                    adminMqttClient.subscribe(VENUE_MQTT_STATE);
+                }});
+
+                adminMqttClient.on('message', (topic, payload) => {{
+                    try {{
+                        const text = payload.toString();
+                        if (topic === VENUE_MQTT_STATE) {{
+                            const remoteOrders = JSON.parse(text);
+                            if (Array.isArray(remoteOrders) && remoteOrders.length > 0) {{
+                                const existingIds = new Set(adminOrders.map(o => o.id || o.order_id));
+                                let changed = false;
+                                remoteOrders.forEach(ro => {{
+                                    const rId = ro.id || ro.order_id;
+                                    if (!existingIds.has(rId)) {{
+                                        adminOrders.unshift(ro);
+                                        existingIds.add(rId);
+                                        changed = true;
+                                    }} else {{
+                                        const localOrd = adminOrders.find(o => (o.id === rId || o.order_id === rId));
+                                        if (localOrd && ro.status && localOrd.status !== ro.status) {{
+                                            localOrd.status = ro.status;
+                                            changed = true;
+                                        }}
+                                    }}
+                                }});
+                                if (changed) {{
+                                    try {{ localStorage.setItem('waiter_admin_orders', JSON.stringify(adminOrders)); }} catch(e) {{}}
+                                    renderOrdersGrid();
+                                    updateOverviewKpis();
+                                }}
+                            }}
+                        }} else if (topic === VENUE_MQTT_LIVE) {{
+                            const evt = JSON.parse(text);
+                            handleAdminSyncBroadcast(evt, 'mqtt-' + Date.now());
+                        }}
+                    }} catch(e) {{}}
+                }});
+            }} catch(e) {{}}
+        }}
+
         function initAdminRealtimeSync() {{
+            connectAdminMQTT();
             pollAdminSyncUpdates();
             connectAdminSSE();
 
@@ -2866,6 +2980,15 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                         try {{
                             adminMenu = JSON.parse(storedMenu);
                             renderMenuTable();
+                            updateOverviewKpis();
+                        }} catch(err) {{}}
+                    }}
+                }} else if (e.key === 'waiter_admin_orders') {{
+                    const storedOrders = localStorage.getItem('waiter_admin_orders');
+                    if (storedOrders) {{
+                        try {{
+                            adminOrders = JSON.parse(storedOrders);
+                            renderOrdersGrid();
                             updateOverviewKpis();
                         }} catch(err) {{}}
                     }}

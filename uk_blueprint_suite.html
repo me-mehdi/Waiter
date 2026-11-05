@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- MQTT WebSocket Client for zero-latency cross-device sync -->
+    <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
     <style>
         :root {
             --nb-navy-bg: #0f1520;
@@ -1637,6 +1639,9 @@
 
     // --- KITCHEN DISPLAY SYSTEM (KDS) STATE & REAL-TIME ENGINE ---
     const KDS_SYNC_TOPIC = 'https://ntfy.sh/the_waiter_venue_sync_covent_garden';
+    const VENUE_MQTT_STATE = 'waiter_covent_garden/orders/state';
+    const VENUE_MQTT_LIVE = 'waiter_covent_garden/orders/live';
+    let kdsMqttClient = null;
     let nbKdsOrders = [];
     let activeKdsSourceFilter = 'all';
 
@@ -1821,7 +1826,15 @@
             }
         } catch(e) {}
 
-        // Broadcast to cloud ntfy
+        // Broadcast to ultra-fast MQTT Cloud broker
+        if (kdsMqttClient && kdsMqttClient.connected) {
+            try {
+                kdsMqttClient.publish(VENUE_MQTT_LIVE, JSON.stringify(updateEvent), { qos: 1 });
+                kdsMqttClient.publish(VENUE_MQTT_STATE, JSON.stringify(nbKdsOrders), { retain: true, qos: 1 });
+            } catch(e) {}
+        }
+
+        // Broadcast to cloud ntfy fallback
         try {
             fetch(KDS_SYNC_TOPIC, {
                 method: 'POST',
@@ -2097,7 +2110,54 @@
     function initKdsRealtimeSync() {
         initNbKdsStore();
 
-        // 1. In-browser BroadcastChannel (<5ms)
+        // 1. MQTT Cloud WebSocket Broker Sync
+        try {
+            kdsMqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+                clientId: 'kds_suite_' + Math.random().toString(16).substring(2, 8),
+                clean: true,
+                reconnectPeriod: 2500,
+                connectTimeout: 5000
+            });
+            kdsMqttClient.on('connect', () => {
+                kdsMqttClient.subscribe(VENUE_MQTT_LIVE);
+                kdsMqttClient.subscribe(VENUE_MQTT_STATE);
+            });
+            kdsMqttClient.on('message', (topic, payload) => {
+                try {
+                    const text = payload.toString();
+                    if (topic === VENUE_MQTT_STATE) {
+                        const remoteOrders = JSON.parse(text);
+                        if (Array.isArray(remoteOrders) && remoteOrders.length > 0) {
+                            const existingIds = new Set(nbKdsOrders.map(o => o.id || o.order_id));
+                            let changed = false;
+                            remoteOrders.forEach(ro => {
+                                const rId = ro.id || ro.order_id;
+                                if (!existingIds.has(rId)) {
+                                    nbKdsOrders.unshift(ro);
+                                    existingIds.add(rId);
+                                    changed = true;
+                                } else {
+                                    const localOrd = nbKdsOrders.find(o => (o.id === rId || o.order_id === rId));
+                                    if (localOrd && ro.status && localOrd.status !== ro.status) {
+                                        localOrd.status = ro.status;
+                                        changed = true;
+                                    }
+                                }
+                            });
+                            if (changed) {
+                                try { localStorage.setItem('waiter_admin_orders', JSON.stringify(nbKdsOrders)); } catch(e) {}
+                                renderNbKdsBoard();
+                            }
+                        }
+                    } else if (topic === VENUE_MQTT_LIVE) {
+                        const evt = JSON.parse(text);
+                        handleKdsSyncEvent(evt, 'mqtt-' + Date.now());
+                    }
+                } catch(e) {}
+            });
+        } catch(e) {}
+
+        // 2. In-browser BroadcastChannel (<5ms)
         try {
             if ('BroadcastChannel' in window) {
                 const suiteSyncChan = new BroadcastChannel('waiter_venue_sync_bus');

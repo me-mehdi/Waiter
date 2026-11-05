@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>The Waiter · Kitchen Display System (KDS)</title>
+    <!-- SYNCHRONOUS STRICT AUTHENTICATION GUARD -->
+    <script>
+        (function() {
+            try {
+                var authStr = sessionStorage.getItem('waiter_admin_auth') || localStorage.getItem('waiter_admin_auth');
+                if (!authStr) {
+                    window.location.replace('../login/index.html?returnUrl=../kitchen/index.html');
+                    return;
+                }
+                var parsed = JSON.parse(authStr);
+                if (!parsed || !parsed.token) {
+                    window.location.replace('../login/index.html?returnUrl=../kitchen/index.html');
+                    return;
+                }
+            } catch(e) {
+                window.location.replace('../login/index.html?returnUrl=../kitchen/index.html');
+            }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- MQTT WebSocket Client for zero-latency cross-device sync -->
+    <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
+    <style>
+        :root {
+            --nb-navy: #0e1626;
+            --nb-card: #141c28;
+            --nb-card-hover: #1a2434;
+            --nb-brass: #c8a86b;
+            --nb-brass-light: #e6cb96;
+            --nb-brass-dim: #6b5b3e;
+            --nb-border: #232f42;
+            --nb-text: #f8fafc;
+            --nb-text-muted: #94a3b8;
+            --nb-blue: #8ab4f8;
+            --nb-amber: #e2b049;
+            --nb-green: #34d399;
+            --nb-red: #f87171;
+            --nb-red-bg: rgba(248, 113, 113, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--nb-navy);
+            color: var(--nb-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nb-serif {
+            font-family: 'Fraunces', Georgia, serif;
+            letter-spacing: -0.02em;
+        }
+
+        /* Top Header Bar */
+        .kds-header {
+            background: #090e18;
+            border-bottom: 1px solid var(--nb-border);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .kds-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .kds-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #f8fafc;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(52, 211, 153, 0.12);
+            color: var(--nb-green);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+
+        .status-pill.offline {
+            background: var(--nb-red-bg);
+            color: var(--nb-red);
+            border-color: rgba(248, 113, 113, 0.3);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+            display: inline-block;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .kds-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .channel-filter-btn {
+            background: var(--nb-card);
+            border: 1px solid var(--nb-border);
+            color: var(--nb-text-muted);
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .channel-filter-btn:hover {
+            border-color: var(--nb-brass);
+            color: #fff;
+        }
+
+        .channel-filter-btn.active {
+            background: var(--nb-brass);
+            color: #0e1626;
+            font-weight: 700;
+            border-color: var(--nb-brass);
+        }
+
+        .btn-nav-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--nb-border);
+            background: var(--nb-card);
+            color: #f8fafc;
+        }
+
+        .btn-nav-action:hover {
+            border-color: var(--nb-brass);
+            color: var(--nb-brass-light);
+        }
+
+        .btn-chime-test {
+            background: rgba(200, 168, 107, 0.12);
+            border-color: var(--nb-brass-dim);
+            color: var(--nb-brass);
+        }
+
+        /* 3-Column Grid */
+        .kds-board {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 900px) {
+            .kds-board {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .kds-column {
+            background: #090e18;
+            border: 1px solid var(--nb-border);
+            border-radius: 12px;
+            padding: 18px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-height: 480px;
+        }
+
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--nb-border);
+        }
+
+        .column-title {
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .col-new .column-title { color: var(--nb-blue); }
+        .col-prep .column-title { color: var(--nb-amber); }
+        .col-ready .column-title { color: var(--nb-green); }
+
+        .column-badge {
+            background: rgba(255, 255, 255, 0.06);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--nb-text-muted);
+        }
+
+        /* Ticket Card */
+        .kds-ticket {
+            background: var(--nb-card);
+            border: 1px solid var(--nb-border);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kds-ticket:hover {
+            border-color: var(--nb-brass-dim);
+            transform: translateY(-2px);
+        }
+
+        .kds-ticket::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 4px;
+        }
+
+        .kds-ticket.ticket-new::before { background: var(--nb-blue); }
+        .kds-ticket.ticket-prep::before { background: var(--nb-amber); }
+        .kds-ticket.ticket-ready::before { background: var(--nb-green); }
+
+        .ticket-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 12px;
+        }
+
+        .ticket-id {
+            font-size: 18px;
+            font-weight: 800;
+            color: #f8fafc;
+        }
+
+        .ticket-timer {
+            font-size: 14px;
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            color: var(--nb-brass);
+        }
+
+        .ticket-items {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+            min-height: 40px;
+        }
+
+        .ticket-item {
+            font-size: 15px;
+            color: #e2e8f0;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .ticket-item-qty {
+            font-weight: 800;
+            color: var(--nb-brass);
+        }
+
+        .ticket-item-name {
+            font-weight: 600;
+        }
+
+        .ticket-notes {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--nb-red);
+            background: var(--nb-red-bg);
+            border: 1px solid rgba(248, 113, 113, 0.25);
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .ticket-footer {
+            margin-top: auto;
+            display: flex;
+            gap: 8px;
+            border-top: 1px solid var(--nb-border);
+            padding-top: 12px;
+        }
+
+        .btn-advance {
+            flex: 1;
+            padding: 9px;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .btn-advance-new {
+            background: #1e3a5f;
+            color: #93c5fd;
+        }
+        .btn-advance-new:hover { background: #2563eb; color: #fff; }
+
+        .btn-advance-prep {
+            background: #5a3d0d;
+            color: #fcd34d;
+        }
+        .btn-advance-prep:hover { background: #d97706; color: #fff; }
+
+        .btn-advance-ready {
+            background: #064e3b;
+            color: #6ee7b7;
+        }
+        .btn-advance-ready:hover { background: #059669; color: #fff; }
+
+        .btn-void {
+            background: transparent;
+            border: 1px solid var(--nb-border);
+            color: var(--nb-text-muted);
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-void:hover {
+            color: var(--nb-red);
+            border-color: var(--nb-red);
+        }
+
+        /* Toast */
+        .kds-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #141c28;
+            border: 1px solid var(--nb-brass);
+            border-radius: 8px;
+            padding: 12px 20px;
+            color: #f8fafc;
+            font-size: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            gap: 10px;
+            z-index: 100;
+        }
+        .kds-toast.active { display: flex; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <!-- TOP HEADER -->
+    <header class="kds-header">
+        <div class="kds-brand">
+            <h1 class="nb-serif kds-title">The Waiter · Kitchen KDS</h1>
+            <div class="status-pill" id="kdsStatusPill">
+                <span class="status-dot"></span>
+                <span id="kdsStatusText">Connecting Cloud MQTT...</span>
+            </div>
+        </div>
+
+        <div class="kds-controls">
+            <!-- Channel Filters -->
+            <button type="button" class="channel-filter-btn active" onclick="filterChannel('all', this)">All Orders</button>
+            <button type="button" class="channel-filter-btn" onclick="filterChannel('dine-in', this)">Dine-In</button>
+            <button type="button" class="channel-filter-btn" onclick="filterChannel('deliveroo', this)">Deliveroo</button>
+            <button type="button" class="channel-filter-btn" onclick="filterChannel('uber', this)">UberEats</button>
+
+            <!-- Bell Test -->
+            <button type="button" class="btn-nav-action btn-chime-test" onclick="playKitchenOrderBell()">
+                <i class="fa-solid fa-bell"></i> Audio Chime
+            </button>
+
+            <!-- Back to Admin -->
+            <a href="../#orders" class="btn-nav-action">
+                <i class="fa-solid fa-arrow-left"></i> Admin Console
+            </a>
+        </div>
+    </header>
+
+    <!-- 3 COLUMNS BOARD -->
+    <main class="kds-board" id="kdsBoardContainer">
+        <!-- 1. NEW -->
+        <div class="kds-column col-new" id="colWrapperNew">
+            <div class="column-header">
+                <div class="column-title"><i class="fa-solid fa-fire me-1"></i> NEW TICKETS</div>
+                <div class="column-badge" id="countNew">0</div>
+            </div>
+            <div id="nbKdsColNew" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+
+        <!-- 2. PREPARING -->
+        <div class="kds-column col-prep" id="colWrapperPrep">
+            <div class="column-header">
+                <div class="column-title"><i class="fa-solid fa-kitchen-set me-1"></i> ON GRILL / PREP</div>
+                <div class="column-badge" id="countPrep">0</div>
+            </div>
+            <div id="nbKdsColPrep" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+
+        <!-- 3. READY -->
+        <div class="kds-column col-ready" id="colWrapperReady">
+            <div class="column-header">
+                <div class="column-title"><i class="fa-solid fa-circle-check me-1"></i> READY FOR TABLE</div>
+                <div class="column-badge" id="countReady">0</div>
+            </div>
+            <div id="nbKdsColReady" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+    </main>
+
+    <!-- TOAST -->
+    <div class="kds-toast" id="kdsToast">
+        <i class="fa-solid fa-bell" style="color:var(--nb-brass);"></i>
+        <span id="kdsToastMsg">New incoming kitchen order!</span>
+    </div>
+
+    <!-- LOGIC SCRIPT -->
+    <script>
+        const VENUE_TOPIC_STATE = 'waiter_covent_garden/orders/state';
+        const VENUE_TOPIC_LIVE = 'waiter_covent_garden/orders/live';
+        const CLIENT_ID = 'kds-screen-' + Math.random().toString(16).substring(2, 8);
+
+        let kdsOrders = [];
+        let activeFilter = 'all';
+        let mqttClient = null;
+        let localBus = null;
+
+        const DEFAULT_SEED_ORDERS = [
+            {
+                id: 'ORD-1026',
+                table_number: 12,
+                channel: 'DINE_IN',
+                status: 'New',
+                created_at: new Date(Date.now() - 42000).toISOString(),
+                notes: 'Allergy: no gluten',
+                items: [
+                    {qty: 2, title: 'Half Roast Chicken'},
+                    {qty: 1, title: 'Peri-Salted Chips'}
+                ]
+            },
+            {
+                id: 'ORD-1024',
+                table_number: 4,
+                channel: 'DINE_IN',
+                status: 'Preparing',
+                created_at: new Date(Date.now() - 320000).toISOString(),
+                notes: '',
+                items: [
+                    {qty: 1, title: 'Butterfly Chicken Breast'},
+                    {qty: 1, title: 'Spicy Rice'}
+                ]
+            },
+            {
+                id: 'ORD-1025',
+                table_number: 'DELIVEROO #402',
+                channel: 'DELIVEROO',
+                status: 'Ready',
+                created_at: new Date(Date.now() - 600000).toISOString(),
+                notes: 'Bag sealed with tamper tape',
+                items: [
+                    {qty: 1, title: 'Family Chicken Platter'},
+                    {qty: 2, title: 'Garlic Bread'}
+                ]
+            }
+        ];
+
+        // --- SYNTHETIC WEB AUDIO KITCHEN ORDER CHIME ---
+        function playKitchenOrderBell() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.08);
+                osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.35, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.7);
+            } catch(e) {}
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('kdsToast');
+            const msgEl = document.getElementById('kdsToastMsg');
+            if (!toast || !msgEl) return;
+            msgEl.textContent = msg;
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 4000);
+        }
+
+        // --- STATE & RENDERING ---
+        function initKdsStore() {
+            const stored = localStorage.getItem('waiter_admin_orders');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        kdsOrders = parsed;
+                    } else {
+                        kdsOrders = [...DEFAULT_SEED_ORDERS];
+                    }
+                } catch(e) {
+                    kdsOrders = [...DEFAULT_SEED_ORDERS];
+                }
+            } else {
+                kdsOrders = [...DEFAULT_SEED_ORDERS];
+                localStorage.setItem('waiter_admin_orders', JSON.stringify(kdsOrders));
+            }
+            renderKdsBoard();
+        }
+
+        function renderKdsBoard() {
+            const colNew = document.getElementById('nbKdsColNew');
+            const colPrep = document.getElementById('nbKdsColPrep');
+            const colReady = document.getElementById('nbKdsColReady');
+            if (!colNew || !colPrep || !colReady) return;
+
+            colNew.innerHTML = '';
+            colPrep.innerHTML = '';
+            colReady.innerHTML = '';
+
+            let cNew = 0, cPrep = 0, cReady = 0;
+
+            kdsOrders.forEach(ord => {
+                const channel = (ord.channel || 'DINE_IN').toLowerCase();
+                if (activeFilter === 'deliveroo' && !channel.includes('deliveroo')) return;
+                if (activeFilter === 'uber' && !channel.includes('uber')) return;
+                if (activeFilter === 'dine-in' && channel !== 'dine_in') return;
+
+                const orderId = String(ord.id || ord.order_id || 'ORD-999');
+                const displayNum = orderId.replace('ORD-', '');
+                const tableText = ord.table_number ? (typeof ord.table_number === 'number' ? `Table ${ord.table_number}` : ord.table_number) : (ord.channel || 'Dine-In');
+
+                let itemsHtml = '';
+                if (ord.items && Array.isArray(ord.items)) {
+                    itemsHtml = ord.items.map(it => {
+                        const qty = it.qty || it.quantity || 1;
+                        const title = it.title || it.name || 'Dish Item';
+                        return `
+                            <div class="ticket-item">
+                                <span class="ticket-item-qty">${qty}×</span>
+                                <span class="ticket-item-name">${title}</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                let notesHtml = '';
+                if (ord.notes && ord.notes.trim()) {
+                    notesHtml = `<div class="ticket-notes"><i class="fa-solid fa-triangle-exclamation me-1"></i> ${ord.notes}</div>`;
+                }
+
+                const ticket = document.createElement('div');
+                ticket.setAttribute('data-order-id', orderId);
+                ticket.id = 'nbTicket-' + orderId.replace(/[^a-zA-Z0-9]/g, '-');
+
+                if (ord.status === 'New') {
+                    cNew++;
+                    ticket.className = 'kds-ticket ticket-new';
+                    ticket.innerHTML = `
+                        <div class="ticket-top">
+                            <span class="ticket-id">#${displayNum} · ${tableText}</span>
+                            <span class="ticket-timer" style="color:var(--nb-blue);">NEW</span>
+                        </div>
+                        <div class="ticket-items">${itemsHtml}</div>
+                        ${notesHtml}
+                        <div class="ticket-footer">
+                            <button type="button" class="btn-advance btn-advance-new" onclick="advanceTicket('${orderId}', 'Preparing')">
+                                <i class="fa-solid fa-fire me-1"></i> Advance to Prep
+                            </button>
+                            <button type="button" class="btn-void" title="Void Ticket" onclick="voidTicket('${orderId}')"><i class="fa-solid fa-ban"></i></button>
+                        </div>
+                    `;
+                    colNew.appendChild(ticket);
+                } else if (ord.status === 'Preparing') {
+                    cPrep++;
+                    ticket.className = 'kds-ticket ticket-prep';
+                    ticket.innerHTML = `
+                        <div class="ticket-top">
+                            <span class="ticket-id">#${displayNum} · ${tableText}</span>
+                            <span class="ticket-timer" style="color:var(--nb-amber);">PREPARING</span>
+                        </div>
+                        <div class="ticket-items">${itemsHtml}</div>
+                        ${notesHtml}
+                        <div class="ticket-footer">
+                            <button type="button" class="btn-advance btn-advance-prep" onclick="advanceTicket('${orderId}', 'Ready')">
+                                <i class="fa-solid fa-circle-check me-1"></i> Advance to Ready
+                            </button>
+                            <button type="button" class="btn-void" title="Void Ticket" onclick="voidTicket('${orderId}')"><i class="fa-solid fa-ban"></i></button>
+                        </div>
+                    `;
+                    colPrep.appendChild(ticket);
+                } else if (ord.status === 'Ready') {
+                    cReady++;
+                    ticket.className = 'kds-ticket ticket-ready';
+                    ticket.innerHTML = `
+                        <div class="ticket-top">
+                            <span class="ticket-id">#${displayNum} · ${tableText}</span>
+                            <span class="ticket-timer" style="color:var(--nb-green);">READY</span>
+                        </div>
+                        <div class="ticket-items">${itemsHtml}</div>
+                        ${notesHtml}
+                        <div class="ticket-footer">
+                            <button type="button" class="btn-advance btn-advance-ready" onclick="advanceTicket('${orderId}', 'Served')">
+                                <i class="fa-solid fa-bell-concierge me-1"></i> Mark Served
+                            </button>
+                            <button type="button" class="btn-void" title="Void Ticket" onclick="voidTicket('${orderId}')"><i class="fa-solid fa-ban"></i></button>
+                        </div>
+                    `;
+                    colReady.appendChild(ticket);
+                }
+            });
+
+            document.getElementById('countNew').textContent = cNew;
+            document.getElementById('countPrep').textContent = cPrep;
+            document.getElementById('countReady').textContent = cReady;
+        }
+
+        function filterChannel(channel, btn) {
+            activeFilter = channel;
+            document.querySelectorAll('.channel-filter-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            renderKdsBoard();
+        }
+
+        async function advanceTicket(orderId, nextStatus) {
+            const ord = kdsOrders.find(o => (o.id === orderId || o.order_id === orderId));
+            if (ord) {
+                ord.status = nextStatus;
+                try { localStorage.setItem('waiter_admin_orders', JSON.stringify(kdsOrders)); } catch(e) {}
+                renderKdsBoard();
+            }
+
+            const evtPayload = {
+                action: 'ORDER_STATUS_UPDATE',
+                order_id: orderId,
+                status: nextStatus,
+                sender_id: CLIENT_ID,
+                timestamp: Date.now()
+            };
+
+            // Broadcast Local
+            if (localBus) {
+                try { localBus.postMessage(evtPayload); } catch(e) {}
+            }
+
+            // Broadcast MQTT Cloud
+            if (mqttClient && mqttClient.connected) {
+                try {
+                    mqttClient.publish(VENUE_TOPIC_LIVE, JSON.stringify(evtPayload), { qos: 1 });
+                    mqttClient.publish(VENUE_TOPIC_STATE, JSON.stringify(kdsOrders), { retain: true, qos: 1 });
+                } catch(e) {}
+            }
+
+            // Backend API
+            try {
+                fetch(`/api/kds/advance/${orderId}`, {method: 'POST'}).catch(() => {});
+            } catch(e) {}
+        }
+
+        function voidTicket(orderId) {
+            if (!confirm(`Are you sure you want to void order #${orderId}?`)) return;
+            kdsOrders = kdsOrders.filter(o => (o.id !== orderId && o.order_id !== orderId));
+            try { localStorage.setItem('waiter_admin_orders', JSON.stringify(kdsOrders)); } catch(e) {}
+            renderKdsBoard();
+
+            const evtPayload = {
+                action: 'VOID_ORDER',
+                order_id: orderId,
+                sender_id: CLIENT_ID,
+                timestamp: Date.now()
+            };
+
+            if (localBus) {
+                try { localBus.postMessage(evtPayload); } catch(e) {}
+            }
+            if (mqttClient && mqttClient.connected) {
+                try {
+                    mqttClient.publish(VENUE_TOPIC_LIVE, JSON.stringify(evtPayload), { qos: 1 });
+                    mqttClient.publish(VENUE_TOPIC_STATE, JSON.stringify(kdsOrders), { retain: true, qos: 1 });
+                } catch(e) {}
+            }
+        }
+
+        // --- REAL-TIME ENGINE ---
+        function handleIncomingEvent(msg) {
+            if (!msg || !msg.action) return;
+            if (msg.sender_id && msg.sender_id === CLIENT_ID) return;
+
+            if (msg.action === 'NEW_ORDER' && msg.order) {
+                const ord = msg.order;
+                const orderId = ord.id || ord.order_id;
+                const exists = kdsOrders.some(o => (o.id === orderId || o.order_id === orderId));
+                if (!exists) {
+                    kdsOrders.unshift(ord);
+                    try { localStorage.setItem('waiter_admin_orders', JSON.stringify(kdsOrders)); } catch(e) {}
+                    renderKdsBoard();
+                    playKitchenOrderBell();
+                    showToast(`🔔 New Order #${String(orderId).replace('ORD-', '')} from Table ${ord.table_number || 12}!`);
+                }
+            } else if (msg.action === 'ORDER_STATUS_UPDATE' && msg.order_id) {
+                const ord = kdsOrders.find(o => (o.id === msg.order_id || o.order_id === msg.order_id));
+                if (ord && ord.status !== msg.status) {
+                    ord.status = msg.status;
+                    try { localStorage.setItem('waiter_admin_orders', JSON.stringify(kdsOrders)); } catch(e) {}
+                    renderKdsBoard();
+                }
+            } else if (msg.action === 'VOID_ORDER' && msg.order_id) {
+                kdsOrders = kdsOrders.filter(o => (o.id !== msg.order_id && o.order_id !== msg.order_id));
+                try { localStorage.setItem('waiter_admin_orders', JSON.stringify(kdsOrders)); } catch(e) {}
+                renderKdsBoard();
+            }
+        }
+
+        function initRealtimeSync() {
+            // 1. Local BroadcastChannel (<5ms)
+            try {
+                if ('BroadcastChannel' in window) {
+                    localBus = new BroadcastChannel('waiter_venue_sync_bus');
+                    localBus.onmessage = (e) => {
+                        if (e && e.data) handleIncomingEvent(e.data);
+                    };
+                }
+            } catch(e) {}
+
+            // 2. LocalStorage storage event
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'waiter_admin_orders') {
+                    try {
+                        const parsed = JSON.parse(e.newValue || '[]');
+                        if (Array.isArray(parsed)) {
+                            kdsOrders = parsed;
+                            renderKdsBoard();
+                        }
+                    } catch(err) {}
+                }
+            });
+
+            // 3. High-Speed Cloud MQTT WebSocket Broker
+            const statusPill = document.getElementById('kdsStatusPill');
+            const statusText = document.getElementById('kdsStatusText');
+
+            try {
+                mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+                    clientId: CLIENT_ID,
+                    clean: true,
+                    reconnectPeriod: 2500,
+                    connectTimeout: 5000
+                });
+
+                mqttClient.on('connect', () => {
+                    if (statusPill) statusPill.classList.remove('offline');
+                    if (statusText) statusText.textContent = 'LIVE MQTT CLOUD CONNECTED';
+                    mqttClient.subscribe(VENUE_TOPIC_LIVE);
+                    mqttClient.subscribe(VENUE_TOPIC_STATE);
+                });
+
+                mqttClient.on('message', (topic, payload) => {
+                    try {
+                        const text = payload.toString();
+                        if (topic === VENUE_TOPIC_STATE) {
+                            // Retained state array received
+                            const remoteOrders = JSON.parse(text);
+                            if (Array.isArray(remoteOrders) && remoteOrders.length > 0) {
+                                // Merge by ID
+                                const existingIds = new Set(kdsOrders.map(o => o.id || o.order_id));
+                                let addedAny = false;
+                                remoteOrders.forEach(ro => {
+                                    const rId = ro.id || ro.order_id;
+                                    if (!existingIds.has(rId)) {
+                                        kdsOrders.unshift(ro);
+                                        existingIds.add(rId);
+                                        addedAny = true;
+                                    } else {
+                                        const localOrd = kdsOrders.find(o => (o.id === rId || o.order_id === rId));
+                                        if (localOrd && ro.status && localOrd.status !== ro.status) {
+                                            localOrd.status = ro.status;
+                                            addedAny = true;
+                                        }
+                                    }
+                                });
+                                if (addedAny) {
+                                    try { localStorage.setItem('waiter_admin_orders', JSON.stringify(kdsOrders)); } catch(e) {}
+                                    renderKdsBoard();
+                                }
+                            }
+                        } else if (topic === VENUE_TOPIC_LIVE) {
+                            const evt = JSON.parse(text);
+                            handleIncomingEvent(evt);
+                        }
+                    } catch(err) {}
+                });
+
+                mqttClient.on('error', () => {
+                    if (statusPill) statusPill.classList.add('offline');
+                    if (statusText) statusText.textContent = 'MQTT LOCAL ONLY';
+                });
+
+                mqttClient.on('offline', () => {
+                    if (statusPill) statusPill.classList.add('offline');
+                    if (statusText) statusText.textContent = 'LOCAL BUS (RECONNECTING...)';
+                });
+            } catch(e) {
+                if (statusText) statusText.textContent = 'LOCAL BUS ACTIVE';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initKdsStore();
+            initRealtimeSync();
+        });
+    </script>
+</body>
+</html>

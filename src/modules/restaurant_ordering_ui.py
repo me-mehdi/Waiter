@@ -51,6 +51,8 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- MQTT WebSocket Client for ultra-fast cross-device sync -->
+    <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
     
     <style>
         :root {{
@@ -1764,8 +1766,35 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
             }}
         }}
 
+        const VENUE_MQTT_STATE = 'waiter_covent_garden/orders/state';
+        const VENUE_MQTT_LIVE = 'waiter_covent_garden/orders/live';
+        let customerMqttClient = null;
+
+        function connectCustomerMQTT() {{
+            try {{
+                customerMqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {{
+                    clientId: 'cust_' + Math.random().toString(16).substring(2, 8),
+                    clean: true,
+                    reconnectPeriod: 2500,
+                    connectTimeout: 5000
+                }});
+
+                customerMqttClient.on('connect', () => {{
+                    customerMqttClient.subscribe(VENUE_MQTT_LIVE);
+                }});
+
+                customerMqttClient.on('message', (topic, payload) => {{
+                    try {{
+                        const evt = JSON.parse(payload.toString());
+                        handleSyncBroadcast(evt, 'mqtt-' + Date.now());
+                    }} catch(e) {{}}
+                }});
+            }} catch(e) {{}}
+        }}
+
         function initRealtimeSync() {{
             loadSyncedCatalog();
+            connectCustomerMQTT();
 
             // 1. Initial catch-up from ntfy topic (immediate)
             pollSyncUpdates();
@@ -2508,8 +2537,9 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
             }}));
 
             // 1. Save to local storage for instant multi-tab sync
+            let existingOrders = [];
             try {{
-                const existingOrders = JSON.parse(localStorage.getItem('waiter_admin_orders') || '[]');
+                existingOrders = JSON.parse(localStorage.getItem('waiter_admin_orders') || '[]');
                 existingOrders.unshift(orderPayload);
                 localStorage.setItem('waiter_admin_orders', JSON.stringify(existingOrders));
             }} catch (e) {{}}
@@ -2526,7 +2556,15 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
                 try {{ syncBroadcastChan.postMessage(orderEvent); }} catch(e) {{}}
             }}
 
-            // 3. Broadcast NEW_ORDER event across remote devices via cloud pub/sub (<1.5s)
+            // 3. Ultra-fast Cloud MQTT Broadcast & Retained State Sync
+            if (customerMqttClient) {{
+                try {{
+                    customerMqttClient.publish(VENUE_MQTT_LIVE, JSON.stringify(orderEvent), {{ qos: 1 }});
+                    customerMqttClient.publish(VENUE_MQTT_STATE, JSON.stringify(existingOrders), {{ retain: true, qos: 1 }});
+                }} catch(e) {{}}
+            }}
+
+            // 4. Broadcast NEW_ORDER event across remote devices via cloud pub/sub fallback
             try {{
                 fetch(SYNC_TOPIC_URL, {{
                     method: 'POST',
@@ -2535,7 +2573,7 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
                 }});
             }} catch(e) {{}}
 
-            // 4. Try backend API if server is running
+            // 5. Try backend API if server is running
             try {{
                 fetch('/api/order', {{
                     method: 'POST',
