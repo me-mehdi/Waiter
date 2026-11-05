@@ -450,16 +450,16 @@
                 <span style="font-size:11px; color:#c8a86b; border:1px solid #6b5b3e; padding:3px 8px; border-radius:4px; font-weight:600; letter-spacing:0.05em;">NAVY &amp; BRASS EDITION</span>
             </a>
             <div class="nb-nav-pills" role="navigation" aria-label="Page navigation">
-                <a href="/" class="nb-btn nb-btn-outline-brass" data-page="landing">1. Landing</a>
-                <a href="/order/menu" class="nb-btn nb-btn-brass" style="background:#E4002B; color:#fff; border-color:#E4002B;" data-page="restaurant"><i class="fa-solid fa-fire me-1"></i> Restaurant Menu (/order/menu)</a>
-                <a href="/menu" class="nb-btn nb-btn-outline-brass" data-page="guest">2. Guest QR (390×844)</a>
-                <a href="/kitchen" class="nb-btn nb-btn-outline-brass" data-page="kitchen">3. Kitchen KDS</a>
-                <a href="/today" class="nb-btn nb-btn-outline-brass" data-page="owner">4. Owner Today</a>
-                <a href="/till" class="nb-btn nb-btn-outline-brass" data-page="till">5. Till / POS</a>
-                <a href="/reservations" class="nb-btn nb-btn-outline-brass" data-page="reservations">6. Reservations</a>
-                <a href="/stock" class="nb-btn nb-btn-outline-brass" data-page="stock">7. Stock &amp; Cellar</a>
-                <a href="/staff" class="nb-btn nb-btn-outline-brass" data-page="staff">8. Staff &amp; Tronc</a>
-                <a href="/settings" class="nb-btn nb-btn-outline-brass" data-page="settings">9. Settings</a>
+                <a href="#landing" class="nb-btn nb-btn-outline-brass" data-page="landing" onclick="showNbScreen('landing')">1. Landing</a>
+                <a href="./order/menu/" class="nb-btn nb-btn-brass" style="background:#E4002B; color:#fff; border-color:#E4002B;" data-page="restaurant"><i class="fa-solid fa-fire me-1"></i> Restaurant Menu (/order/menu)</a>
+                <a href="#guest" class="nb-btn nb-btn-outline-brass" data-page="guest" onclick="showNbScreen('guest')">2. Guest QR (390×844)</a>
+                <a href="#kitchen" class="nb-btn nb-btn-outline-brass" data-page="kitchen" onclick="showNbScreen('kitchen')">3. Kitchen KDS</a>
+                <a href="#owner" class="nb-btn nb-btn-outline-brass" data-page="owner" onclick="showNbScreen('owner')">4. Owner Today</a>
+                <a href="#till" class="nb-btn nb-btn-outline-brass" data-page="till" onclick="showNbScreen('till')">5. Till / POS</a>
+                <a href="#reservations" class="nb-btn nb-btn-outline-brass" data-page="reservations" onclick="showNbScreen('reservations')">6. Reservations</a>
+                <a href="#stock" class="nb-btn nb-btn-outline-brass" data-page="stock" onclick="showNbScreen('stock')">7. Stock &amp; Cellar</a>
+                <a href="#staff" class="nb-btn nb-btn-outline-brass" data-page="staff" onclick="showNbScreen('staff')">8. Staff &amp; Tronc</a>
+                <a href="#settings" class="nb-btn nb-btn-outline-brass" data-page="settings" onclick="showNbScreen('settings')">9. Settings</a>
             </div>
             <div style="display:flex; gap:8px;">
                 <button type="button" id="nbDataModeBtn" class="nb-btn nb-btn-navy" onclick="toggleNbPlaceholderMode()">Mode: Placeholders ([X] / £[PRICE])</button>
@@ -487,7 +487,7 @@
                 QR ordering, kitchen display, billing and live reports on the phones, tablets and printers you already own.
             </p>
             <div style="display:flex; flex-wrap:wrap; gap:12px;">
-                <a href="/menu" class="nb-btn nb-btn-brass">Try free for 7 days</a>
+                <a href="#guest" onclick="showNbScreen('guest')" class="nb-btn nb-btn-brass">Try free for 7 days</a>
                 <button type="button" class="nb-btn nb-btn-outline-brass" onclick="document.getElementById('nb-uk-trades-grid').scrollIntoView({behavior:'smooth'})">See UK features</button>
             </div>
         </div>
@@ -559,27 +559,27 @@
             <span class="nb-eyebrow">OPEN HARDWARE ECOSYSTEM</span>
             <h2 class="nb-serif" style="font-size:24px; font-weight:700; margin:0 0 16px 0; color:#f8fafc;">The Waiter Cloud Sync — 6-Device Hub</h2>
             <div class="nb-grid-6">
-                <a href="/menu" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                <a href="#guest" onclick="showNbScreen('guest')" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
                     <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">1. Guest Phone</strong>
                     <span style="font-size:12px; color:#94a3b8;">Instant QR web app</span>
                 </a>
-                <a href="/today" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                <a href="#owner" onclick="showNbScreen('owner')" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
                     <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">2. Server Tablet</strong>
                     <span style="font-size:12px; color:#94a3b8;">Floor round orders</span>
                 </a>
-                <a href="/kitchen" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                <a href="#kitchen" onclick="showNbScreen('kitchen')" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
                     <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">3. Kitchen Pass TV</strong>
                     <span style="font-size:12px; color:#94a3b8;">HDMI smart screen</span>
                 </a>
-                <a href="/till" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                <a href="#till" onclick="showNbScreen('till')" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
                     <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">4. Bar Till Counter</strong>
                     <span style="font-size:12px; color:#94a3b8;">Pre-auth bar tabs</span>
                 </a>
-                <a href="/settings" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                <a href="#settings" onclick="showNbScreen('settings')" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
                     <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">5. Cloud Printer</strong>
                     <span style="font-size:12px; color:#94a3b8;">Epson &amp; Star ESC/POS</span>
                 </a>
-                <a href="/today" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
+                <a href="#owner" onclick="showNbScreen('owner')" style="text-decoration:none; background-color:var(--nb-navy-ticket); padding:16px; border-radius:6px; border:1px solid var(--nb-navy-border); display:block;">
                     <strong style="display:block; font-size:14px; color:#f8fafc; margin-bottom:4px;">6. Owner Mobile</strong>
                     <span style="font-size:12px; color:#94a3b8;">Real-time live P&amp;L</span>
                 </a>
@@ -1359,8 +1359,18 @@
 
     // Page route detection and navigation
     function getActiveScreenFromPath() {
+        const hash = window.location.hash.toLowerCase();
+        if (hash.includes('kitchen') || hash.includes('kds') || hash.includes('tv')) return 'kitchen';
+        if (hash.includes('today') || hash.includes('owner') || hash.includes('dashboard')) return 'owner';
+        if (hash.includes('till') || hash.includes('pos') || hash.includes('terminal')) return 'till';
+        if (hash.includes('reservations') || hash.includes('bookings')) return 'reservations';
+        if (hash.includes('stock') || hash.includes('cellar')) return 'stock';
+        if (hash.includes('staff') || hash.includes('rota')) return 'staff';
+        if (hash.includes('settings') || hash.includes('printers') || hash.includes('reliability')) return 'settings';
+        if (hash.includes('guest') || hash.includes('menu')) return 'guest';
+        if (hash.includes('landing')) return 'landing';
+
         const path = window.location.pathname.toLowerCase();
-        if (path.includes('/menu') || path.includes('/guest') || path.includes('/order')) return 'guest';
         if (path.includes('/kitchen') || path.includes('/kds') || path.includes('/tv')) return 'kitchen';
         if (path.includes('/today') || path.includes('/owner') || path.includes('/dashboard')) return 'owner';
         if (path.includes('/till') || path.includes('/pos') || path.includes('/terminal')) return 'till';
@@ -1368,8 +1378,11 @@
         if (path.includes('/stock') || path.includes('/cellar')) return 'stock';
         if (path.includes('/staff') || path.includes('/rota')) return 'staff';
         if (path.includes('/settings') || path.includes('/printers') || path.includes('/reliability')) return 'settings';
+        if (path.includes('/menu') || path.includes('/guest')) return 'guest';
         return 'all';
     }
+
+    window.addEventListener('hashchange', initScreenRouting);
 
     function initScreenRouting() {
         const screenKey = getActiveScreenFromPath();

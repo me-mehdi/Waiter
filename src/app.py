@@ -525,6 +525,7 @@ def home():
     return render_template_string(render_navy_brass_page("all"))
 
 @app.route("/order/menu")
+@app.route("/order/menu/")
 @app.route("/order/menu/<path:subpath>")
 def restaurant_order_menu_page(subpath=None):
     table = request.args.get("table", 12)
