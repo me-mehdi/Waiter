@@ -1213,7 +1213,15 @@ class TestWaiterModules(unittest.TestCase):
         from src.app import app
         client = app.test_client()
 
-        # 1. Admin Page Route
+        # 1. Admin Page Route (Unauthenticated should redirect to /admin/login)
+        res = client.get("/admin")
+        self.assertEqual(res.status_code, 302)
+
+        # Authenticate first
+        login_res = client.post("/api/admin/login", json={"username": "admin", "password": "WaiterAdmin2026!"})
+        self.assertEqual(login_res.status_code, 200)
+
+        # Authenticated Admin Page Route
         res = client.get("/admin")
         self.assertEqual(res.status_code, 200)
         html = res.get_data(as_text=True)

@@ -1471,6 +1471,10 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
         const CATEGORIES = {categories_json};
         const INITIAL_TABLE = {table_num};
 
+        let LIVE_MENU_DATA = Array.isArray(MENU_DATA) ? [...MENU_DATA] : [];
+        let DYNAMIC_CATEGORIES = [...CATEGORIES];
+        const SYNC_TOPIC_URL = 'https://ntfy.sh/the_waiter_venue_sync_covent_garden';
+
         let basket = [];
         let currentConfigItem = null;
         let selectedHeat = null;
@@ -1482,11 +1486,126 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
         let selectedTipPercent = 12.5;
         let activePaymentMethod = 'APPLE_PAY';
 
+        function normalizeDish(dish) {{
+            const nameEn = (dish.name && typeof dish.name === 'object') ? (dish.name.en || 'Dish') : (dish.name || dish.name_translated || 'Dish');
+            const descEn = (dish.description && typeof dish.description === 'object') ? (dish.description.en || '') : (dish.description || dish.description_translated || '');
+            const priceNum = parseFloat(dish.price || 0);
+            return {{
+                id: dish.id,
+                category: dish.category || 'Mains',
+                name_translated: nameEn,
+                name: typeof dish.name === 'object' ? dish.name : {{en: nameEn}},
+                description_translated: descEn,
+                description: typeof dish.description === 'object' ? dish.description : {{en: descEn}},
+                price: priceNum,
+                price_formatted: '£' + priceNum.toFixed(2),
+                price_from: !!dish.price_from,
+                kcal: dish.kcal || 0,
+                serves: dish.serves || '',
+                dietary: dish.dietary || [],
+                allergens: dish.allergens || [],
+                is_featured: !!dish.is_featured,
+                is_new: !!dish.is_new,
+                is_available: dish.is_available !== false && (dish.stock_qty === undefined || dish.stock_qty > 0),
+                image_url: dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop',
+                modifiers: dish.modifiers || {{}}
+            }};
+        }}
+
+        function loadSyncedCatalog() {{
+            const stored = localStorage.getItem('waiter_admin_menu');
+            if (stored) {{
+                try {{
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length > 0) {{
+                        LIVE_MENU_DATA = parsed.map(normalizeDish);
+                        rebuildMenuCategories();
+                    }}
+                }} catch(e) {{}}
+            }}
+        }}
+
+        function rebuildMenuCategories() {{
+            const cats = Array.from(new Set(LIVE_MENU_DATA.map(i => i.category)));
+            const baseCats = ['Mains', 'Sides', 'Drinks', 'Starters', 'Desserts'];
+            DYNAMIC_CATEGORIES = [...baseCats.filter(c => cats.includes(c)), ...cats.filter(c => !baseCats.includes(c))];
+            if (DYNAMIC_CATEGORIES.length === 0) DYNAMIC_CATEGORIES = CATEGORIES;
+            renderCategories();
+            renderMenuSections();
+            renderUpsells();
+        }}
+
+        function initRealtimeSync() {{
+            loadSyncedCatalog();
+
+            // Catch-up from ntfy topic (last 12h)
+            fetch(SYNC_TOPIC_URL + '/json?poll=1&since=12h')
+                .then(r => r.text())
+                .then(text => {{
+                    const lines = text.trim().split('\\n');
+                    lines.forEach(line => {{
+                        try {{
+                            const evt = JSON.parse(line);
+                            if (evt && evt.message) {{
+                                handleSyncBroadcast(JSON.parse(evt.message));
+                            }}
+                        }} catch(e) {{}}
+                    }});
+                }}).catch(e => {{}});
+
+            // Open live SSE stream for real-time instant cross-device updates
+            try {{
+                const sse = new EventSource(SYNC_TOPIC_URL + '/sse');
+                sse.onmessage = function(e) {{
+                    try {{
+                        const evt = JSON.parse(e.data);
+                        if (evt && evt.message) {{
+                            handleSyncBroadcast(JSON.parse(evt.message));
+                        }}
+                    }} catch(err) {{}}
+                }};
+            }} catch(e) {{}}
+
+            // Listen to storage event for same-device cross-tab updates
+            window.addEventListener('storage', (e) => {{
+                if (e.key === 'waiter_admin_menu') {{
+                    loadSyncedCatalog();
+                }}
+            }});
+        }}
+
+        function handleSyncBroadcast(msg) {{
+            if (!msg || !msg.action) return;
+            if (msg.action === 'DELETE' && msg.item_id) {{
+                LIVE_MENU_DATA = LIVE_MENU_DATA.filter(i => i.id !== msg.item_id);
+                localStorage.setItem('waiter_admin_menu', JSON.stringify(LIVE_MENU_DATA));
+                rebuildMenuCategories();
+            }} else if (msg.action === 'UPSERT' && msg.item) {{
+                const norm = normalizeDish(msg.item);
+                const idx = LIVE_MENU_DATA.findIndex(i => i.id === norm.id);
+                if (idx !== -1) {{
+                    LIVE_MENU_DATA[idx] = norm;
+                }} else {{
+                    LIVE_MENU_DATA.unshift(norm);
+                }}
+                localStorage.setItem('waiter_admin_menu', JSON.stringify(LIVE_MENU_DATA));
+                rebuildMenuCategories();
+            }} else if (msg.action === 'TOGGLE_86' && msg.item_id) {{
+                const target = LIVE_MENU_DATA.find(i => i.id === msg.item_id);
+                if (target) {{
+                    target.is_available = msg.is_available;
+                    localStorage.setItem('waiter_admin_menu', JSON.stringify(LIVE_MENU_DATA));
+                    rebuildMenuCategories();
+                }}
+            }}
+        }}
+
         // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {{
             if (window.self !== window.top) {{
                 document.body.classList.add('is-embedded');
             }}
+            initRealtimeSync();
             renderCategories();
             renderMenuSections();
             renderUpsells();
@@ -1506,7 +1625,7 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
         // --- RENDER CATEGORY PILLS ---
         function renderCategories() {{
             const nav = document.getElementById('categoryNav');
-            nav.innerHTML = CATEGORIES.map((cat, idx) => `
+            nav.innerHTML = DYNAMIC_CATEGORIES.map((cat, idx) => `
                 <button class="cat-chip ${{idx === 0 ? 'active' : ''}}" onclick="scrollToCategory('${{cat}}', this)">
                     ${{cat}}
                 </button>
@@ -1525,8 +1644,8 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
         // --- RENDER MENU SECTIONS ---
         function renderMenuSections() {{
             const feed = document.getElementById('menuFeed');
-            feed.innerHTML = CATEGORIES.map(cat => {{
-                const items = MENU_DATA.filter(i => i.category === cat);
+            feed.innerHTML = DYNAMIC_CATEGORIES.map(cat => {{
+                const items = LIVE_MENU_DATA.filter(i => i.category === cat);
                 if (!items.length) return '';
                 const secId = 'cat-sec-' + cat.replace(/[^a-zA-Z0-9]/g, '-');
                 
@@ -1536,6 +1655,7 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
 
                 let featuredHtml = '';
                 if (featuredItem) {{
+                    const isSoldOut = featuredItem.is_available === false;
                     featuredHtml = `
                         <div class="card-featured" onclick="openProductCustomizer('${{featuredItem.id}}')">
                             <div class="card-img-wrap">
@@ -1549,20 +1669,23 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
                                         ${{featuredItem.serves ? `<span>• ${{featuredItem.serves}}</span>` : ''}}
                                         ${{featuredItem.dietary.includes('vegetarian') ? '<span class="badge-tag veg">Vegetarian</span>' : ''}}
                                         ${{featuredItem.is_new ? '<span class="badge-tag new">New</span>' : ''}}
+                                        ${{isSoldOut ? '<span class="badge-tag" style="background:#ef4444; color:#fff; font-weight:700;">Sold Out (86)</span>' : ''}}
                                     </div>
                                     <p class="card-desc">${{featuredItem.description_translated}}</p>
                                 </div>
                                 <div class="card-price-row">
                                     <span class="card-price">${{featuredItem.price_from ? 'From ' : ''}}${{featuredItem.price_formatted}}</span>
-                                    <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem;">Customise <i class="fa-solid fa-angle-right ms-1"></i></span>
+                                    ${{isSoldOut ? '<span style="font-weight:700; color:#ef4444; font-size:0.85rem;"><i class="fa-solid fa-ban me-1"></i> Sold Out</span>' : '<span style="font-weight: 700; color: var(--primary); font-size: 0.9rem;">Customise <i class="fa-solid fa-angle-right ms-1"></i></span>'}}
                                 </div>
                             </div>
                         </div>
                     `;
                 }}
 
-                const cardsHtml = regularItems.map(item => `
-                    <div class="menu-card" onclick="openProductCustomizer('${{item.id}}')">
+                const cardsHtml = regularItems.map(item => {{
+                    const isSoldOut = item.is_available === false;
+                    return `
+                    <div class="menu-card" onclick="openProductCustomizer('${{item.id}}')" style="${{isSoldOut ? 'opacity:0.75;' : ''}}">
                         <div class="card-info">
                             <div>
                                 <div class="card-title">${{item.name_translated}}</div>
@@ -1571,19 +1694,20 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
                                     ${{item.serves ? `<span>• ${{item.serves}}</span>` : ''}}
                                     ${{item.dietary.includes('vegetarian') ? '<span class="badge-tag veg">Vegetarian</span>' : ''}}
                                     ${{item.is_new ? '<span class="badge-tag new">New</span>' : ''}}
+                                    ${{isSoldOut ? '<span class="badge-tag" style="background:#ef4444; color:#fff; font-weight:700;">Sold Out (86)</span>' : ''}}
                                 </div>
                                 <p class="card-desc">${{item.description_translated}}</p>
                             </div>
                             <div class="card-price-row">
                                 <span class="card-price">${{item.price_from ? 'From ' : ''}}${{item.price_formatted}}</span>
-                                <span style="font-weight: 700; color: var(--primary); font-size: 0.85rem;">Customise <i class="fa-solid fa-angle-right ms-1"></i></span>
+                                ${{isSoldOut ? '<span style="font-weight:700; color:#ef4444; font-size:0.85rem;"><i class="fa-solid fa-ban me-1"></i> Sold Out</span>' : '<span style="font-weight: 700; color: var(--primary); font-size: 0.85rem;">Customise <i class="fa-solid fa-angle-right ms-1"></i></span>'}}
                             </div>
                         </div>
                         <div class="card-thumb-wrap">
                             <img src="${{item.image_url}}" class="card-thumb" alt="${{item.name_translated}}" loading="lazy">
                         </div>
                     </div>
-                `).join('');
+                `}}).join('');
 
                 return `
                     <section class="category-section" id="${{secId}}">
@@ -1602,7 +1726,7 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
             const upsellContainer = document.getElementById('sidebarUpsellItems');
             const modalUpsellContainer = document.getElementById('modalUpsellItems');
             const targetIds = ['drink-coke', 'drink-diet-coke', 'starter-chicken-chorizo', 'starter-halloumi-chilli'];
-            const items = MENU_DATA.filter(i => targetIds.includes(i.id));
+            const items = LIVE_MENU_DATA.filter(i => targetIds.includes(i.id) && i.is_available !== false);
 
             const html = items.map(item => `
                 <div class="upsell-card">
@@ -1621,8 +1745,11 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
         }}
 
         function addInstantUpsell(itemId) {{
-            const item = MENU_DATA.find(i => i.id === itemId);
-            if (!item) return;
+            const item = LIVE_MENU_DATA.find(i => i.id === itemId);
+            if (!item || item.is_available === false) {{
+                showToast("Sorry, this item is sold out.");
+                return;
+            }}
             const existing = basket.find(b => b.item_id === item.id && !b.heat && !b.meal_type && (!b.sides || b.sides.length === 0));
             if (existing) {{
                 existing.quantity++;
@@ -1648,8 +1775,14 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
         function openProductCustomizer(itemId) {{
             const toast = document.getElementById('toastNotification');
             if (toast) toast.classList.remove('active');
-            const item = MENU_DATA.find(i => i.id === itemId);
+            const item = LIVE_MENU_DATA.find(i => i.id === itemId);
             if (!item) return;
+
+            if (item.is_available === false) {{
+                showToast(`Sorry, "${{item.name_translated}}" is currently sold out.`);
+                return;
+            }}
+
             currentConfigItem = item;
             configQuantity = 1;
             selectedHeat = null;

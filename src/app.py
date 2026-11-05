@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template_string, Response
+from flask import Flask, jsonify, request, render_template_string, Response, redirect
 import os
 import sys
 import json
@@ -556,6 +556,10 @@ def owner_today_page():
 @app.route("/admin")
 @app.route("/admin/")
 def admin_console_page():
+    token = request.cookies.get("admin_token") or request.headers.get("Authorization", "").replace("Bearer ", "").strip()
+    user = auth_service.validate_session(token) if token else None
+    if not user:
+        return redirect("/admin/login")
     active_tab = request.args.get("tab", "menu")
     return render_template_string(render_admin_dashboard(active_tab=active_tab))
 

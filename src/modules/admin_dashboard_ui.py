@@ -551,6 +551,25 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>The Waiter · Admin Control Console</title>
+    <!-- SYNCHRONOUS STRICT AUTHENTICATION GUARD -->
+    <script>
+        (function() {{
+            try {{
+                var authStr = sessionStorage.getItem('waiter_admin_auth') || localStorage.getItem('waiter_admin_auth');
+                if (!authStr) {{
+                    window.location.replace('./login/index.html');
+                    return;
+                }}
+                var parsed = JSON.parse(authStr);
+                if (!parsed || !parsed.token) {{
+                    window.location.replace('./login/index.html');
+                    return;
+                }}
+            }} catch(e) {{
+                window.location.replace('./login/index.html');
+            }}
+        }})();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1976,6 +1995,18 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             renderMenuTable();
         }}
 
+        const SYNC_TOPIC_URL = 'https://ntfy.sh/the_waiter_venue_sync_covent_garden';
+
+        async function broadcastCatalogEvent(eventData) {{
+            try {{
+                await fetch(SYNC_TOPIC_URL, {{
+                    method: 'POST',
+                    headers: {{'Title': 'Live Catalog Broadcast', 'Priority': 'high'}},
+                    body: JSON.stringify(eventData)
+                }});
+            }} catch(e) {{}}
+        }}
+
         // Toggle 86 Out-of-Stock
         async function toggleItem86(itemId) {{
             const item = adminMenu.find(i => i.id === itemId);
@@ -1988,6 +2019,8 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             localStorage.setItem('waiter_admin_menu', JSON.stringify(adminMenu));
             renderMenuTable();
             showAdminToast(`${{item.name.en}} is now ${{nextAvail ? 'available (IN STOCK)' : "marked 86 (SOLD OUT)"}}!`);
+
+            broadcastCatalogEvent({{action: 'TOGGLE_86', item_id: itemId, is_available: nextAvail, timestamp: Date.now()}});
 
             // Try server sync if available
             try {{
@@ -2009,6 +2042,8 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             localStorage.setItem('waiter_admin_menu', JSON.stringify(adminMenu));
             renderMenuTable();
             showAdminToast(`Deleted "${{name}}" from catalog.`);
+
+            broadcastCatalogEvent({{action: 'DELETE', item_id: itemId, timestamp: Date.now()}});
 
             try {{
                 await fetch(`/api/admin/menu/${{itemId}}`, {{method: 'DELETE'}});
@@ -2125,6 +2160,7 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             }}
 
             localStorage.setItem('waiter_admin_menu', JSON.stringify(adminMenu));
+            broadcastCatalogEvent({{action: 'UPSERT', item: dishData, timestamp: Date.now()}});
             renderMenuTable();
             closeDishModal();
 
@@ -2528,7 +2564,7 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
         function lockConsoleForInactivity() {{
             showAdminToast('Terminal auto-locked after 15 min of inactivity.');
             setTimeout(() => {{
-                window.location.href = './login/';
+                window.location.href = './login/index.html';
             }}, 1200);
         }}
 
@@ -2558,7 +2594,7 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             localStorage.removeItem('waiter_admin_auth');
             showAdminToast('Logged out securely.');
             setTimeout(() => {{
-                window.location.href = './login/';
+                window.location.href = './login/index.html';
             }}, 800);
         }}
 
