@@ -698,6 +698,10 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
             background: #C40024;
         }}
 
+        body.is-embedded .btn-header-link {{
+            display: none !important;
+        }}
+
         /* --- MODAL OVERLAYS (ALLERGY & PRODUCT CONFIGURATOR & CHECKOUT) --- */
         .modal-overlay {{
             position: fixed;
@@ -1480,6 +1484,9 @@ def render_restaurant_ordering_html(table_num: int = 12, initial_item_id: str = 
 
         // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {{
+            if (window.self !== window.top) {{
+                document.body.classList.add('is-embedded');
+            }}
             renderCategories();
             renderMenuSections();
             renderUpsells();

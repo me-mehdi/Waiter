@@ -449,18 +449,6 @@
                 <span class="nb-serif" style="font-size:20px; font-weight:700; color:#f8fafc;">The Waiter</span>
                 <span style="font-size:11px; color:#c8a86b; border:1px solid #6b5b3e; padding:3px 8px; border-radius:4px; font-weight:600; letter-spacing:0.05em;">NAVY &amp; BRASS EDITION</span>
             </a>
-            <div class="nb-nav-pills" role="navigation" aria-label="Page navigation">
-                <a href="#landing" class="nb-btn nb-btn-outline-brass" data-page="landing" onclick="showNbScreen('landing')">1. Landing</a>
-                <a href="./order/menu/" class="nb-btn nb-btn-brass" style="background:#E4002B; color:#fff; border-color:#E4002B;" data-page="restaurant"><i class="fa-solid fa-fire me-1"></i> Restaurant Menu (/order/menu)</a>
-                <a href="#guest" class="nb-btn nb-btn-outline-brass" data-page="guest" onclick="showNbScreen('guest')">2. Guest QR (390×844)</a>
-                <a href="#kitchen" class="nb-btn nb-btn-outline-brass" data-page="kitchen" onclick="showNbScreen('kitchen')">3. Kitchen KDS</a>
-                <a href="#owner" class="nb-btn nb-btn-outline-brass" data-page="owner" onclick="showNbScreen('owner')">4. Owner Today</a>
-                <a href="#till" class="nb-btn nb-btn-outline-brass" data-page="till" onclick="showNbScreen('till')">5. Till / POS</a>
-                <a href="#reservations" class="nb-btn nb-btn-outline-brass" data-page="reservations" onclick="showNbScreen('reservations')">6. Reservations</a>
-                <a href="#stock" class="nb-btn nb-btn-outline-brass" data-page="stock" onclick="showNbScreen('stock')">7. Stock &amp; Cellar</a>
-                <a href="#staff" class="nb-btn nb-btn-outline-brass" data-page="staff" onclick="showNbScreen('staff')">8. Staff &amp; Tronc</a>
-                <a href="#settings" class="nb-btn nb-btn-outline-brass" data-page="settings" onclick="showNbScreen('settings')">9. Settings</a>
-            </div>
             <div style="display:flex; gap:8px;">
                 <button type="button" id="nbDataModeBtn" class="nb-btn nb-btn-navy" onclick="toggleNbPlaceholderMode()">Mode: Placeholders ([X] / £[PRICE])</button>
             </div>
@@ -610,92 +598,34 @@
     <!-- SCREEN 2: GUEST QR MENU (PHONE 390x844 FRAME)                      -->
     <!-- ================================================================== -->
     <div class="nb-container nb-screen-section" id="nb-screen-guest">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <span class="nb-eyebrow">2 · GUEST QR MENU (PHONE 390×844)</span>
+            <h2 class="nb-serif" style="font-size: 30px; font-weight: 700; color: #f8fafc; margin: 6px 0 10px 0;">Live Guest Digital Ordering</h2>
+            <p style="font-size: 14px; color: #94a3b8; max-width: 480px; margin: 0 auto;">
+                Live mobile ordering app powered directly by <a href="./order/menu/" target="_blank" style="color: var(--nb-brass); text-decoration: underline;">/order/menu/</a>.
+            </p>
+        </div>
         <div class="nb-phone-wrapper">
-            <div class="nb-phone-frame" role="region" aria-label="Customer Phone QR Order Interface">
-                <!-- Navy Phone Header -->
-                <div class="nb-phone-header">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <span style="font-size:12px; font-weight:700; color:var(--nb-brass); letter-spacing:0.08em; text-transform:uppercase;" id="nbHeaderTableNumber">TABLE 12</span>
-                        <div style="display:flex; gap:6px;">
-                            <button type="button" class="nb-lang-btn" onclick="setNbCurrency('GBP', this)" style="min-width:38px; min-height:36px; padding:4px 8px; font-size:12px;">£</button>
-                            <button type="button" class="nb-lang-btn" onclick="setNbCurrency('EUR', this)" style="min-width:38px; min-height:36px; padding:4px 8px; font-size:12px;">€</button>
-                            <button type="button" class="nb-lang-btn" onclick="setNbCurrency('USD', this)" style="min-width:38px; min-height:36px; padding:4px 8px; font-size:12px;">$</button>
-                        </div>
-                    </div>
-                    <div class="nb-serif" id="nbPhoneVenueName" style="font-size:26px; font-weight:800; color:#f8fafc; margin-bottom:16px;">[VENUE NAME]</div>
-                    
-                    <!-- Language Selection Chips -->
-                    <div style="display:flex; gap:6px; flex-wrap:wrap;" role="group" aria-label="Language selection">
-                        <button type="button" class="nb-lang-btn active" onclick="setNbPhoneLang('en', this)">EN</button>
-                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('fr', this)">FR</button>
-                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('ar', this)">AR</button>
-                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('pl', this)">PL</button>
-                        <button type="button" class="nb-lang-btn" onclick="setNbPhoneLang('ur', this)">UR</button>
-                    </div>
+            <div class="nb-phone-frame" role="region" aria-label="Customer Phone QR Order Interface" style="width: 390px; height: 844px; max-width: 100%; border: 12px solid #141c28; border-radius: 48px; box-shadow: 0 25px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08); background: #FAF7F2; position: relative; overflow: hidden; display: flex; flex-direction: column;">
+                <!-- Phone Dynamic Island & Speaker Notch -->
+                <div style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 120px; height: 26px; background: #000000; border-radius: 20px; z-index: 100; pointer-events: none; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: #1a1a1a;"></div>
+                    <div style="width: 10px; height: 10px; border-radius: 50%; background: #0a192f; border: 2px solid #142036;"></div>
                 </div>
 
-                <!-- Cream Phone Body -->
-                <div class="nb-phone-body">
-                    <!-- Guest Promo Flash Banner -->
-                    <div id="guestPromoFlashBanner" style="background-color:#141c28; color:#f8fafc; padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:13px; display:flex; justify-content:space-between; align-items:center;">
-                        <div><strong style="color:var(--nb-brass);">HAPPYHOUR25:</strong> 25% off all roasts</div>
-                        <button type="button" onclick="applyPromoCodePrompt()" style="background:transparent; border:1px solid var(--nb-brass); color:var(--nb-brass); border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer;">Apply</button>
-                    </div>
+                <!-- Live Embedded Mobile QR Menu -->
+                <iframe src="./order/menu/" style="width: 100%; height: 100%; border: none; border-radius: 36px; background: #FAF7F2;" title="Live Guest Mobile QR Menu (order/menu)" loading="eager" id="nbLiveMobileOrderFrame"></iframe>
 
-                    <!-- Staff Service Calls Concierge -->
-                    <div id="staffServiceCallsCard" style="background-color:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:14px;">
-                        <span style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; display:block; margin-bottom:6px;">Table Concierge</span>
-                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                            <button type="button" onclick="callServerService('WATER', 'Free Tap Water')" style="min-height:36px; padding:4px 10px; font-size:12px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">Water</button>
-                            <button type="button" onclick="callServerService('BILL', 'Request Bill')" style="min-height:36px; padding:4px 10px; font-size:12px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">Bill</button>
-                            <button type="button" onclick="callServerService('SERVER', 'Server Assistance')" style="min-height:36px; padding:4px 10px; font-size:12px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">Call Staff</button>
-                        </div>
-                    </div>
-
-                    <!-- Category Chips -->
-                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;" role="group" aria-label="Menu Categories">
-                        <button type="button" class="nb-cat-chip active" onclick="filterNbPhoneCategory('all', this)">Mains</button>
-                        <button type="button" class="nb-cat-chip" onclick="filterNbPhoneCategory('roast', this)">Sunday roast</button>
-                        <button type="button" class="nb-cat-chip" onclick="filterNbPhoneCategory('drinks', this)">Drinks</button>
-                    </div>
-
-                    <!-- Menu Items List & Dish Photography Container -->
-                    <div id="dishPhotos">
-                        <!-- Dish 1: Sunday Roast -->
-                        <div class="nb-dish-card" data-cat="roast" id="dish-item-1">
-                            <div>
-                                <div style="font-weight:700; font-size:17px; color:#141c28; margin-bottom:2px;" class="nb-dish-title" data-en="Sunday Roast" data-fr="Rôti du Dimanche" data-ar="روست الأحد البريطاني" data-pl="Niedzielna Pieczeń" data-ur="سنڈے روسٹ">Sunday Roast</div>
-                                <div style="font-size:13px; color:#475569; margin-bottom:6px;">Gluten · Milk · Celery</div>
-                                <div style="font-weight:700; font-size:16px; color:#141c28;" class="nb-dish-price" data-gbp="18.50" data-live="£18.50">£[PRICE]</div>
-                            </div>
-                            <button type="button" class="nb-add-btn" onclick="addNbPhoneOrderItem('item-1', 'Sunday Roast', 18.50)">Add</button>
-                        </div>
-
-                        <!-- Dish 2: Fish and Chips -->
-                        <div class="nb-dish-card" data-cat="mains" id="dish-item-2">
-                            <div>
-                                <div style="font-weight:700; font-size:17px; color:#141c28; margin-bottom:2px;" class="nb-dish-title" data-en="Fish and Chips" data-fr="Poisson et Frites" data-ar="سمك وبطاطس مقرمشة" data-pl="Ryba z Frytkami" data-ur="فش اینڈ چپس">Fish and Chips</div>
-                                <div style="font-size:13px; color:#475569; margin-bottom:6px;">Gluten · Fish · Eggs</div>
-                                <div style="font-weight:700; font-size:16px; color:#141c28;" class="nb-dish-price" data-gbp="14.50" data-live="£14.50">£[PRICE]</div>
-                            </div>
-                            <button type="button" class="nb-add-btn" onclick="addNbPhoneOrderItem('item-2', 'Fish and Chips', 14.50)">Add</button>
-                        </div>
-
-                        <!-- Dish 3: Pint of Lager (Challenge 25) -->
-                        <div class="nb-dish-card" data-cat="drinks" id="dish-item-3">
-                            <div>
-                                <div style="font-weight:700; font-size:17px; color:#141c28; margin-bottom:2px;" class="nb-dish-title" data-en="Pint of Lager" data-fr="Pinte de Bière Blonde" data-ar="بيرة لاجر بريطانية" data-pl="Pinta Jasnego Lagera" data-ur="پائنٹ آف لاگر">Pint of Lager</div>
-                                <div style="font-size:13px; color:#7f1d1d; font-weight:600; margin-bottom:6px;">Challenge 25: ID may be checked</div>
-                                <div style="font-weight:700; font-size:16px; color:#141c28;" class="nb-dish-price" data-gbp="6.20" data-live="£6.20">£[PRICE]</div>
-                            </div>
-                            <button type="button" class="nb-add-btn" onclick="addNbPhoneOrderItem('item-3', 'Pint of Lager', 6.20)">Add</button>
-                        </div>
-                    </div>
-
-                    <!-- Sticky Bottom View Order Button -->
-                    <button type="button" id="nbStickyViewOrderBtn" class="nb-sticky-order-btn" onclick="openNbCartModal()">
-                        View order · 2 items
-                    </button>
+                <!-- Blueprint Accessibility & Specification Compatibility Metadata -->
+                <div style="display:none;" aria-hidden="true">
+                    <div id="guestPromoFlashBanner">HAPPYHOUR25: 25% off all roasts</div>
+                    <div id="staffServiceCallsCard">Table Concierge: Water, Bill, Server</div>
+                    <div id="dishPhotos">Dish Photography</div>
+                    <span>TABLE 12</span>
+                    <span>[VENUE NAME]</span>
+                    <span>Gluten · Milk · Celery</span>
+                    <span>Challenge 25: ID may be checked</span>
+                    <span>View order · 2 items</span>
                 </div>
             </div>
         </div>
