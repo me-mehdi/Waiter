@@ -1,7 +1,7 @@
 import json
 from src.core.db import db
 
-def render_admin_login_page(error_msg: str = None, return_url: str = "./") -> str:
+def render_admin_login_page(error_msg: str = None, return_url: str = "../index.html") -> str:
     """
     Renders the high-security Navy & Brass Admin Login & Terminal Unlock Screen.
     Includes Dual-Auth (Password + Till Quick PIN), progressive lockout alerts,
@@ -383,7 +383,7 @@ def render_admin_login_page(error_msg: str = None, return_url: str = "./") -> st
 
     <script>
         let enteredPin = '';
-        const returnUrl = '{return_url}' || './';
+        const returnUrl = '{return_url}' || '../index.html';
 
         function switchMode(mode) {{
             document.querySelectorAll('.auth-mode-btn').forEach(b => b.classList.remove('active'));
@@ -1697,12 +1697,16 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                 <div class="form-grid-2">
                     <div class="form-group">
                         <label class="form-label" for="dishModalCategory">Category *</label>
-                        <select id="dishModalCategory" class="form-control">
+                        <select id="dishModalCategory" class="form-control" onchange="onCategorySelectChange(this)">
+                            <option value="Flame-Grilled Chicken">Flame-Grilled Chicken</option>
+                            <option value="Burgers, Pittas, Wraps">Burgers, Pittas, Wraps</option>
+                            <option value="Salads &amp; Bowls">Salads &amp; Bowls</option>
                             <option value="Mains">Mains</option>
                             <option value="Sides">Sides</option>
                             <option value="Drinks">Drinks</option>
                             <option value="Starters">Starters</option>
                             <option value="Desserts">Desserts</option>
+                            <option value="__custom__">+ Add New Category...</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1996,8 +2000,28 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
         }}
 
         const SYNC_TOPIC_URL = 'https://ntfy.sh/the_waiter_venue_sync_covent_garden';
+        const CLIENT_DEVICE_ID = 'admin-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now();
+        let adminSyncBroadcastChan = null;
+
+        try {{
+            if ('BroadcastChannel' in window) {{
+                adminSyncBroadcastChan = new BroadcastChannel('waiter_venue_sync_bus');
+                adminSyncBroadcastChan.onmessage = (e) => {{
+                    if (e && e.data) handleAdminSyncBroadcast(e.data, 'bc-' + Date.now());
+                }};
+            }}
+        }} catch(e) {{}}
 
         async function broadcastCatalogEvent(eventData) {{
+            eventData.sender_id = CLIENT_DEVICE_ID;
+            eventData.timestamp = Date.now();
+
+            // 1. Local BroadcastChannel for instant same-device tabs/iframe sync (<5ms)
+            if (adminSyncBroadcastChan) {{
+                try {{ adminSyncBroadcastChan.postMessage(eventData); }} catch(e) {{}}
+            }}
+
+            // 2. Cloud ntfy.sh pub/sub for cross-device instant sync
             try {{
                 await fetch(SYNC_TOPIC_URL, {{
                     method: 'POST',
@@ -2005,6 +2029,40 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                     body: JSON.stringify(eventData)
                 }});
             }} catch(e) {{}}
+        }}
+
+        // Dynamic category helper for Add/Edit Modal
+        function populateCategorySelect(selectedCat = 'Mains') {{
+            const select = document.getElementById('dishModalCategory');
+            if (!select) return;
+            const existingCats = Array.from(new Set(adminMenu.map(i => i.category).filter(Boolean)));
+            const allCats = Array.from(new Set(['Flame-Grilled Chicken', 'Burgers, Pittas, Wraps', 'Salads & Bowls', 'Mains', 'Sides', 'Drinks', 'Starters', 'Desserts', ...existingCats]));
+            select.innerHTML = allCats.map(c => `<option value="${{c}}">${{c}}</option>`).join('') + `<option value="__custom__">+ Add New Category...</option>`;
+            if (allCats.includes(selectedCat)) {{
+                select.value = selectedCat;
+            }} else {{
+                const opt = document.createElement('option');
+                opt.value = selectedCat;
+                opt.textContent = selectedCat;
+                select.prepend(opt);
+                select.value = selectedCat;
+            }}
+        }}
+
+        function onCategorySelectChange(selectEl) {{
+            if (selectEl.value === '__custom__') {{
+                const newCat = prompt('Enter the name of the new menu category:');
+                if (newCat && newCat.trim()) {{
+                    const trimmed = newCat.trim();
+                    const opt = document.createElement('option');
+                    opt.value = trimmed;
+                    opt.textContent = trimmed;
+                    selectEl.prepend(opt);
+                    selectEl.value = trimmed;
+                }} else {{
+                    selectEl.value = 'Mains';
+                }}
+            }}
         }}
 
         // Toggle 86 Out-of-Stock
@@ -2057,7 +2115,7 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             document.getElementById('dishModalNameEn').value = '';
             document.getElementById('dishModalNameFr').value = '';
             document.getElementById('dishModalNameAr').value = '';
-            document.getElementById('dishModalCategory').value = 'Mains';
+            populateCategorySelect('Mains');
             document.getElementById('dishModalPrice').value = '';
             document.getElementById('dishModalKcal').value = '';
             document.getElementById('dishModalStock').value = '30';
@@ -2083,7 +2141,7 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             document.getElementById('dishModalNameEn').value = item.name ? (item.name.en || '') : '';
             document.getElementById('dishModalNameFr').value = item.name ? (item.name.fr || '') : '';
             document.getElementById('dishModalNameAr').value = item.name ? (item.name.ar || '') : '';
-            document.getElementById('dishModalCategory').value = item.category || 'Mains';
+            populateCategorySelect(item.category || 'Mains');
             document.getElementById('dishModalPrice').value = item.price || '';
             document.getElementById('dishModalKcal').value = item.kcal || '';
             document.getElementById('dishModalStock').value = item.stock_qty || 30;
@@ -2598,6 +2656,152 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             }}, 800);
         }}
 
+        // --- REAL-TIME ADMIN CATALOG SYNCHRONIZATION ---
+        let adminSseInstance = null;
+        let adminSyncPollTimer = null;
+        let isAdminPolling = false;
+        let adminProcessedEventIds = new Set();
+        let adminLastSyncTimestamp = 0;
+
+        function handleAdminSyncBroadcast(msg, evtId) {{
+            if (!msg || !msg.action) return;
+            if (evtId) {{
+                if (adminProcessedEventIds.has(evtId)) return;
+                adminProcessedEventIds.add(evtId);
+            }}
+            if (msg.timestamp && msg.timestamp > adminLastSyncTimestamp) {{
+                adminLastSyncTimestamp = msg.timestamp;
+            }}
+
+            // Skip events initiated by this admin instance to avoid duplicate state churn
+            if (msg.sender_id && msg.sender_id === CLIENT_DEVICE_ID) return;
+
+            if (msg.action === 'DELETE' && msg.item_id) {{
+                const item = adminMenu.find(i => i.id === msg.item_id);
+                const name = item ? (item.name ? (item.name.en || 'Dish') : 'Dish') : 'Dish';
+                adminMenu = adminMenu.filter(i => i.id !== msg.item_id);
+                try {{ localStorage.setItem('waiter_admin_menu', JSON.stringify(adminMenu)); }} catch(e) {{}}
+                renderMenuTable();
+                updateOverviewKpis();
+                showAdminToast(`🗑️ "${{name}}" deleted from another device.`);
+            }} else if (msg.action === 'UPSERT' && msg.item) {{
+                const item = msg.item;
+                const idx = adminMenu.findIndex(i => i.id === item.id);
+                const name = item.name ? (item.name.en || 'Dish') : 'Dish';
+                if (idx !== -1) {{
+                    adminMenu[idx] = item;
+                }} else {{
+                    adminMenu.unshift(item);
+                }}
+                try {{ localStorage.setItem('waiter_admin_menu', JSON.stringify(adminMenu)); }} catch(e) {{}}
+                renderMenuTable();
+                updateOverviewKpis();
+                showAdminToast(`⚡ "${{name}}" updated from another device.`);
+            }} else if (msg.action === 'TOGGLE_86' && msg.item_id) {{
+                const item = adminMenu.find(i => i.id === msg.item_id);
+                if (item) {{
+                    item.is_available = msg.is_available;
+                    if (!msg.is_available) item.stock_qty = 0; else if (!item.stock_qty) item.stock_qty = 30;
+                    try {{ localStorage.setItem('waiter_admin_menu', JSON.stringify(adminMenu)); }} catch(e) {{}}
+                    renderMenuTable();
+                    updateOverviewKpis();
+                    const name = item.name ? (item.name.en || 'Dish') : 'Dish';
+                    showAdminToast(`🔔 "${{name}}" marked ${{msg.is_available ? 'In Stock' : '86 (Sold Out)'}} remotely.`);
+                }}
+            }}
+        }}
+
+        async function pollAdminSyncUpdates() {{
+            if (isAdminPolling) return;
+            isAdminPolling = true;
+            try {{
+                const sinceParam = adminLastSyncTimestamp > 0 ? (Math.max(1, Math.floor(adminLastSyncTimestamp / 1000) - 10)) + 's' : '12h';
+                const resp = await fetch(`${{SYNC_TOPIC_URL}}/json?poll=1&since=${{sinceParam}}`, {{
+                    cache: 'no-store'
+                }});
+                if (resp.ok) {{
+                    const text = await resp.text();
+                    const lines = text.trim().split('\\n');
+                    for (const line of lines) {{
+                        if (!line.trim()) continue;
+                        try {{
+                            const evt = JSON.parse(line);
+                            if (evt && evt.message) {{
+                                const payload = JSON.parse(evt.message);
+                                handleAdminSyncBroadcast(payload, evt.id);
+                            }}
+                        }} catch(err) {{}}
+                    }}
+                }}
+            }} catch(e) {{
+            }} finally {{
+                isAdminPolling = false;
+            }}
+        }}
+
+        function connectAdminSSE() {{
+            if (adminSseInstance) {{
+                try {{ adminSseInstance.close(); }} catch(e) {{}}
+                adminSseInstance = null;
+            }}
+
+            try {{
+                adminSseInstance = new EventSource(`${{SYNC_TOPIC_URL}}/sse`);
+                adminSseInstance.onmessage = (e) => {{
+                    try {{
+                        const evt = JSON.parse(e.data);
+                        if (evt && evt.message) {{
+                            const payload = JSON.parse(evt.message);
+                            handleAdminSyncBroadcast(payload, evt.id);
+                        }}
+                    }} catch(err) {{}}
+                }};
+                adminSseInstance.onerror = () => {{
+                    try {{ adminSseInstance.close(); }} catch(e) {{}}
+                    adminSseInstance = null;
+                    setTimeout(connectAdminSSE, 2500);
+                }};
+            }} catch(e) {{
+                setTimeout(connectAdminSSE, 3000);
+            }}
+        }}
+
+        function initAdminRealtimeSync() {{
+            pollAdminSyncUpdates();
+            connectAdminSSE();
+
+            if (adminSyncPollTimer) clearInterval(adminSyncPollTimer);
+            adminSyncPollTimer = setInterval(pollAdminSyncUpdates, 2500);
+
+            document.addEventListener('visibilitychange', () => {{
+                if (document.visibilityState === 'visible') {{
+                    pollAdminSyncUpdates();
+                    if (!adminSseInstance || adminSseInstance.readyState === EventSource.CLOSED) {{
+                        connectAdminSSE();
+                    }}
+                }}
+            }});
+
+            window.addEventListener('focus', () => pollAdminSyncUpdates());
+            window.addEventListener('online', () => {{
+                pollAdminSyncUpdates();
+                connectAdminSSE();
+            }});
+
+            window.addEventListener('storage', (e) => {{
+                if (e.key === 'waiter_admin_menu') {{
+                    const storedMenu = localStorage.getItem('waiter_admin_menu');
+                    if (storedMenu) {{
+                        try {{
+                            adminMenu = JSON.parse(storedMenu);
+                            renderMenuTable();
+                            updateOverviewKpis();
+                        }} catch(err) {{}}
+                    }}
+                }}
+            }});
+        }}
+
         // Initialize on DOM Ready
         window.addEventListener('DOMContentLoaded', () => {{
             checkAdminAuth();
@@ -2607,6 +2811,7 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                 switchAdminTab(hash);
             }}
             initAdminStore();
+            initAdminRealtimeSync();
         }});
     </script>
 </body>

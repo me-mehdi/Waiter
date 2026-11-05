@@ -1787,6 +1787,19 @@
         };
     } catch(err) {}
 
+    // Cross-Tab & Suite Sync forwarder to live mobile phone iframe
+    try {
+        if ('BroadcastChannel' in window) {
+            const suiteSyncChan = new BroadcastChannel('waiter_venue_sync_bus');
+            suiteSyncChan.onmessage = (evt) => {
+                const frame = document.getElementById('nbLiveMobileOrderFrame');
+                if (frame && frame.contentWindow) {
+                    frame.contentWindow.postMessage({type: 'WAIT_SYNC_EVENT', payload: evt.data}, '*');
+                }
+            };
+        }
+    } catch(e) {}
+
     // Initialize screen on DOM ready
     window.addEventListener('DOMContentLoaded', initScreenRouting);
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
