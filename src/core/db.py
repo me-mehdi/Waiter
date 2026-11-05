@@ -278,6 +278,45 @@ class DatabaseStore:
                 )
             """)
 
+            # 16. Admin Users Table (Enterprise Security)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS admin_users (
+                    id TEXT PRIMARY KEY,
+                    username TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    pin TEXT DEFAULT '1234',
+                    name TEXT NOT NULL,
+                    role TEXT DEFAULT 'MANAGER',
+                    failed_attempts INTEGER DEFAULT 0,
+                    locked_until TEXT,
+                    last_login_at TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
+            # 17. Admin Active Sessions
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS admin_sessions (
+                    token TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    expires_at TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
+            # 18. Admin Security Audit Log
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS admin_audit_logs (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT,
+                    event TEXT NOT NULL,
+                    ip_address TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
             conn.commit()
             self._seed_default_data(cursor, conn)
 
@@ -384,6 +423,17 @@ class DatabaseStore:
                 VALUES (?, ?, ?, ?, ?)
             """, default_c25)
 
+        cursor.execute("SELECT COUNT(*) FROM admin_users")
+        if cursor.fetchone()[0] == 0:
+            from werkzeug.security import generate_password_hash
+            default_pwd = os.environ.get("ADMIN_PASSWORD", "WaiterAdmin2026!")
+            pwd_hash = generate_password_hash(default_pwd)
+            now_iso = datetime.now(timezone.utc).isoformat()
+            cursor.execute("""
+                INSERT INTO admin_users (id, username, password_hash, pin, name, role, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, ("usr-admin", "admin", pwd_hash, "1234", "General Manager", "SUPER_ADMIN", now_iso))
+
         try:
             from src.core.seed_restaurant_menu import seed_menu
             seed_menu(conn)
@@ -409,6 +459,9 @@ class DatabaseStore:
             cursor.execute("DELETE FROM dining_tables")
             cursor.execute("DELETE FROM fridge_logs")
             cursor.execute("DELETE FROM challenge25_logs")
+            cursor.execute("DELETE FROM admin_sessions")
+            cursor.execute("DELETE FROM admin_audit_logs")
+            cursor.execute("DELETE FROM admin_users")
             conn.commit()
             self._seed_default_data(cursor, conn)
 

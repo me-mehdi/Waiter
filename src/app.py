@@ -46,7 +46,7 @@ from src.modules.growth_customers import growth_customers_service
 from src.modules.reliability import reliability_service
 from src.modules.navy_brass_ui import NAVY_BRASS_SUITE_HTML, render_navy_brass_page
 from src.modules.restaurant_ordering_ui import render_restaurant_ordering_html
-from src.modules.admin_dashboard_ui import render_admin_dashboard
+from src.modules.admin_dashboard_ui import render_admin_dashboard, render_admin_login_page
 
 app = Flask(__name__)
 
@@ -558,6 +558,11 @@ def owner_today_page():
 def admin_console_page():
     active_tab = request.args.get("tab", "menu")
     return render_template_string(render_admin_dashboard(active_tab=active_tab))
+
+@app.route("/admin/login")
+@app.route("/admin/login/")
+def admin_login_page():
+    return render_template_string(render_admin_login_page())
 
 @app.route("/till")
 @app.route("/pos")
@@ -2142,6 +2147,57 @@ def render_navy_and_brass_uk_suite():
 # =====================================================================
 # 35. Admin Control Console API Endpoints (CRUD & Venue Management)
 # =====================================================================
+
+@app.route("/api/admin/login", methods=["POST"])
+def api_admin_login():
+    data = request.get_json() or {}
+    pin = data.get("pin")
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "127.0.0.1").split(",")[0].strip()
+    ua = request.headers.get("User-Agent", "")
+
+    if pin:
+        ok, session, err = auth_service.authenticate_pin(pin, ip_address=ip, user_agent=ua)
+    else:
+        username = data.get("username", "")
+        password = data.get("password", "")
+        ok, session, err = auth_service.authenticate_user(username, password, ip_address=ip, user_agent=ua)
+
+    if not ok:
+        return jsonify({"success": False, "error": err or "Invalid credentials"}), 401
+
+    resp = jsonify({"success": True, "session": session})
+    resp.set_cookie(
+        "admin_token",
+        session["token"],
+        httponly=True,
+        samesite="Strict",
+        max_age=8 * 3600
+    )
+    return resp
+
+@app.route("/api/admin/logout", methods=["POST"])
+def api_admin_logout():
+    cookie_token = request.cookies.get("admin_token")
+    header_token = request.headers.get("Authorization", "").replace("Bearer ", "").strip()
+    if cookie_token:
+        auth_service.revoke_session(cookie_token)
+    if header_token:
+        auth_service.revoke_session(header_token)
+    resp = jsonify({"success": True, "message": "Logged out successfully"})
+    resp.delete_cookie("admin_token")
+    return resp
+
+@app.route("/api/admin/me", methods=["GET"])
+def api_admin_me():
+    token = request.cookies.get("admin_token") or request.headers.get("Authorization", "").replace("Bearer ", "")
+    user = auth_service.validate_session(token)
+    if not user:
+        return jsonify({"authenticated": False}), 401
+    return jsonify({"authenticated": True, "user": user})
+
+@app.route("/api/admin/audit-logs", methods=["GET"])
+def api_admin_audit_logs():
+    return jsonify({"success": True, "logs": auth_service.get_audit_logs(limit=50)})
 
 @app.route("/api/admin/menu", methods=["GET"])
 def api_admin_get_menu():

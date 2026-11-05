@@ -1283,6 +1283,84 @@ class TestWaiterModules(unittest.TestCase):
         res = client.post("/api/admin/compliance/c25", json={"item_name": "Craft Cider", "reason": "No photo ID produced", "staff_member": "Alice"})
         self.assertEqual(res.status_code, 201)
 
+    def test_admin_security_authentication_and_lockout(self):
+        """
+        Verify enterprise-grade authentication for the Admin Console:
+        1. Password login using scrypt verification
+        2. Fast 4-digit till PIN login
+        3. Cookie & Bearer session token validation
+        4. Progressive brute-force lockout after 5 failed attempts
+        5. Session revocation on logout
+        6. Login page rendering (/admin/login)
+        """
+        from src.app import app
+        from src.core.db import db
+        client = app.test_client()
+
+        # Reset failed attempts if any
+        with db._get_connection() as conn:
+            conn.cursor().execute("UPDATE admin_users SET failed_attempts = 0, locked_until = NULL WHERE username = 'admin'")
+            conn.commit()
+
+        # 1. Login Page UI
+        res = client.get("/admin/login")
+        self.assertEqual(res.status_code, 200)
+        html = res.get_data(as_text=True)
+        self.assertIn("Admin Authentication", html)
+        self.assertIn("Master Password", html)
+        self.assertIn("Quick PIN", html)
+        self.assertIn("Scrypt Key Derivation", html)
+
+        # 2. Successful Login with Password
+        res = client.post("/api/admin/login", json={"username": "admin", "password": "WaiterAdmin2026!"})
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        token = data.get("session", {}).get("token")
+        self.assertTrue(token)
+        self.assertEqual(data["session"]["user"]["role"], "SUPER_ADMIN")
+
+        # 3. Validate Session via Header
+        res = client.get("/api/admin/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.get_json().get("authenticated"))
+
+        # 4. Successful Login with Quick PIN
+        res = client.post("/api/admin/login", json={"pin": "1234"})
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.get_json().get("success"))
+
+        # 5. Revoke Session (Logout)
+        res = client.post("/api/admin/logout", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)
+
+        # 6. Session should now be invalid
+        res = client.get("/api/admin/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 401)
+
+        # 7. Invalid Credentials & Brute-Force Rate Limiting
+        # Reset failed attempts first
+        with db._get_connection() as conn:
+            conn.cursor().execute("UPDATE admin_users SET failed_attempts = 0, locked_until = NULL WHERE username = 'admin'")
+            conn.commit()
+
+        for attempt in range(1, 5):
+            res = client.post("/api/admin/login", json={"username": "admin", "password": "wrong_password"})
+            self.assertEqual(res.status_code, 401)
+            err = res.get_json().get("error", "")
+            self.assertIn("remaining before temporary lockout", err)
+
+        # 5th failed attempt should lock account
+        res = client.post("/api/admin/login", json={"username": "admin", "password": "wrong_password"})
+        self.assertEqual(res.status_code, 401)
+        err = res.get_json().get("error", "")
+        self.assertIn("Account locked", err)
+
+        # Clean up lock after test
+        with db._get_connection() as conn:
+            conn.cursor().execute("UPDATE admin_users SET failed_attempts = 0, locked_until = NULL WHERE username = 'admin'")
+            conn.commit()
+
 if __name__ == "__main__":
     unittest.main()
 
