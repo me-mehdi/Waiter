@@ -1410,7 +1410,7 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
                     <span style="font-weight: 700;">Status:</span>
-                    <span style="background: #FFF3E0; color: #E65100; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.8rem;">ON THE GRILL</span>
+                    <span id="successOrderStatus" style="background: #E0F2FE; color: #0284C7; padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; transition: all 0.3s ease;">SENT TO KITCHEN</span>
                 </div>
             </div>
             <div style="display: flex; gap: 10px;">
@@ -1633,6 +1633,38 @@
                 try { localStorage.setItem('waiter_admin_menu', JSON.stringify(LIVE_MENU_DATA)); } catch(e) {}
                 rebuildMenuCategories();
                 if (!isOwnEvent) showLiveSyncToast('🔄 Live menu synchronized');
+            } else if (msg.action === 'ORDER_STATUS_UPDATE' && msg.order_id) {
+                const targetRef = document.getElementById('successOrderRef');
+                const currentRef = targetRef ? targetRef.innerText.trim().replace('#', '') : '';
+                const incomingRef = String(msg.order_id).replace('#', '');
+
+                if (currentRef && (incomingRef === currentRef || incomingRef.includes(currentRef) || currentRef.includes(incomingRef))) {
+                    const badge = document.getElementById('successOrderStatus');
+                    if (badge) {
+                        let label = 'SENT TO KITCHEN';
+                        let bg = '#E0F2FE';
+                        let color = '#0284C7';
+                        if (msg.status === 'Preparing') {
+                            label = 'CHEF PREPARING (ON GRILL)';
+                            bg = '#FFF3E0';
+                            color = '#E65100';
+                        } else if (msg.status === 'Ready') {
+                            label = 'READY FOR TABLE';
+                            bg = '#E8F5E9';
+                            color = '#2E7D32';
+                        } else if (msg.status === 'Served') {
+                            label = 'SERVED & COMPLETED';
+                            bg = '#F1F5F9';
+                            color = '#475569';
+                        }
+                        badge.textContent = label;
+                        badge.style.backgroundColor = bg;
+                        badge.style.color = color;
+                        badge.style.transform = 'scale(1.1)';
+                        setTimeout(() => { badge.style.transform = 'scale(1)'; }, 300);
+                    }
+                    showLiveSyncToast(`🔔 Kitchen update: Order #${incomingRef} is now ${msg.status}!`);
+                }
             }
         }
 
@@ -2415,42 +2447,72 @@
                 notes: notes
             };
 
+            // Generate unique Order ID
+            const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
+            orderPayload.id = orderId;
+            orderPayload.order_id = orderId;
+            orderPayload.status = 'New';
+            orderPayload.created_at = new Date().toISOString();
+            orderPayload.items = basket.map(b => ({
+                item_id: b.item_id,
+                title: b.name,
+                name: b.name,
+                price: b.base_price,
+                qty: b.quantity,
+                quantity: b.quantity,
+                heat: b.heat ? b.heat.name : null,
+                meal_type: b.meal_type ? b.meal_type.name : null,
+                sides: (b.sides || []).map(s => s.name || s),
+                extras: (b.extras || []).map(e => e.name || e)
+            }));
+
+            // 1. Save to local storage for instant multi-tab sync
             try {
-                const res = await fetch('/api/order', {
+                const existingOrders = JSON.parse(localStorage.getItem('waiter_admin_orders') || '[]');
+                existingOrders.unshift(orderPayload);
+                localStorage.setItem('waiter_admin_orders', JSON.stringify(existingOrders));
+            } catch (e) {}
+
+            // 2. Broadcast NEW_ORDER event across tabs & windows (<5ms)
+            const orderEvent = {
+                action: 'NEW_ORDER',
+                order: orderPayload,
+                sender_id: CLIENT_DEVICE_ID,
+                timestamp: Date.now()
+            };
+
+            if (syncBroadcastChan) {
+                try { syncBroadcastChan.postMessage(orderEvent); } catch(e) {}
+            }
+
+            // 3. Broadcast NEW_ORDER event across remote devices via cloud pub/sub (<1.5s)
+            try {
+                fetch(SYNC_TOPIC_URL, {
+                    method: 'POST',
+                    headers: { 'Title': 'New Customer Order Placed', 'Priority': 'urgent' },
+                    body: JSON.stringify(orderEvent)
+                });
+            } catch(e) {}
+
+            // 4. Try backend API if server is running
+            try {
+                fetch('/api/order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(orderPayload)
-                });
+                }).catch(() => {});
+            } catch(e) {}
 
-                if (res.ok) {
-                    const result = await res.json();
-                    if (result && result.order) {
-                        closeCheckoutModal();
-                        document.getElementById('successOrderRef').innerText = result.order.id;
-                        document.getElementById('successTableNum').innerText = `Table ${tableNum}`;
-                        document.getElementById('successModalOverlay').classList.add('active');
-                        basket = [];
-                        updateBasketUI();
-                        return;
-                    }
-                }
-            } catch (err) {
-                console.warn('Backend unavailable or running on static hosting:', err);
-            }
-
-            // Offline / GitHub Pages static fallback: store order locally and show success
-            const mockOrderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
-            try {
-                const offlineQueue = JSON.parse(localStorage.getItem('waiter_offline_orders') || '[]');
-                orderPayload.id = mockOrderId;
-                orderPayload.created_at = new Date().toISOString();
-                offlineQueue.push(orderPayload);
-                localStorage.setItem('waiter_offline_orders', JSON.stringify(offlineQueue));
-            } catch (e) {}
-
+            // 5. Display Order Confirmation with Live Status
             closeCheckoutModal();
-            document.getElementById('successOrderRef').innerText = mockOrderId;
+            document.getElementById('successOrderRef').innerText = '#' + orderId.replace('ORD-', '');
             document.getElementById('successTableNum').innerText = `Table ${tableNum}`;
+            const badge = document.getElementById('successOrderStatus');
+            if (badge) {
+                badge.textContent = 'SENT TO KITCHEN';
+                badge.style.backgroundColor = '#E0F2FE';
+                badge.style.color = '#0284C7';
+            }
             document.getElementById('successModalOverlay').classList.add('active');
             basket = [];
             updateBasketUI();

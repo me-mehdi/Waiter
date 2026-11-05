@@ -372,7 +372,17 @@
 
     <script>
         let enteredPin = '';
-        const returnUrl = '../index.html' || '../index.html';
+        const urlParams = new URLSearchParams(window.location.search);
+        let returnUrl = urlParams.get('returnUrl') || urlParams.get('redirect');
+        if (!returnUrl) {
+            if (window.location.pathname.endsWith('/login') || window.location.pathname.endsWith('/login/')) {
+                returnUrl = window.location.pathname.replace(/\/login\/?$/, '') + '/';
+            } else if (window.location.pathname.endsWith('/login/index.html')) {
+                returnUrl = window.location.pathname.replace(/\/login\/index\.html$/, '/index.html');
+            } else {
+                returnUrl = '../index.html' || '../index.html';
+            }
+        }
 
         function switchMode(mode) {
             document.querySelectorAll('.auth-mode-btn').forEach(b => b.classList.remove('active'));

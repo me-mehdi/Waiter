@@ -566,7 +566,7 @@ def admin_console_page():
 @app.route("/admin/login")
 @app.route("/admin/login/")
 def admin_login_page():
-    return render_template_string(render_admin_login_page())
+    return render_template_string(render_admin_login_page(return_url="/admin/"))
 
 @app.route("/till")
 @app.route("/pos")

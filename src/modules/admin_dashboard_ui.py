@@ -383,7 +383,17 @@ def render_admin_login_page(error_msg: str = None, return_url: str = "../index.h
 
     <script>
         let enteredPin = '';
-        const returnUrl = '{return_url}' || '../index.html';
+        const urlParams = new URLSearchParams(window.location.search);
+        let returnUrl = urlParams.get('returnUrl') || urlParams.get('redirect');
+        if (!returnUrl) {{
+            if (window.location.pathname.endsWith('/login') || window.location.pathname.endsWith('/login/')) {{
+                returnUrl = window.location.pathname.replace(/\\/login\\/?$/, '') + '/';
+            }} else if (window.location.pathname.endsWith('/login/index.html')) {{
+                returnUrl = window.location.pathname.replace(/\\/login\\/index\\.html$/, '/index.html');
+            }} else {{
+                returnUrl = '{return_url}' || '../index.html';
+            }}
+        }}
 
         function switchMode(mode) {{
             document.querySelectorAll('.auth-mode-btn').forEach(b => b.classList.remove('active'));
@@ -2293,10 +2303,18 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             const ord = adminOrders.find(o => (o.id === orderId || o.order_id === orderId));
             if (ord) {{
                 ord.status = nextStatus;
-                localStorage.setItem('waiter_admin_orders', JSON.stringify(adminOrders));
+                try {{ localStorage.setItem('waiter_admin_orders', JSON.stringify(adminOrders)); }} catch(e) {{}}
                 renderOrdersGrid();
                 showAdminToast(`Order #${{orderId}} is now ${{nextStatus}}!`);
             }}
+
+            broadcastCatalogEvent({{
+                action: 'ORDER_STATUS_UPDATE',
+                order_id: orderId,
+                status: nextStatus,
+                timestamp: Date.now()
+            }});
+
             try {{
                 await fetch(`/api/admin/orders/${{orderId}}/status`, {{
                     method: 'POST',
@@ -2309,9 +2327,15 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
         async function voidOrder(orderId) {{
             if (!confirm(`Are you sure you want to void/cancel order #${{orderId}}?`)) return;
             adminOrders = adminOrders.filter(o => (o.id !== orderId && o.order_id !== orderId));
-            localStorage.setItem('waiter_admin_orders', JSON.stringify(adminOrders));
+            try {{ localStorage.setItem('waiter_admin_orders', JSON.stringify(adminOrders)); }} catch(e) {{}}
             renderOrdersGrid();
             showAdminToast(`Order #${{orderId}} voided.`);
+
+            broadcastCatalogEvent({{
+                action: 'VOID_ORDER',
+                order_id: orderId,
+                timestamp: Date.now()
+            }});
 
             try {{
                 await fetch(`/api/admin/orders/${{orderId}}/void`, {{method: 'POST'}});
@@ -2656,12 +2680,32 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
             }}, 800);
         }}
 
-        // --- REAL-TIME ADMIN CATALOG SYNCHRONIZATION ---
+        // --- REAL-TIME ADMIN CATALOG & ORDERS SYNCHRONIZATION ---
         let adminSseInstance = null;
         let adminSyncPollTimer = null;
         let isAdminPolling = false;
         let adminProcessedEventIds = new Set();
         let adminLastSyncTimestamp = 0;
+
+        function playKitchenOrderBell() {{
+            try {{
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.08);
+                osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.7);
+            }} catch(e) {{}}
+        }}
 
         function handleAdminSyncBroadcast(msg, evtId) {{
             if (!msg || !msg.action) return;
@@ -2708,6 +2752,33 @@ def render_admin_dashboard(venue_name: str = "Covent Garden Flagship", active_ta
                     const name = item.name ? (item.name.en || 'Dish') : 'Dish';
                     showAdminToast(`🔔 "${{name}}" marked ${{msg.is_available ? 'In Stock' : '86 (Sold Out)'}} remotely.`);
                 }}
+            }} else if (msg.action === 'NEW_ORDER' && msg.order) {{
+                const ord = msg.order;
+                const orderId = ord.id || ord.order_id;
+                const exists = adminOrders.some(o => (o.id === orderId || o.order_id === orderId));
+                if (!exists) {{
+                    adminOrders.unshift(ord);
+                    try {{ localStorage.setItem('waiter_admin_orders', JSON.stringify(adminOrders)); }} catch(e) {{}}
+                    renderOrdersGrid();
+                    updateOverviewKpis();
+                    playKitchenOrderBell();
+                    showAdminToast(`🔔 New Order #${{String(orderId).replace('ORD-', '')}} from Table ${{ord.table_number || 12}} (£${{parseFloat(ord.total || 0).toFixed(2)}})!`);
+                }}
+            }} else if (msg.action === 'ORDER_STATUS_UPDATE' && msg.order_id) {{
+                const ord = adminOrders.find(o => (o.id === msg.order_id || o.order_id === msg.order_id));
+                if (ord && ord.status !== msg.status) {{
+                    ord.status = msg.status;
+                    try {{ localStorage.setItem('waiter_admin_orders', JSON.stringify(adminOrders)); }} catch(e) {{}}
+                    renderOrdersGrid();
+                    updateOverviewKpis();
+                    showAdminToast(`Order #${{msg.order_id}} status updated to ${{msg.status}}`);
+                }}
+            }} else if (msg.action === 'VOID_ORDER' && msg.order_id) {{
+                adminOrders = adminOrders.filter(o => (o.id !== msg.order_id && o.order_id !== msg.order_id));
+                try {{ localStorage.setItem('waiter_admin_orders', JSON.stringify(adminOrders)); }} catch(e) {{}}
+                renderOrdersGrid();
+                updateOverviewKpis();
+                showAdminToast(`Order #${{msg.order_id}} voided.`);
             }}
         }}
 

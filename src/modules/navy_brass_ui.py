@@ -50,8 +50,9 @@ def render_navy_brass_page(page_name: str = "all") -> str:
     elif target_data_page == "today":
         target_data_page = "owner"
         
-    html = re.sub(r'class="nb-btn nb-btn-outline-brass active"', 'class="nb-btn nb-btn-outline-brass"', html)
-    html = html.replace(f'data-page="{target_data_page}"', f'data-page="{target_data_page}" class="nb-btn nb-btn-outline-brass active"')
+    # Safely activate matching nav button in HTML if present without corrupting scripts
+    html = re.sub(r'(<button[^>]*class="[^"]*)\bactive\b([^"]*"[^>]*>)', r'\1\2', html)
+    html = re.sub(rf'(<button[^>]*data-page="{target_data_page}"[^>]*class="[^"]*)(")', r'\1 active\2', html)
     
     if canonical != "all":
         section_id_map = {
